@@ -18,13 +18,13 @@ configs:
 packages:
   SwiftDraw:
     url: https://github.com/swhitty/SwiftDraw
-    majorVersion: 0.25.3
+    majorVersion: 0.22.0
   IOS-DFU-Library:
     url: https://github.com/NordicSemiconductor/IOS-DFU-Library
     majorVersion: 4.16.0
-  TAKPacket-SDK:
-    url: https://github.com/meshtastic/TAKPacket-SDK.git
-    minorVersion: 0.9.1
+  # TAKPacket-SDK: (requires swift-protobuf 1.38+ / Swift 6.2 - disabled for iOS 15)
+  #   url: https://github.com/meshtastic/TAKPacket-SDK.git
+  #   minorVersion: 0.9.1
   CocoaMQTT:
     url: https://github.com/emqx/CocoaMQTT
     majorVersion: 2.0.0
@@ -43,12 +43,8 @@ packages:
     majorVersion: 1.26.0
   MeshtasticProtobufs:
     path: MeshtasticProtobufs
-  ShowcaseContent:
-    path: Packages/ShowcaseContent
-  Kp1812:
-    path: Packages/Kp1812
-  CinemaContent:
-    path: Packages/CinemaContent
+  # Kp1812: (binary target XCFramework name mismatch - disabled for iOS 15 build)
+  #   path: Packages/Kp1812
 
 settings:
   configs:
@@ -105,7 +101,7 @@ settings:
       GCC_WARN_UNINITIALIZED_AUTOS: "YES_AGGRESSIVE"
       GCC_WARN_UNUSED_FUNCTION: "YES"
       GCC_WARN_UNUSED_VARIABLE: "YES"
-      IPHONEOS_DEPLOYMENT_TARGET: "16.4"
+      IPHONEOS_DEPLOYMENT_TARGET: "15.0"
       LOCALIZATION_PREFERS_STRING_CATALOGS: "YES"
       MTL_ENABLE_DEBUG_INFO: "INCLUDE_SOURCE"
       MTL_FAST_MATH: "YES"
@@ -113,8 +109,7 @@ settings:
       SDKROOT: "iphoneos"
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG"
       SWIFT_OPTIMIZATION_LEVEL: "-Onone"
-      SWIFT_STRICT_CONCURRENCY: "targeted"
-      SWIFT_VERSION: "6.0"
+            SWIFT_VERSION: "5.9"
     Release:
       ALWAYS_SEARCH_USER_PATHS: "NO"
       ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: ""
@@ -163,7 +158,7 @@ settings:
       GCC_WARN_UNINITIALIZED_AUTOS: "YES_AGGRESSIVE"
       GCC_WARN_UNUSED_FUNCTION: "YES"
       GCC_WARN_UNUSED_VARIABLE: "YES"
-      IPHONEOS_DEPLOYMENT_TARGET: "16.4"
+      IPHONEOS_DEPLOYMENT_TARGET: "15.0"
       LOCALIZATION_PREFERS_STRING_CATALOGS: "YES"
       MTL_ENABLE_DEBUG_INFO: "NO"
       MTL_FAST_MATH: "YES"
@@ -171,8 +166,7 @@ settings:
       SDKROOT: "iphoneos"
       SWIFT_COMPILATION_MODE: "wholemodule"
       SWIFT_OPTIMIZATION_LEVEL: "-O"
-      SWIFT_STRICT_CONCURRENCY: "targeted"
-      SWIFT_VERSION: "6.0"
+            SWIFT_VERSION: "5.9"
       TARGETED_DEVICE_FAMILY: "1,2,6"
       VALIDATE_PRODUCT: "YES"
 
@@ -259,36 +253,29 @@ targets:
       # ("built for macOS but contains embedded content built for watchOS").
       # visionOS too: a native visionOS app only gets widgets from an
       # extension built for visionOS.
-      - target: WidgetsExtension
-        embed: true
-        destinationFilters: [iOS, visionOS]
-      - target: MeshtasticMessages
-        embed: true
-        platformFilter: iOS
-      - target: "Meshtastic Watch App"
-        embed: true
-        platformFilter: iOS
-        codeSign: true
-        copy:
-          destination: productsDirectory
-          subpath: $(CONTENTS_FOLDER_PATH)/Watch
+      # DISABLED for iOS 15 backport (require iOS 16+/18+):
+      # - target: WidgetsExtension
+      #   embed: true
+      #   destinationFilters: [iOS, visionOS]
+      # - target: MeshtasticMessages
+      #   embed: true
+      #   platformFilter: iOS
+      # - target: "Meshtastic Watch App"
+      #   embed: true
+      #   platformFilter: iOS
+      #   codeSign: true
+      #   copy:
+      #     destination: productsDirectory
+      #     subpath: $(CONTENTS_FOLDER_PATH)/Watch
       - package: CocoaMQTT
         product: CocoaMQTT
-      - package: TAKPacket-SDK
-        product: MeshtasticTAK
+      # - package: TAKPacket-SDK (requires swift-protobuf 1.38+ / Swift 6.2)
+      #   product: MeshtasticTAK
       - package: MeshtasticProtobufs
         product: MeshtasticProtobufs
-      # The showcase room (a Reality Composer Pro content package); visionOS only.
-      - package: ShowcaseContent
-        product: ShowcaseContent
-        destinationFilters: [visionOS]
-      # On-device coverage estimates (ITU-R P.1812).
-      - package: Kp1812
-        product: Kp1812
-      # The cinema's environment images; visionOS only.
-      - package: CinemaContent
-        product: CinemaContent
-        destinationFilters: [visionOS]
+      # On-device coverage estimates (ITU-R P.1812) - disabled: binary target mismatch
+      # - package: Kp1812
+      #   product: Kp1812
       - package: dd-sdk-ios
         product: DatadogCore
       - package: dd-sdk-ios
@@ -344,9 +331,9 @@ targets:
           CLANG_ENABLE_MODULES: "YES"
           CODE_SIGN_ENTITLEMENTS: "Meshtastic/Meshtastic.entitlements"
           CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: "Meshtastic/Meshtastic-Catalyst.entitlements"
-          CODE_SIGN_ENTITLEMENTS[sdk=xros*]: "Meshtastic/Meshtastic-visionOS.entitlements"
-          CODE_SIGN_IDENTITY[sdk=macosx*]: "Apple Development"
-          CODE_SIGN_STYLE: "Automatic"
+          CODE_SIGN_IDENTITY: ""
+          CODE_SIGN_STYLE: "Manual"
+          CODE_SIGNING_REQUIRED: "NO"
           CURRENT_PROJECT_VERSION: "1"
           DEVELOPMENT_ASSET_PATHS: "\"Meshtastic/Preview Content\""
           ENABLE_APP_SANDBOX: "YES"
@@ -367,11 +354,11 @@ targets:
           INFOPLIST_FILE: "Meshtastic/Info.plist"
           INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
           INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.utilities"
-          IPHONEOS_DEPLOYMENT_TARGET: "17.5"
+          IPHONEOS_DEPLOYMENT_TARGET: "15.0"
           LD_RUNPATH_SEARCH_PATHS:
             - "$(inherited)"
             - "@executable_path/Frameworks"
-          MACOSX_DEPLOYMENT_TARGET: "14.6"
+          MACOSX_DEPLOYMENT_TARGET: "13.6"
           MARKETING_VERSION: "2.7.27"
           OTHER_LDFLAGS:
             - "-weak_framework"
@@ -382,11 +369,10 @@ targets:
           SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
           SWIFT_EMIT_LOC_STRINGS: "YES"
           SWIFT_OPTIMIZATION_LEVEL: "-Onone"
-          SWIFT_VERSION: "5.0"
+          SWIFT_VERSION: "5.9"
           TARGETED_DEVICE_FAMILY: "1,2,7"
-          SUPPORTED_PLATFORMS: "iphoneos iphonesimulator xros xrsimulator"
+          SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
           SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: "NO"
-          XROS_DEPLOYMENT_TARGET: "26.0"
         Release:
           ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
           ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
@@ -394,9 +380,9 @@ targets:
           CLANG_ENABLE_MODULES: "YES"
           CODE_SIGN_ENTITLEMENTS: "Meshtastic/Meshtastic.entitlements"
           CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: "Meshtastic/Meshtastic-Catalyst.entitlements"
-          CODE_SIGN_ENTITLEMENTS[sdk=xros*]: "Meshtastic/Meshtastic-visionOS.entitlements"
-          CODE_SIGN_IDENTITY[sdk=macosx*]: "Apple Development"
-          CODE_SIGN_STYLE: "Automatic"
+          CODE_SIGN_IDENTITY: ""
+          CODE_SIGN_STYLE: "Manual"
+          CODE_SIGNING_REQUIRED: "NO"
           CURRENT_PROJECT_VERSION: "1"
           DEVELOPMENT_ASSET_PATHS: "\"Meshtastic/Preview Content\""
           ENABLE_APP_SANDBOX: "YES"
@@ -417,11 +403,11 @@ targets:
           INFOPLIST_FILE: "Meshtastic/Info.plist"
           INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
           INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.utilities"
-          IPHONEOS_DEPLOYMENT_TARGET: "17.5"
+          IPHONEOS_DEPLOYMENT_TARGET: "15.0"
           LD_RUNPATH_SEARCH_PATHS:
             - "$(inherited)"
             - "@executable_path/Frameworks"
-          MACOSX_DEPLOYMENT_TARGET: "14.6"
+          MACOSX_DEPLOYMENT_TARGET: "13.6"
           MARKETING_VERSION: "2.7.27"
           OTHER_LDFLAGS:
             - "-weak_framework"
@@ -431,111 +417,110 @@ targets:
           SUPPORTS_MACCATALYST: "YES"
           SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
           SWIFT_EMIT_LOC_STRINGS: "YES"
-          SWIFT_VERSION: "5.0"
+          SWIFT_VERSION: "5.9"
           TARGETED_DEVICE_FAMILY: "1,2,7"
-          SUPPORTED_PLATFORMS: "iphoneos iphonesimulator xros xrsimulator"
+          SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
           SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: "NO"
-          XROS_DEPLOYMENT_TARGET: "26.0"
 
-  WidgetsExtension:
-    type: app-extension
-    platform: iOS
-    sources:
-      - path: "Shared"
-        type: syncedFolder
-      - path: "Widgets"
-        type: syncedFolder
-        excludes:
-          - "Info.plist"
-          - "WidgetsExtension.entitlements"
-      - path: "Localizable.xcstrings"
-    dependencies:
-      - package: MeshtasticProtobufs
-        product: MeshtasticProtobufs
-    settings:
-      configs:
-        Debug:
-          ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
-          ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: "WidgetBackground"
-          CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
-          CODE_SIGN_ENTITLEMENTS: "Widgets/WidgetsExtension.entitlements"
-          CODE_SIGN_IDENTITY: "Apple Development"
-          CODE_SIGN_STYLE: "Automatic"
-          CURRENT_PROJECT_VERSION: "1"
-          GENERATE_INFOPLIST_FILE: "YES"
-          INFOPLIST_FILE: "Widgets/Info.plist"
-          INFOPLIST_KEY_CFBundleDisplayName: "Widgets"
-          INFOPLIST_KEY_NSHumanReadableCopyright: ""
-          IPHONEOS_DEPLOYMENT_TARGET: "17.5"
-          LD_RUNPATH_SEARCH_PATHS:
-            - "$(inherited)"
-            - "@executable_path/Frameworks"
-            - "@executable_path/../../Frameworks"
-          MACOSX_DEPLOYMENT_TARGET: "14.6"
-          MARKETING_VERSION: "2.7.27"
-          PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.Widgets"
-          PRODUCT_NAME: "$(TARGET_NAME)"
-          PROVISIONING_PROFILE_SPECIFIER: ""
-          SKIP_INSTALL: "YES"
-          SUPPORTED_PLATFORMS: "iphoneos iphonesimulator xros xrsimulator"
-          SUPPORTS_MACCATALYST: "YES"
-          SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
-          SWIFT_EMIT_LOC_STRINGS: "YES"
-          SWIFT_VERSION: "5.0"
-          TARGETED_DEVICE_FAMILY: "1,2,7"
-          XROS_DEPLOYMENT_TARGET: "26.0"
-        Release:
-          ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
-          ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: "WidgetBackground"
-          CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
-          CODE_SIGN_ENTITLEMENTS: "Widgets/WidgetsExtension.entitlements"
-          CODE_SIGN_IDENTITY: "Apple Development"
-          CODE_SIGN_STYLE: "Automatic"
-          CURRENT_PROJECT_VERSION: "1"
-          GENERATE_INFOPLIST_FILE: "YES"
-          INFOPLIST_FILE: "Widgets/Info.plist"
-          INFOPLIST_KEY_CFBundleDisplayName: "Widgets"
-          INFOPLIST_KEY_NSHumanReadableCopyright: ""
-          IPHONEOS_DEPLOYMENT_TARGET: "17.5"
-          LD_RUNPATH_SEARCH_PATHS:
-            - "$(inherited)"
-            - "@executable_path/Frameworks"
-            - "@executable_path/../../Frameworks"
-          MACOSX_DEPLOYMENT_TARGET: "14.6"
-          MARKETING_VERSION: "2.7.27"
-          PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.Widgets"
-          PRODUCT_NAME: "$(TARGET_NAME)"
-          PROVISIONING_PROFILE_SPECIFIER: ""
-          SKIP_INSTALL: "YES"
-          SUPPORTED_PLATFORMS: "iphoneos iphonesimulator xros xrsimulator"
-          SUPPORTS_MACCATALYST: "YES"
-          SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
-          SWIFT_EMIT_LOC_STRINGS: "YES"
-          SWIFT_VERSION: "5.0"
-          TARGETED_DEVICE_FAMILY: "1,2,7"
-          XROS_DEPLOYMENT_TARGET: "26.0"
+  # WidgetsExtension:
+  #   type: app-extension
+  #   platform: iOS
+  #   sources:
+  #     - path: "Shared"
+  #       type: syncedFolder
+  #     - path: "Widgets"
+  #       type: syncedFolder
+  #       excludes:
+  #       - "Info.plist"
+  #       - "WidgetsExtension.entitlements"
+  #     - path: "Localizable.xcstrings"
+  #   dependencies:
+  #     - package: MeshtasticProtobufs
+  #       product: MeshtasticProtobufs
+  #   settings:
+  #     configs:
+  #       Debug:
+  #         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
+  #         ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: "WidgetBackground"
+  #         CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
+  #         CODE_SIGN_ENTITLEMENTS: "Widgets/WidgetsExtension.entitlements"
+  #         CODE_SIGN_IDENTITY: "Apple Development"
+  #         CODE_SIGN_STYLE: "Automatic"
+  #         CURRENT_PROJECT_VERSION: "1"
+  #         GENERATE_INFOPLIST_FILE: "YES"
+  #         INFOPLIST_FILE: "Widgets/Info.plist"
+  #         INFOPLIST_KEY_CFBundleDisplayName: "Widgets"
+  #         INFOPLIST_KEY_NSHumanReadableCopyright: ""
+  #         IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+  #         LD_RUNPATH_SEARCH_PATHS:
+  #           - "$(inherited)"
+  #           - "@executable_path/Frameworks"
+  #           - "@executable_path/../../Frameworks"
+  #         MACOSX_DEPLOYMENT_TARGET: "13.6"
+  #         MARKETING_VERSION: "2.7.27"
+  #         PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.Widgets"
+  #         PRODUCT_NAME: "$(TARGET_NAME)"
+  #         PROVISIONING_PROFILE_SPECIFIER: ""
+  #         SKIP_INSTALL: "YES"
+  #         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator xros xrsimulator"
+  #         SUPPORTS_MACCATALYST: "YES"
+  #         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
+  #         SWIFT_EMIT_LOC_STRINGS: "YES"
+  #         SWIFT_VERSION: "5.0"
+  #         TARGETED_DEVICE_FAMILY: "1,2,7"
+  #         XROS_DEPLOYMENT_TARGET: "26.0"
+  #       Release:
+  #         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
+  #         ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: "WidgetBackground"
+  #         CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
+  #         CODE_SIGN_ENTITLEMENTS: "Widgets/WidgetsExtension.entitlements"
+  #         CODE_SIGN_IDENTITY: "Apple Development"
+  #         CODE_SIGN_STYLE: "Automatic"
+  #         CURRENT_PROJECT_VERSION: "1"
+  #         GENERATE_INFOPLIST_FILE: "YES"
+  #         INFOPLIST_FILE: "Widgets/Info.plist"
+  #         INFOPLIST_KEY_CFBundleDisplayName: "Widgets"
+  #         INFOPLIST_KEY_NSHumanReadableCopyright: ""
+  #         IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+  #         LD_RUNPATH_SEARCH_PATHS:
+  #           - "$(inherited)"
+  #           - "@executable_path/Frameworks"
+  #           - "@executable_path/../../Frameworks"
+  #         MACOSX_DEPLOYMENT_TARGET: "13.6"
+  #         MARKETING_VERSION: "2.7.27"
+  #         PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.Widgets"
+  #         PRODUCT_NAME: "$(TARGET_NAME)"
+  #         PROVISIONING_PROFILE_SPECIFIER: ""
+  #         SKIP_INSTALL: "YES"
+  #         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator xros xrsimulator"
+  #         SUPPORTS_MACCATALYST: "YES"
+  #         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
+  #         SWIFT_EMIT_LOC_STRINGS: "YES"
+  #         SWIFT_VERSION: "5.0"
+  #         TARGETED_DEVICE_FAMILY: "1,2,7"
+  #         XROS_DEPLOYMENT_TARGET: "26.0"
 
-  MeshtasticMessages:
-    type: app-extension.messages
-    platform: iOS
-    sources:
-      - path: "Shared/MessageSharing"
-        group: "Message Sharing"
-        type: syncedFolder
-      - path: "MeshtasticMessages"
-        type: syncedFolder
-        excludes:
-          - "Info.plist"
-          - "MeshtasticMessages.entitlements"
-      - path: "Localizable.xcstrings"
-    dependencies:
-      - package: MeshtasticProtobufs
-        product: MeshtasticProtobufs
-    settings:
-      configs:
-        Debug:
-          APPLICATION_EXTENSION_API_ONLY: "YES"
-          ASSETCATALOG_COMPILER_APPICON_NAME: "iMessage App Icon"
+  # MeshtasticMessages:
+  #   type: app-extension.messages
+  #   platform: iOS
+  #   sources:
+  #     - path: "Shared/MessageSharing"
+  #       group: "Message Sharing"
+  #       type: syncedFolder
+  #     - path: "MeshtasticMessages"
+  #       type: syncedFolder
+  #       excludes:
+  #       - "Info.plist"
+  #       - "MeshtasticMessages.entitlements"
+  #     - path: "Localizable.xcstrings"
+  #   dependencies:
+  #     - package: MeshtasticProtobufs
+  #       product: MeshtasticProtobufs
+  #   settings:
+  #     configs:
+  #       Debug:
+  #         APPLICATION_EXTENSION_API_ONLY: "YES"
+  #         ASSETCATALOG_COMPILER_APPICON_NAME: "iMessage App Icon"
           CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
           CODE_SIGN_ENTITLEMENTS: "MeshtasticMessages/MeshtasticMessages.entitlements"
           CODE_SIGN_IDENTITY: "Apple Development"
@@ -545,7 +530,7 @@ targets:
           GENERATE_INFOPLIST_FILE: "YES"
           INFOPLIST_FILE: "MeshtasticMessages/Info.plist"
           INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
-          IPHONEOS_DEPLOYMENT_TARGET: "17.5"
+          IPHONEOS_DEPLOYMENT_TARGET: "15.0"
           LD_RUNPATH_SEARCH_PATHS:
             - "$(inherited)"
             - "@executable_path/Frameworks"
@@ -573,7 +558,7 @@ targets:
           GENERATE_INFOPLIST_FILE: "YES"
           INFOPLIST_FILE: "MeshtasticMessages/Info.plist"
           INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
-          IPHONEOS_DEPLOYMENT_TARGET: "17.5"
+          IPHONEOS_DEPLOYMENT_TARGET: "15.0"
           LD_RUNPATH_SEARCH_PATHS:
             - "$(inherited)"
             - "@executable_path/Frameworks"
@@ -613,7 +598,7 @@ targets:
           ENABLE_USER_SCRIPT_SANDBOXING: "YES"
           GCC_C_LANGUAGE_STANDARD: "gnu17"
           GENERATE_INFOPLIST_FILE: "YES"
-          IPHONEOS_DEPLOYMENT_TARGET: "17.5"
+          IPHONEOS_DEPLOYMENT_TARGET: "15.0"
           MARKETING_VERSION: "2.7.27"
           PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.MeshtasticTests"
           PRODUCT_NAME: "$(TARGET_NAME)"
@@ -633,7 +618,7 @@ targets:
           CURRENT_PROJECT_VERSION: "1"
           GCC_C_LANGUAGE_STANDARD: "gnu17"
           GENERATE_INFOPLIST_FILE: "YES"
-          IPHONEOS_DEPLOYMENT_TARGET: "17.5"
+          IPHONEOS_DEPLOYMENT_TARGET: "15.0"
           MARKETING_VERSION: "2.7.27"
           PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.MeshtasticTests"
           PRODUCT_NAME: "$(TARGET_NAME)"
@@ -645,104 +630,104 @@ targets:
           TARGETED_DEVICE_FAMILY: "1,2"
           TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Meshtastic.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Meshtastic"
 
-  "Meshtastic Watch App":
-    type: application
-    platform: watchOS
-    sources:
-      - path: "Meshtastic Watch App"
-        type: syncedFolder
-        excludes:
-          - "Info.plist"
-          - "Meshtastic Watch App.entitlements"
-    settings:
-      configs:
-        Debug:
-          ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
-          ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
-          ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: "YES"
-          CODE_SIGN_ENTITLEMENTS: "Meshtastic Watch App/Meshtastic Watch App.entitlements"
-          CODE_SIGN_STYLE: "Automatic"
-          CURRENT_PROJECT_VERSION: "1"
-          DEVELOPMENT_TEAM: "GCH7VS5Y9R"
-          GENERATE_INFOPLIST_FILE: "YES"
-          INFOPLIST_FILE: "Meshtastic Watch App/Info.plist"
-          INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
-          INFOPLIST_KEY_CFBundleIconName: "AppIcon"
-          INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Meshtastic needs your location to calculate distance and bearing to mesh nodes during foxhunt."
-          INFOPLIST_KEY_WKCompanionAppBundleIdentifier: "gvh.MeshtasticClient"
-          INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: "NO"
-          LD_RUNPATH_SEARCH_PATHS:
-            - "$(inherited)"
-            - "@executable_path/Frameworks"
-          MARKETING_VERSION: "2.7.27"
-          PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.watchkitapp"
-          PRODUCT_NAME: "$(TARGET_NAME)"
-          SDKROOT: "watchos"
-          SKIP_INSTALL: "YES"
-          SUPPORTED_PLATFORMS: "watchos watchsimulator"
-          SWIFT_EMIT_LOC_STRINGS: "YES"
-          SWIFT_VERSION: "5.0"
-          TARGETED_DEVICE_FAMILY: "4"
-          WATCHOS_DEPLOYMENT_TARGET: "10.0"
-        Release:
-          ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
-          ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
-          ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: "YES"
-          CODE_SIGN_ENTITLEMENTS: "Meshtastic Watch App/Meshtastic Watch App.entitlements"
-          CODE_SIGN_STYLE: "Automatic"
-          CURRENT_PROJECT_VERSION: "1"
-          DEVELOPMENT_TEAM: "GCH7VS5Y9R"
-          GENERATE_INFOPLIST_FILE: "YES"
-          INFOPLIST_FILE: "Meshtastic Watch App/Info.plist"
-          INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
-          INFOPLIST_KEY_CFBundleIconName: "AppIcon"
-          INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Meshtastic needs your location to calculate distance and bearing to mesh nodes during foxhunt."
-          INFOPLIST_KEY_WKCompanionAppBundleIdentifier: "gvh.MeshtasticClient"
-          INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: "NO"
-          LD_RUNPATH_SEARCH_PATHS:
-            - "$(inherited)"
-            - "@executable_path/Frameworks"
-          MARKETING_VERSION: "2.7.27"
-          PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.watchkitapp"
-          PRODUCT_NAME: "$(TARGET_NAME)"
-          SDKROOT: "watchos"
-          SKIP_INSTALL: "YES"
-          SUPPORTED_PLATFORMS: "watchos watchsimulator"
-          SWIFT_EMIT_LOC_STRINGS: "YES"
-          SWIFT_VERSION: "5.0"
-          TARGETED_DEVICE_FAMILY: "4"
-          WATCHOS_DEPLOYMENT_TARGET: "10.0"
+  # "Meshtastic Watch App":
+#   type: application
+#   platform: watchOS
+#   sources:
+#     - path: "Meshtastic Watch App"
+#       type: syncedFolder
+#       excludes:
+#       - "Info.plist"
+#       - "Meshtastic Watch App.entitlements"
+#   settings:
+#     configs:
+#       Debug:
+#         ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
+#         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
+#         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: "YES"
+#         CODE_SIGN_ENTITLEMENTS: "Meshtastic Watch App/Meshtastic Watch App.entitlements"
+#         CODE_SIGN_STYLE: "Automatic"
+#         CURRENT_PROJECT_VERSION: "1"
+#         DEVELOPMENT_TEAM: "GCH7VS5Y9R"
+#         GENERATE_INFOPLIST_FILE: "YES"
+#         INFOPLIST_FILE: "Meshtastic Watch App/Info.plist"
+#         INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
+#         INFOPLIST_KEY_CFBundleIconName: "AppIcon"
+#         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Meshtastic needs your location to calculate distance and bearing to mesh nodes during foxhunt."
+#         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: "gvh.MeshtasticClient"
+#         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: "NO"
+#         LD_RUNPATH_SEARCH_PATHS:
+#           - "$(inherited)"
+#           - "@executable_path/Frameworks"
+#         MARKETING_VERSION: "2.7.27"
+#         PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.watchkitapp"
+#         PRODUCT_NAME: "$(TARGET_NAME)"
+#         SDKROOT: "watchos"
+#         SKIP_INSTALL: "YES"
+#         SUPPORTED_PLATFORMS: "watchos watchsimulator"
+#         SWIFT_EMIT_LOC_STRINGS: "YES"
+#         SWIFT_VERSION: "5.0"
+#         TARGETED_DEVICE_FAMILY: "4"
+#         WATCHOS_DEPLOYMENT_TARGET: "10.0"
+#       Release:
+#         ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
+#         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
+#         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: "YES"
+#         CODE_SIGN_ENTITLEMENTS: "Meshtastic Watch App/Meshtastic Watch App.entitlements"
+#         CODE_SIGN_STYLE: "Automatic"
+#         CURRENT_PROJECT_VERSION: "1"
+#         DEVELOPMENT_TEAM: "GCH7VS5Y9R"
+#         GENERATE_INFOPLIST_FILE: "YES"
+#         INFOPLIST_FILE: "Meshtastic Watch App/Info.plist"
+#         INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
+#         INFOPLIST_KEY_CFBundleIconName: "AppIcon"
+#         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Meshtastic needs your location to calculate distance and bearing to mesh nodes during foxhunt."
+#         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: "gvh.MeshtasticClient"
+#         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: "NO"
+#         LD_RUNPATH_SEARCH_PATHS:
+#           - "$(inherited)"
+#           - "@executable_path/Frameworks"
+#         MARKETING_VERSION: "2.7.27"
+#         PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.watchkitapp"
+#         PRODUCT_NAME: "$(TARGET_NAME)"
+#         SDKROOT: "watchos"
+#         SKIP_INSTALL: "YES"
+#         SUPPORTED_PLATFORMS: "watchos watchsimulator"
+#         SWIFT_EMIT_LOC_STRINGS: "YES"
+#         SWIFT_VERSION: "5.0"
+#         TARGETED_DEVICE_FAMILY: "4"
+#         WATCHOS_DEPLOYMENT_TARGET: "10.0"
 
-  "Meshtastic TV":
-    type: application
-    platform: tvOS
-    sources:
-      # New tvOS-only code (thin, independent client — mirrors the Watch App pattern).
-      - path: "Meshtastic TV"
-        type: syncedFolder
-        excludes:
-          - "Info.plist"
-      - path: "Localizable.xcstrings"
-      # Reused portable transport primitives (Network.framework only, no UIKit/BLE/CoreLocation).
-      # Explicit files rather than the whole Accessory folder so we do NOT pull in the
-      # BLE/AccessoryManager/persistence stack. AccessoryError + NONCE_* are shimmed locally
-      # in "Meshtastic TV/Client/" since they otherwise live inside the tangled AccessoryManager.
-      - path: "Meshtastic/Accessory/Transports/TCP/TCPConnection.swift"
-      - path: "Meshtastic/Accessory/Transports/WriteContinuationStore.swift"
-      - path: "Meshtastic/Accessory/Protocols/Connection.swift"
-      - path: "Meshtastic/Extensions/Logger.swift"
-      # Node-pin styling parity with the iOS map (CircleText + Color(hex:)/isLight).
-      - path: "Meshtastic/Views/Helpers/CircleText.swift"
-      - path: "Meshtastic/Extensions/Color.swift"
-      # Offline Protomaps basemap, shared verbatim with iOS. These files are pure
-      # Foundation/MapKit/CoreLocation — no UIKit, SwiftData or BLE — so the tvOS app
-      # reads the same .pmtiles archives and decodes them with the same code path.
-      - path: "Meshtastic/Helpers/Map/PMTilesArchive.swift"
-      - path: "Meshtastic/Helpers/Map/PMTilesExtractor.swift"
-      - path: "Meshtastic/Helpers/Map/MBTilesArchive.swift"
-      - path: "Meshtastic/Helpers/Map/OfflineMapRegion.swift"
-      - path: "Meshtastic/Helpers/Map/OfflineMapImport.swift"
-      - path: "Meshtastic/Helpers/Map/OfflineMapManager.swift"
+# "Meshtastic TV":
+#   type: application
+#   platform: tvOS
+#   sources:
+#     # New tvOS-only code (thin, independent client — mirrors the Watch App pattern).
+#     - path: "Meshtastic TV"
+#       type: syncedFolder
+#       excludes:
+#       - "Info.plist"
+#     - path: "Localizable.xcstrings"
+#     # Reused portable transport primitives (Network.framework only, no UIKit/BLE/CoreLocation).
+#     # Explicit files rather than the whole Accessory folder so we do NOT pull in the
+#     # BLE/AccessoryManager/persistence stack. AccessoryError + NONCE_* are shimmed locally
+#     # in "Meshtastic TV/Client/" since they otherwise live inside the tangled AccessoryManager.
+#     - path: "Meshtastic/Accessory/Transports/TCP/TCPConnection.swift"
+#     - path: "Meshtastic/Accessory/Transports/WriteContinuationStore.swift"
+#     - path: "Meshtastic/Accessory/Protocols/Connection.swift"
+#     - path: "Meshtastic/Extensions/Logger.swift"
+#     # Node-pin styling parity with the iOS map (CircleText + Color(hex:)/isLight).
+#     - path: "Meshtastic/Views/Helpers/CircleText.swift"
+#     - path: "Meshtastic/Extensions/Color.swift"
+#     # Offline Protomaps basemap, shared verbatim with iOS. These files are pure
+#     # Foundation/MapKit/CoreLocation — no UIKit, SwiftData or BLE — so the tvOS app
+#     # reads the same .pmtiles archives and decodes them with the same code path.
+#     - path: "Meshtastic/Helpers/Map/PMTilesArchive.swift"
+#     - path: "Meshtastic/Helpers/Map/PMTilesExtractor.swift"
+#     - path: "Meshtastic/Helpers/Map/MBTilesArchive.swift"
+#     - path: "Meshtastic/Helpers/Map/OfflineMapRegion.swift"
+#     - path: "Meshtastic/Helpers/Map/OfflineMapImport.swift"
+#     - path: "Meshtastic/Helpers/Map/OfflineMapManager.swift"
       # The MVT decoder that turns archive tiles into MapKit shapes. Despite the file
       # name it holds no views — MeshTVMapView draws its output as MKOverlays.
       - path: "Meshtastic/Views/Nodes/Helpers/Map/PMTilesMapView.swift"
@@ -792,42 +777,42 @@ targets:
           TARGETED_DEVICE_FAMILY: "3"
           TVOS_DEPLOYMENT_TARGET: "17.0"
 
-  "Meshtastic TVUITests":
-    type: bundle.ui-testing
-    platform: tvOS
-    sources:
-      - path: "MeshtasticTVUITests"
-        type: syncedFolder
-    dependencies:
-      - target: "Meshtastic TV"
-    settings:
-      configs:
-        Debug:
-          CODE_SIGN_STYLE: "Automatic"
-          CURRENT_PROJECT_VERSION: "1"
-          DEVELOPMENT_TEAM: "GCH7VS5Y9R"
-          GENERATE_INFOPLIST_FILE: "YES"
-          MARKETING_VERSION: "2.7.27"
-          PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.TVUITests"
-          PRODUCT_NAME: "$(TARGET_NAME)"
-          SDKROOT: "appletvos"
-          SUPPORTED_PLATFORMS: "appletvos appletvsimulator"
-          SWIFT_VERSION: "5.0"
-          TARGETED_DEVICE_FAMILY: "3"
-          TVOS_DEPLOYMENT_TARGET: "17.0"
-        Release:
-          CODE_SIGN_STYLE: "Automatic"
-          CURRENT_PROJECT_VERSION: "1"
-          DEVELOPMENT_TEAM: "GCH7VS5Y9R"
-          GENERATE_INFOPLIST_FILE: "YES"
-          MARKETING_VERSION: "2.7.27"
-          PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.TVUITests"
-          PRODUCT_NAME: "$(TARGET_NAME)"
-          SDKROOT: "appletvos"
-          SUPPORTED_PLATFORMS: "appletvos appletvsimulator"
-          SWIFT_VERSION: "5.0"
-          TARGETED_DEVICE_FAMILY: "3"
-          TVOS_DEPLOYMENT_TARGET: "17.0"
+  # "Meshtastic TVUITests":
+#   type: bundle.ui-testing
+#   platform: tvOS
+#   sources:
+#     - path: "MeshtasticTVUITests"
+#       type: syncedFolder
+#   dependencies:
+#     - target: "Meshtastic TV"
+#   settings:
+#     configs:
+#       Debug:
+#         CODE_SIGN_STYLE: "Automatic"
+#         CURRENT_PROJECT_VERSION: "1"
+#         DEVELOPMENT_TEAM: "GCH7VS5Y9R"
+#         GENERATE_INFOPLIST_FILE: "YES"
+#         MARKETING_VERSION: "2.7.27"
+#         PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.TVUITests"
+#         PRODUCT_NAME: "$(TARGET_NAME)"
+#         SDKROOT: "appletvos"
+#         SUPPORTED_PLATFORMS: "appletvos appletvsimulator"
+#         SWIFT_VERSION: "5.0"
+#         TARGETED_DEVICE_FAMILY: "3"
+#         TVOS_DEPLOYMENT_TARGET: "17.0"
+#       Release:
+#         CODE_SIGN_STYLE: "Automatic"
+#         CURRENT_PROJECT_VERSION: "1"
+#         DEVELOPMENT_TEAM: "GCH7VS5Y9R"
+#         GENERATE_INFOPLIST_FILE: "YES"
+#         MARKETING_VERSION: "2.7.27"
+#         PRODUCT_BUNDLE_IDENTIFIER: "gvh.MeshtasticClient.TVUITests"
+#         PRODUCT_NAME: "$(TARGET_NAME)"
+#         SDKROOT: "appletvos"
+#         SUPPORTED_PLATFORMS: "appletvos appletvsimulator"
+#         SWIFT_VERSION: "5.0"
+#         TARGETED_DEVICE_FAMILY: "3"
+#         TVOS_DEPLOYMENT_TARGET: "17.0"
 
 schemes:
   Meshtastic:
@@ -879,46 +864,46 @@ schemes:
       config: Debug
     archive:
       config: Release
-  "Meshtastic TV":
-    build:
-      targets:
-        "Meshtastic TV": all
-        "Meshtastic TVUITests": [test]
-    run:
-      config: Debug
-    test:
-      config: Debug
-      targets:
-        - "Meshtastic TVUITests"
-    profile:
-      config: Release
-    analyze:
-      config: Debug
-    archive:
-      config: Release
-  WidgetsExtension:
-    build:
-      targets:
-        WidgetsExtension: all
-        Meshtastic: all
-    run:
-      config: Debug
-      executable: Meshtastic
-      environmentVariables:
-        - variable: "_XCWidgetKind"
-          value: ""
-          isEnabled: true
-        - variable: "_XCWidgetDefaultView"
-          value: "timeline"
-          isEnabled: true
-        - variable: "_XCWidgetFamily"
-          value: "systemMedium"
-          isEnabled: true
-    test:
-      config: Debug
-    profile:
-      config: Release
-    analyze:
-      config: Debug
-    archive:
-      config: Release
+#  "Meshtastic TV":
+#    build:
+#      targets:
+#        "Meshtastic TV": all
+#        "Meshtastic TVUITests": [test]
+#    run:
+#      config: Debug
+#    test:
+#      config: Debug
+#      targets:
+#        - "Meshtastic TVUITests"
+#    profile:
+#      config: Release
+#    analyze:
+#      config: Debug
+#    archive:
+#      config: Release
+#  WidgetsExtension:
+#    build:
+#      targets:
+#        WidgetsExtension: all
+#        Meshtastic: all
+#    run:
+#      config: Debug
+#      executable: Meshtastic
+#      environmentVariables:
+#        - variable: "_XCWidgetKind"
+#          value: ""
+#          isEnabled: true
+#        - variable: "_XCWidgetDefaultView"
+#          value: "timeline"
+#          isEnabled: true
+#        - variable: "_XCWidgetFamily"
+#          value: "systemMedium"
+#          isEnabled: true
+#    test:
+#      config: Debug
+#    profile:
+#      config: Release
+#    analyze:
+#      config: Debug
+#    archive:
+#      config: Release

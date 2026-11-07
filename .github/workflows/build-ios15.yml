@@ -1,0 +1,101 @@
+name: Build iOS 15 (TrollStore)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Meshtastic/**'
+      - 'Shared/**'
+      - 'project.yml'
+      - 'scripts/**'
+      - '.github/workflows/build-ios15.yml'
+
+jobs:
+  build:
+    name: Build iOS 15 unsigned IPA
+    runs-on: macos-13  # Ventura + Xcode 15.2 / Swift 5.9
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: |
+          cd Meshtastic-Apple
+          xcodegen generate
+
+      - name: Set xcdatamodeld current version to V58
+        run: |
+          cd Meshtastic-Apple
+          /usr/libexec/PlistBuddy -c "Set :_XCCurrentVersionName MeshtasticDataModelV 58.xcdatamodel" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
+          /usr/libexec/PlistBuddy -c "Print :_XCCurrentVersionName" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
+
+      - name: Generate Core Data entities
+        run: |
+          cd Meshtastic-Apple
+          python3 scripts/generate_coredata_entities.py
+
+      - name: Run bulk migration script
+        run: |
+          cd Meshtastic-Apple
+          python3 scripts/bulk_migrate_ios15.py
+
+      - name: Build for iOS Simulator (verify compiles)
+        run: |
+          cd Meshtastic-Apple
+          xcodebuild \
+            -workspace Meshtastic.xcworkspace \
+            -scheme Meshtastic \
+            -destination 'platform=iOS Simulator,name=iPhone 8,OS=15.5' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Build for Device (unsigned IPA)
+        run: |
+          cd Meshtastic-Apple
+          xcodebuild \
+            -workspace Meshtastic.xcworkspace \
+            -scheme Meshtastic \
+            -destination generic/platform=iOS \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -archivePath build/Meshtastic.xcarchive \
+            archive
+
+      - name: Export unsigned IPA (manual)
+        run: |
+          cd Meshtastic-Apple
+          mkdir -p build/ipa
+          # Copy .app from archive
+          cp -R build/Meshtastic.xcarchive/Products/Applications/Meshtastic.app build/ipa/
+          # Create IPA structure
+          mkdir -p build/ipa/Payload
+          mv build/ipa/Meshtastic.app build/ipa/Payload/
+          cd build/ipa
+          zip -r Meshtastic-unsigned.ipa Payload/
+          echo "IPA created at: $(pwd)/Meshtastic-unsigned.ipa"
+          ls -la Meshtastic-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Meshtastic-iOS15-unsigned
+          path: Meshtastic-Apple/build/ipa/Meshtastic-unsigned.ipa
+          retention-days: 30
+
+      - name: Upload xcarchive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Meshtastic-iOS15-xcarchive
+          path: Meshtastic-Apple/build/Meshtastic.xcarchive
+          retention-days: 30

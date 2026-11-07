@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 5.9
 
 import PackageDescription
 
@@ -11,7 +11,7 @@ let package = Package(
         ),
     ], 
     dependencies: [
-        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.33.3"),
+        .package(url: "https://github.com/apple/swift-protobuf.git", "1.26.0"..<"2.0.0"),
     ],
     targets: [
         .target(
