@@ -26,7 +26,6 @@ jobs:
 
       - name: Generate Xcode project
         run: |
-          cd Meshtastic-Apple
           xcodegen generate
 
       - name: Set xcdatamodeld current version to V58
