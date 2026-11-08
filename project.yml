@@ -316,9 +316,6 @@ targets:
           - "$(SRCROOT)/Shared"
           - "$(SRCROOT)/Widgets"
         basedOnDependencyAnalysis: false
-    coreDataModels:
-      - path: "Meshtastic/Meshtastic.xcdatamodeld"
-        currentVersion: "MeshtasticDataModelV 58.xcdatamodel"
     settings:
       configs:
         Debug:
