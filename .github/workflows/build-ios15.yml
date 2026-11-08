@@ -14,7 +14,7 @@ on:
 jobs:
   build:
     name: Build iOS 15 unsigned IPA
-    runs-on: macos-13  # Ventura — tiene Xcode 15.2 + 16.x
+    runs-on: macos-14  # Sonoma — tiene Xcode 15.2 + 16.x
     timeout-minutes: 60
 
     steps:
