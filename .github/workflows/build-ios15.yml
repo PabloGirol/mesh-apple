@@ -69,6 +69,14 @@ jobs:
             exit 1
           fi
 
+      - name: Generate Core Data entities
+        run: |
+          python3 scripts/generate_coredata_entities.py
+
+      - name: Run bulk migration script
+        run: |
+          python3 scripts/bulk_migrate_ios15.py
+
       - name: Generate Xcode project
         run: xcodegen generate
 
