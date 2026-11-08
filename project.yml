@@ -321,6 +321,14 @@ targets:
     coreDataModels:
       - path: "Meshtastic/Meshtastic.xcdatamodeld"
         currentVersion: "MeshtasticDataModelV 58.xcdatamodel"
+    buildRules:
+      - compilerSpec: "Xcode.DataModelCompiler"
+        filePatterns: "*.xcdatamodeld"
+        fileType: "wrapper.xcdatamodel"
+        isEditable: false
+        name: "Core Data Model Compiler"
+        outputFiles:
+          - "$(DERIVED_FILE_DIR)/$(INPUT_FILE_BASE).momd"
     settings:
       configs:
         Debug:

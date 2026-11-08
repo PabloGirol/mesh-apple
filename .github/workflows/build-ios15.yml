@@ -40,13 +40,19 @@ jobs:
         run: |
           rm -rf ~/Library/Caches/org.swift.swiftpm
           rm -rf ~/Library/Developer/Xcode/DerivedData
+          # Also remove any Package.resolved in the repo that might be v3 format
+          find . -name "Package.resolved" -delete
+          echo "Cleaned SPM cache and Package.resolved files"
 
       - name: Install xcodegen
         run: brew install xcodegen
 
       - name: Set xcdatamodeld current version to V58
         run: |
+          echo "Before setting current version:"
+          /usr/libexec/PlistBuddy -c "Print :_XCCurrentVersionName" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
           /usr/libexec/PlistBuddy -c "Set :_XCCurrentVersionName 'MeshtasticDataModelV 58.xcdatamodel'" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
+          echo "After setting current version:"
           /usr/libexec/PlistBuddy -c "Print :_XCCurrentVersionName" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
 
       - name: Remove old Core Data model versions (keep only V58)
@@ -104,6 +110,78 @@ jobs:
           fi
 
           echo "Compile Sources verification complete"
+
+      - name: Dump project.pbxproj diagnostics (Meshtastic target)
+        run: |
+          PBXPROJ="Meshtastic.xcodeproj/project.pbxproj"
+
+          echo "=== Meshtastic target UUID ==="
+          grep -A2 -B2 'name = "Meshtastic";' "$PBXPROJ" | head -20
+
+          echo "=== File references for xcdatamodeld ==="
+          grep -n "Meshtastic\.xcdatamodeld" "$PBXPROJ"
+
+          echo "=== PBXSourcesBuildPhase for Meshtastic ==="
+          # Find the Meshtastic target's sources build phase
+          awk '/PBXNativeTarget.*Meshtastic/,/};/' "$PBXPROJ" | grep -A50 "buildPhases" | head -60
+
+          echo "=== Build rules in project ==="
+          grep -n "PBXBuildRule" "$PBXPROJ" | head -20
+
+          echo "=== compilerSpec entries ==="
+          grep -n "compilerSpec" "$PBXPROJ" | head -20
+
+          echo "=== Full xcdatamodeld file reference section ==="
+          grep -B5 -A10 "Meshtastic\.xcdatamodeld" "$PBXPROJ"
+
+          echo "Diagnostics complete"
+
+      - name: Check generated project for build rule and currentVersion
+        run: |
+          PBXPROJ="Meshtastic.xcodeproj/project.pbxproj"
+
+          echo "=== XCVersionGroup currentVersion ==="
+          grep -A2 "Meshtastic\.xcdatamodeld" "$PBXPROJ" | grep -A2 "currentVersion"
+
+          echo "=== Meshtastic target buildRules ==="
+          python3 << 'EOF'
+import re
+
+with open(PBXPROJ, 'r') as f:
+    content = f.read()
+
+# Find Meshtastic target
+target_match = re.search(r'([A-F0-9]{24}) /\* Meshtastic \*/ = \{[^}]*isa = PBXNativeTarget;', content)
+if target_match:
+    target_id = target_match.group(1)
+    print(f"Meshtastic target ID: {target_id}")
+
+    target_section = content[target_match.start():]
+    target_end = target_section.find('\n};')
+    target_section = target_section[:target_end]
+
+    # Find buildRules
+    br_match = re.search(r'buildRules = \([^)]*\)', target_section, re.DOTALL)
+    if br_match:
+        print(f"buildRules: {br_match.group(0)}")
+    else:
+        print("buildRules: NOT FOUND (empty)")
+
+    # Find buildPhases
+    bp_match = re.search(r'buildPhases = \([^)]+\)', target_section, re.DOTALL)
+    if bp_match:
+        print(f"buildPhases: {bp_match.group(0)}")
+
+# Check for DataModelCompiler build rule anywhere in project
+if 'Xcode.DataModelCompiler' in content:
+    print("\n✓ Xcode.DataModelCompiler build rule FOUND in project")
+    for line in content.split('\n'):
+        if 'Xcode.DataModelCompiler' in line:
+            print(f"  {line.strip()}")
+else:
+    print("\n✗ Xcode.DataModelCompiler build rule NOT FOUND in project")
+
+EOF
 
       - name: Generate Core Data entities
         run: |
