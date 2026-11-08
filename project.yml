@@ -291,7 +291,7 @@ targets:
       - package: mvt-tools
         product: MVTTools
     coreDataModels:
-      - Meshtastic.xcdatamodeld
+      - Meshtastic/Meshtastic.xcdatamodeld
     preBuildScripts:
       - script: |
           if [[ "$(uname -m)" == arm64 ]]
