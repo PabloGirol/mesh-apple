@@ -794,25 +794,30 @@ ENTITIES = {
     },
 }
 
+
 # Template for NSManagedObject subclass
 TEMPLATE = '''//
+//  {entity_name}.swift
+//  Meshtastic
 //
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
+
 import CoreData
 import Foundation
 
 @objc({entity_name})
-public class {entity_name}: NSManagedObject {{
+public class {entity_name}: NSManagedObject {
 
-}}
+}
 
-extension {entity_name} {{
+extension {entity_name} {
 {property_declarations}
-}}
+}
 
-extension {entity_name}: CoreDataEntity {{
-    public static var entityName: String {{ "{entity_name}" }}
-}}
+extension {entity_name}: CoreDataEntity {
+    public static var entityName: String { "{entity_name}" }
+}
 '''
 
 def generate_entity(entity_name, definition):
@@ -820,33 +825,57 @@ def generate_entity(entity_name, definition):
     rels = definition.get("relationships", [])
 
     decls = []
+    # Generate KVC-based properties instead of @NSManaged
     for prop_name, prop_type, prop_opt in props:
         optional = "?" if prop_opt == "Optional" else ""
-        decls.append(f"    @NSManaged public var {prop_name}: {prop_type}{optional}")
-
-    for rel_name, rel_type, rel_card, rel_inverse in rels:
-        optional = "?" if rel_card == "toOne" else ""
-        if rel_card == "toMany":
-            decls.append(f"    @NSManaged public var {rel_name}: NSSet{optional}")
+        if optional:
+            decls.append(f'''    public var {prop_name}: {prop_type}{optional} {{
+        get {{ value(forKey: "{prop_name}") as? {prop_type} }}
+        set {{ setValue(newValue, forKey: "{prop_name}") }}
+    }}''')
         else:
-            decls.append(f"    @NSManaged public var {rel_name}: {rel_type}{optional}")
+            decls.append(f'''    public var {prop_name}: {prop_type} {{
+        get {{ value(forKey: "{prop_name}") as! {prop_type} }}
+        set {{ setValue(newValue, forKey: "{prop_name}") }}
+    }}''')
 
-    # Add toMany helpers
     for rel_name, rel_type, rel_card, rel_inverse in rels:
         if rel_card == "toMany":
-            decls.append(f"""
-    @objc(add{rel_name.capitalize()}Object:)
-    @NSManaged public func addTo{rel_name.capitalize()}(_ value: {rel_type})
+            decls.append(f'''    public var {rel_name}: NSSet? {{
+        get {{ value(forKey: "{rel_name}") as? NSSet }}
+        set {{ setValue(newValue, forKey: "{rel_name}") }}
+    }}''')
+        else:
+            decls.append(f'''    public var {rel_name}: {rel_type}? {{
+        get {{ value(forKey: "{rel_name}") as? {rel_type} }}
+        set {{ setValue(newValue, forKey: "{rel_name}") }}
+    }}''')
 
-    @objc(remove{rel_name.capitalize()}Object:)
-    @NSManaged public func removeFrom{rel_name.capitalize()}(_ value: {rel_type})
+    # Add toMany helpers (using KVC)
+    for rel_name, rel_type, rel_card, rel_inverse in rels:
+        if rel_card == "toMany":
+            capitalized = rel_name[:1].upper() + rel_name[1:]
+            decls.append(f'''
+    @objc(add{capitalized}Object:)
+    public func addTo{capitalized}(_ value: {rel_type}) {{
+        mutableSetValue(forKey: "{rel_name}").add(value)
+    }}
 
-    @objc(add{rel_name.capitalize()}:)
-    @NSManaged public func addTo{rel_name.capitalize()}(_ values: NSSet)
+    @objc(remove{capitalized}Object:)
+    public func removeFrom{capitalized}(_ value: {rel_type}) {{
+        mutableSetValue(forKey: "{rel_name}").remove(value)
+    }}
 
-    @objc(remove{rel_name.capitalize()}:)
-    @NSManaged public func removeFrom{rel_name.capitalize()}(_ values: NSSet)
-""")
+    @objc(add{capitalized}:)
+    public func addTo{capitalized}(_ values: NSSet) {{
+        mutableSetValue(forKey: "{rel_name}").union(values)
+    }}
+
+    @objc(remove{capitalized}:)
+    public func removeFrom{capitalized}(_ values: NSSet) {{
+        mutableSetValue(forKey: "{rel_name}").minus(values)
+    }}
+''')
 
     property_decls = "\n".join(decls)
 
