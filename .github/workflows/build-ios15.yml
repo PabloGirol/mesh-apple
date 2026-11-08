@@ -69,14 +69,6 @@ jobs:
             exit 1
           fi
 
-      - name: Generate Core Data entities
-        run: |
-          python3 scripts/generate_coredata_entities.py
-
-      - name: Run bulk migration script
-        run: |
-          python3 scripts/bulk_migrate_ios15.py
-
       - name: Generate Xcode project
         run: xcodegen generate
 
@@ -118,36 +110,6 @@ jobs:
           fi
 
           echo "Compile Sources verification complete"
-
-      - name: Dump project.pbxproj diagnostics (Meshtastic target)
-        run: |
-          PBXPROJ="Meshtastic.xcodeproj/project.pbxproj"
-
-          echo "=== Full project.pbxproj (first 200 lines) ==="
-          head -200 "$PBXPROJ"
-
-          echo "=== Meshtastic target UUID ==="
-          grep -A2 -B2 'name = "Meshtastic";' "$PBXPROJ" | head -20 || echo "Not found"
-
-          echo "=== File references for xcdatamodeld ==="
-          grep -n "Meshtastic\.xcdatamodeld" "$PBXPROJ" || echo "Not found"
-
-          echo "=== All xcdatamodeld references ==="
-          grep -n "xcdatamodeld" "$PBXPROJ" || echo "Not found"
-
-          echo "=== PBXSourcesBuildPhase for Meshtastic ==="
-          awk '/PBXNativeTarget.*Meshtastic/,/};/' "$PBXPROJ" | grep -A50 "buildPhases" | head -60 || echo "Not found"
-
-          echo "=== Build rules in project ==="
-          grep -n "PBXBuildRule" "$PBXPROJ" | head -20 || echo "Not found"
-
-          echo "=== compilerSpec entries ==="
-          grep -n "compilerSpec" "$PBXPROJ" | head -20 || echo "Not found"
-
-          echo "=== All target names ==="
-          grep -n 'name = ' "$PBXPROJ" | head -30 || echo "Not found"
-
-          echo "Diagnostics complete"
 
       - name: Check generated project for build rule and currentVersion
         run: |
@@ -198,19 +160,13 @@ jobs:
               print('\n✗ Xcode.DataModelCompiler build rule NOT FOUND in project')
           PYEOF
 
-      - name: Generate Core Data entities
+      - name: Install xcodes CLI (via Homebrew)
         run: |
-          python3 scripts/generate_coredata_entities.py
+          brew install xcodesorg/made/xcodes
 
-      - name: Run bulk migration script
+      - name: List available iOS simulator runtimes
         run: |
-          python3 scripts/bulk_migrate_ios15.py
-
-      - name: Install xcodes CLI (binary)
-        run: |
-          curl -L https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes.zip -o /tmp/xcodes.zip
-          unzip -o /tmp/xcodes.zip -d /usr/local/bin/
-          chmod +x /usr/local/bin/xcodes
+          xcodes runtimes list | head -30
 
       - name: Install iOS 15.5 simulator runtime
         run: |
