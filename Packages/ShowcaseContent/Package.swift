@@ -13,9 +13,6 @@ import PackageDescription
 
 let package = Package(
 	name: "ShowcaseContent",
-	platforms: [
-		.visionOS(.v2)
-	],
 	products: [
 		.library(name: "ShowcaseContent", targets: ["ShowcaseContent"])
 	],

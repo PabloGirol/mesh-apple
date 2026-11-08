@@ -241,8 +241,8 @@ targets:
       # (CoreDataMigrationService, called from Persistence). buildPhase: none left it in
       # the project tree but in no build phase, so no momd shipped and the migration
       # bailed out. Guarded by CoreDataMigrationServiceTests.
-      - path: "Meshtastic/Meshtastic.xcdatamodeld"
-        buildPhase: sources
+      # - path: "Meshtastic/Meshtastic.xcdatamodeld"
+      #   buildPhase: sources
       - path: "Meshtastic"
         type: group
         includes:
@@ -318,6 +318,9 @@ targets:
           - "$(SRCROOT)/Shared"
           - "$(SRCROOT)/Widgets"
         basedOnDependencyAnalysis: false
+    coreDataModels:
+      - path: "Meshtastic/Meshtastic.xcdatamodeld"
+        currentVersion: "MeshtasticDataModelV 58.xcdatamodel"
     settings:
       configs:
         Debug:
@@ -607,7 +610,7 @@ targets:
           SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG $(inherited)"
           SWIFT_EMIT_LOC_STRINGS: "NO"
-          SWIFT_VERSION: "5.0"
+          SWIFT_VERSION: "5.9"
           TARGETED_DEVICE_FAMILY: "1,2"
           TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Meshtastic.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Meshtastic"
         Release:
@@ -626,7 +629,7 @@ targets:
           SUPPORTS_MACCATALYST: "YES"
           SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
           SWIFT_EMIT_LOC_STRINGS: "NO"
-          SWIFT_VERSION: "5.0"
+          SWIFT_VERSION: "5.9"
           TARGETED_DEVICE_FAMILY: "1,2"
           TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Meshtastic.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Meshtastic"
 

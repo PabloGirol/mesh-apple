@@ -46,7 +46,7 @@ jobs:
 
       - name: Set xcdatamodeld current version to V58
         run: |
-          /usr/libexec/PlistBuddy -c "Set :_XCCurrentVersionName MeshtasticDataModelV 58.xcdatamodel" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
+          /usr/libexec/PlistBuddy -c "Set :_XCCurrentVersionName 'MeshtasticDataModelV 58.xcdatamodel'" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
           /usr/libexec/PlistBuddy -c "Print :_XCCurrentVersionName" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
 
       - name: Generate Xcode project
@@ -112,12 +112,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Meshtastic-iOS15-unsigned
-          path: Meshtastic-Apple/build/ipa/Meshtastic-unsigned.ipa
+          path: build/ipa/Meshtastic-unsigned.ipa
           retention-days: 30
 
       - name: Upload xcarchive artifact
         uses: actions/upload-artifact@v4
         with:
           name: Meshtastic-iOS15-xcarchive
-          path: Meshtastic-Apple/build/Meshtastic.xcarchive
+          path: build/Meshtastic.xcarchive
           retention-days: 30

@@ -12,9 +12,6 @@ import PackageDescription
 
 let package = Package(
 	name: "CinemaContent",
-	platforms: [
-		.visionOS(.v2)
-	],
 	products: [
 		.library(name: "CinemaContent", targets: ["CinemaContent"])
 	],
