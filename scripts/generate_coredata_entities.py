@@ -807,17 +807,17 @@ import CoreData
 import Foundation
 
 @objc({entity_name})
-public class {entity_name}: NSManagedObject {
+public class {entity_name}: NSManagedObject {{
 
-}
+}}
 
-extension {entity_name} {
+extension {entity_name} {{
 {property_declarations}
-}
+}}
 
-extension {entity_name}: CoreDataEntity {
-    public static var entityName: String { "{entity_name}" }
-}
+extension {entity_name}: CoreDataEntity {{
+    public static var entityName: String {{ "{entity_name}" }}
+}}
 '''
 
 def generate_entity(entity_name, definition):
