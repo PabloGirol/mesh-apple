@@ -144,44 +144,43 @@ jobs:
           grep -A2 "Meshtastic\.xcdatamodeld" "$PBXPROJ" | grep -A2 "currentVersion"
 
           echo "=== Meshtastic target buildRules ==="
-          python3 << 'EOF'
-import re
+          python3 << 'PYEOF'
+          import re
 
-with open(PBXPROJ, 'r') as f:
-    content = f.read()
+          with open(PBXPROJ, 'r') as f:
+              content = f.read()
 
-# Find Meshtastic target
-target_match = re.search(r'([A-F0-9]{24}) /\* Meshtastic \*/ = \{[^}]*isa = PBXNativeTarget;', content)
-if target_match:
-    target_id = target_match.group(1)
-    print(f"Meshtastic target ID: {target_id}")
+          # Find Meshtastic target
+          target_match = re.search(r'([A-F0-9]{24}) /\* Meshtastic \*/ = \{[^}]*isa = PBXNativeTarget;', content)
+          if target_match:
+              target_id = target_match.group(1)
+              print(f'Meshtastic target ID: {target_id}')
 
-    target_section = content[target_match.start():]
-    target_end = target_section.find('\n};')
-    target_section = target_section[:target_end]
+              target_section = content[target_match.start():]
+              target_end = target_section.find('\n};')
+              target_section = target_section[:target_end]
 
-    # Find buildRules
-    br_match = re.search(r'buildRules = \([^)]*\)', target_section, re.DOTALL)
-    if br_match:
-        print(f"buildRules: {br_match.group(0)}")
-    else:
-        print("buildRules: NOT FOUND (empty)")
+              # Find buildRules
+              br_match = re.search(r'buildRules = \([^)]*\)', target_section, re.DOTALL)
+              if br_match:
+                  print(f'buildRules: {br_match.group(0)}')
+              else:
+                  print('buildRules: NOT FOUND (empty)')
 
-    # Find buildPhases
-    bp_match = re.search(r'buildPhases = \([^)]+\)', target_section, re.DOTALL)
-    if bp_match:
-        print(f"buildPhases: {bp_match.group(0)}")
+              # Find buildPhases
+              bp_match = re.search(r'buildPhases = \([^)]+\)', target_section, re.DOTALL)
+              if bp_match:
+                  print(f'buildPhases: {bp_match.group(0)}')
 
-# Check for DataModelCompiler build rule anywhere in project
-if 'Xcode.DataModelCompiler' in content:
-    print("\n✓ Xcode.DataModelCompiler build rule FOUND in project")
-    for line in content.split('\n'):
-        if 'Xcode.DataModelCompiler' in line:
-            print(f"  {line.strip()}")
-else:
-    print("\n✗ Xcode.DataModelCompiler build rule NOT FOUND in project")
-
-EOF
+          # Check for DataModelCompiler build rule anywhere in project
+          if 'Xcode.DataModelCompiler' in content:
+              print('\n✓ Xcode.DataModelCompiler build rule FOUND in project')
+              for line in content.split('\n'):
+                  if 'Xcode.DataModelCompiler' in line:
+                      print(f'  {line.strip()}')
+          else:
+              print('\n✗ Xcode.DataModelCompiler build rule NOT FOUND in project')
+          PYEOF
 
       - name: Generate Core Data entities
         run: |
