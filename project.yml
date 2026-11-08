@@ -30,7 +30,7 @@ packages:
     version: "2.0.0"
   mvt-tools:
     url: https://github.com/Outdooractive/mvt-tools.git
-    version: "3.0.1"
+    version: "1.5.0"
   dd-sdk-ios:
     url: https://github.com/DataDog/dd-sdk-ios.git
     minVersion: 3.3.0
