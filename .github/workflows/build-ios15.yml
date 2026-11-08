@@ -14,7 +14,7 @@ on:
 jobs:
   build:
     name: Build iOS 15 unsigned IPA
-    runs-on: macos-13  # Ventura + Xcode 15.2 / Swift 5.9
+    runs-on: macos-15-intel  # Ventura + Xcode 15.2 / Swift 5.9
     timeout-minutes: 60
 
     steps:
