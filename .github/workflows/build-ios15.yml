@@ -49,6 +49,18 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :_XCCurrentVersionName 'MeshtasticDataModelV 58.xcdatamodel'" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
           /usr/libexec/PlistBuddy -c "Print :_XCCurrentVersionName" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
 
+      - name: Remove old Core Data model versions (keep only V58)
+        run: |
+          cd Meshtastic/Meshtastic.xcdatamodeld
+          # Keep only V58, move others to backup
+          mkdir -p ../.xcdatamodeld_backup
+          for f in MeshtasticDataModel*.xcdatamodel; do
+            if [[ "$f" != "MeshtasticDataModelV 58.xcdatamodel" ]]; then
+              mv "$f" ../.xcdatamodeld_backup/
+            fi
+          done
+          ls -la
+
       - name: Generate Xcode project
         run: xcodegen generate
 
