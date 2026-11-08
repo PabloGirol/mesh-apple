@@ -170,8 +170,8 @@ jobs:
 
       - name: Install xcodes CLI (binary)
         run: |
-          curl -L https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes-2.1.0.macos.i386.bottle.tar.gz -o /tmp/xcodes.tar.gz
-          tar -xzf /tmp/xcodes.tar.gz -C /usr/local/bin/
+          curl -L https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes.zip -o /tmp/xcodes.zip
+          unzip -o /tmp/xcodes.zip -d /usr/local/bin/
           chmod +x /usr/local/bin/xcodes
 
       - name: List available iOS simulator runtimes
