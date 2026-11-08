@@ -290,6 +290,8 @@ targets:
         product: Markdown
       - package: mvt-tools
         product: MVTTools
+    coreDataModels:
+      - Meshtastic.xcdatamodeld
     preBuildScripts:
       - script: |
           if [[ "$(uname -m)" == arm64 ]]
@@ -313,35 +315,6 @@ targets:
           - "$(SRCROOT)/MeshtasticMessages"
           - "$(SRCROOT)/Shared"
           - "$(SRCROOT)/Widgets"
-      - script: |
-          # Compile Core Data model to .momd for runtime migrations
-          # This avoids duplicate .stringsdata generation (momc + Swift @NSManaged both emit them)
-          MODEL_DIR="$(SRCROOT)/Meshtastic/Meshtastic.xcdatamodeld"
-          CURRENT_VERSION="MeshtasticDataModelV 58.xcdatamodel"
-          OUTPUT_DIR="$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)"
-
-          # Find momc
-          MOMC="$(xcrun -f momc)"
-          if [ ! -x "$MOMC" ]; then
-              echo "error: momc not found"
-              exit 1
-          fi
-
-          # Compile the model
-          "$MOMC" --no-warnings --swift-version 5.9 --module Meshtastic "$MODEL_DIR/$CURRENT_VERSION" "$OUTPUT_DIR/Meshtastic.momd"
-
-          if [ $? -ne 0 ]; then
-              echo "error: momc compilation failed"
-              exit 1
-          fi
-
-          echo "Compiled Core Data model to $OUTPUT_DIR/Meshtastic.momd"
-        name: "Compile Core Data Model"
-        inputFiles:
-          - "$(SRCROOT)/Meshtastic/Meshtastic.xcdatamodeld/MeshtasticDataModelV 58.xcdatamodel/contents"
-        outputFiles:
-          - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Meshtastic.momd"
-        basedOnDependencyAnalysis: false
     settings:
       configs:
         Debug:
