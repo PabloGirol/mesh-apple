@@ -75,7 +75,6 @@ jobs:
             exit 1
           fi
           echo "Project verification passed: Only V58 referenced"
-        run: xcodegen generate
 
       - name: Generate Core Data entities
         run: |
