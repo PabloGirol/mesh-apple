@@ -44,13 +44,13 @@ jobs:
       - name: Install xcodegen
         run: brew install xcodegen
 
-      - name: Generate Xcode project
-        run: xcodegen generate
-
       - name: Set xcdatamodeld current version to V58
         run: |
           /usr/libexec/PlistBuddy -c "Set :_XCCurrentVersionName MeshtasticDataModelV 58.xcdatamodel" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
           /usr/libexec/PlistBuddy -c "Print :_XCCurrentVersionName" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
+
+      - name: Generate Xcode project
+        run: xcodegen generate
 
       - name: Generate Core Data entities
         run: |
@@ -60,16 +60,22 @@ jobs:
         run: |
           python3 scripts/bulk_migrate_ios15.py
 
-      - name: Install iOS 15 simulator runtime
+      - name: Install xcodes CLI (binary)
         run: |
-          xcodebuild -downloadPlatform iOS
+          curl -L https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes.zip -o /tmp/xcodes.zip
+          unzip -o /tmp/xcodes.zip -d /usr/local/bin/
+          chmod +x /usr/local/bin/xcodes
+
+      - name: Install iOS 15.5 simulator runtime
+        run: |
+          sudo xcodes runtimes install "iOS 15.5"
 
       - name: Build for iOS Simulator (verify compiles)
         run: |
           xcodebuild \
             -workspace Meshtastic.xcworkspace \
             -scheme Meshtastic \
-            -destination 'platform=iOS Simulator,name=iPhone 8,OS=15.5' \
+            -destination 'platform=iOS Simulator,name=iPhone 13,OS=15.5' \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
