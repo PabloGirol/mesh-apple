@@ -30,23 +30,19 @@ jobs:
 
       - name: Set xcdatamodeld current version to V58
         run: |
-          cd Meshtastic-Apple
           /usr/libexec/PlistBuddy -c "Set :_XCCurrentVersionName MeshtasticDataModelV 58.xcdatamodel" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
           /usr/libexec/PlistBuddy -c "Print :_XCCurrentVersionName" Meshtastic/Meshtastic.xcdatamodeld/.xccurrentversion
 
       - name: Generate Core Data entities
         run: |
-          cd Meshtastic-Apple
           python3 scripts/generate_coredata_entities.py
 
       - name: Run bulk migration script
         run: |
-          cd Meshtastic-Apple
           python3 scripts/bulk_migrate_ios15.py
 
       - name: Build for iOS Simulator (verify compiles)
         run: |
-          cd Meshtastic-Apple
           xcodebuild \
             -workspace Meshtastic.xcworkspace \
             -scheme Meshtastic \
@@ -59,7 +55,6 @@ jobs:
 
       - name: Build for Device (unsigned IPA)
         run: |
-          cd Meshtastic-Apple
           xcodebuild \
             -workspace Meshtastic.xcworkspace \
             -scheme Meshtastic \
@@ -73,7 +68,6 @@ jobs:
 
       - name: Export unsigned IPA (manual)
         run: |
-          cd Meshtastic-Apple
           mkdir -p build/ipa
           # Copy .app from archive
           cp -R build/Meshtastic.xcarchive/Products/Applications/Meshtastic.app build/ipa/
