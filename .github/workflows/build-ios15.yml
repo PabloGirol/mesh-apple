@@ -168,9 +168,11 @@ jobs:
               print('\n✗ Xcode.DataModelCompiler build rule NOT FOUND in project')
           PYEOF
 
-      - name: Install xcodes CLI (via Homebrew)
+      - name: Install xcodes CLI (binary)
         run: |
-          brew install xcodesorg/made/xcodes
+          curl -L https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes.zip -o /tmp/xcodes.zip
+          unzip -o /tmp/xcodes.zip -d /usr/local/bin/
+          chmod +x /usr/local/bin/xcodes
 
       - name: List available iOS simulator runtimes
         run: |
