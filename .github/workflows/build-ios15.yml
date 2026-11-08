@@ -21,11 +21,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Xcode 15.2 (Swift 5.9)
-        uses: xcodesorg/xcodes@main
+      - name: Install Swift 5.9 toolchain
+        uses: fwal/setup-swift@d43a5e47f33d6a74b534f3f5d733a7c6c8f1d8c4
         with:
-          version: '15.2'
-          experimental-unxip: true
+          swift-version: '5.9.3'
 
       - name: Verify Xcode / Swift version
         run: |
