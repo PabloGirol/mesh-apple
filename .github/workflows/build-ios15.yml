@@ -143,7 +143,7 @@ jobs:
 
       - name: Check generated project for build rule and currentVersion
         run: |
-          PBXPROJ="Meshtastic.xcodeproj/project.pbxproj"
+          export PBXPROJ="Meshtastic.xcodeproj/project.pbxproj"
 
           echo "=== XCVersionGroup currentVersion ==="
           grep -A2 "Meshtastic\.xcdatamodeld" "$PBXPROJ" | grep -A2 "currentVersion" || echo "Not found"
@@ -151,8 +151,11 @@ jobs:
           echo "=== Meshtastic target buildRules ==="
           python3 << 'PYEOF'
           import re
+          import os
 
-          with open(PBXPROJ, 'r') as f:
+          pbxproj_path = os.environ.get('PBXPROJ', 'Meshtastic.xcodeproj/project.pbxproj')
+
+          with open(pbxproj_path, 'r') as f:
               content = f.read()
 
           # Find Meshtastic target
