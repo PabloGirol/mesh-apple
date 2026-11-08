@@ -115,24 +115,29 @@ jobs:
         run: |
           PBXPROJ="Meshtastic.xcodeproj/project.pbxproj"
 
+          echo "=== Full project.pbxproj (first 200 lines) ==="
+          head -200 "$PBXPROJ"
+
           echo "=== Meshtastic target UUID ==="
-          grep -A2 -B2 'name = "Meshtastic";' "$PBXPROJ" | head -20
+          grep -A2 -B2 'name = "Meshtastic";' "$PBXPROJ" | head -20 || echo "Not found"
 
           echo "=== File references for xcdatamodeld ==="
-          grep -n "Meshtastic\.xcdatamodeld" "$PBXPROJ"
+          grep -n "Meshtastic\.xcdatamodeld" "$PBXPROJ" || echo "Not found"
+
+          echo "=== All xcdatamodeld references ==="
+          grep -n "xcdatamodeld" "$PBXPROJ" || echo "Not found"
 
           echo "=== PBXSourcesBuildPhase for Meshtastic ==="
-          # Find the Meshtastic target's sources build phase
-          awk '/PBXNativeTarget.*Meshtastic/,/};/' "$PBXPROJ" | grep -A50 "buildPhases" | head -60
+          awk '/PBXNativeTarget.*Meshtastic/,/};/' "$PBXPROJ" | grep -A50 "buildPhases" | head -60 || echo "Not found"
 
           echo "=== Build rules in project ==="
-          grep -n "PBXBuildRule" "$PBXPROJ" | head -20
+          grep -n "PBXBuildRule" "$PBXPROJ" | head -20 || echo "Not found"
 
           echo "=== compilerSpec entries ==="
-          grep -n "compilerSpec" "$PBXPROJ" | head -20
+          grep -n "compilerSpec" "$PBXPROJ" | head -20 || echo "Not found"
 
-          echo "=== Full xcdatamodeld file reference section ==="
-          grep -B5 -A10 "Meshtastic\.xcdatamodeld" "$PBXPROJ"
+          echo "=== All target names ==="
+          grep -n 'name = ' "$PBXPROJ" | head -30 || echo "Not found"
 
           echo "Diagnostics complete"
 
@@ -141,7 +146,7 @@ jobs:
           PBXPROJ="Meshtastic.xcodeproj/project.pbxproj"
 
           echo "=== XCVersionGroup currentVersion ==="
-          grep -A2 "Meshtastic\.xcdatamodeld" "$PBXPROJ" | grep -A2 "currentVersion"
+          grep -A2 "Meshtastic\.xcdatamodeld" "$PBXPROJ" | grep -A2 "currentVersion" || echo "Not found"
 
           echo "=== Meshtastic target buildRules ==="
           python3 << 'PYEOF'
