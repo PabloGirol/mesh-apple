@@ -60,12 +60,16 @@ jobs:
         run: |
           python3 scripts/bulk_migrate_ios15.py
 
+      - name: Install iOS 15 simulator runtime
+        run: |
+          xcodebuild -downloadPlatform iOS
+
       - name: Build for iOS Simulator (verify compiles)
         run: |
           xcodebuild \
             -workspace Meshtastic.xcworkspace \
             -scheme Meshtastic \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' \
+            -destination 'platform=iOS Simulator,name=iPhone 8,OS=15.5' \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
