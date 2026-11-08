@@ -24,7 +24,7 @@ jobs:
       - name: Install Swift 5.9 toolchain
         uses: fwal/setup-swift@v1
         with:
-          swift-version: '5.9.3'
+          swift-version: '5.9'
 
       - name: Verify Xcode / Swift version
         run: |
