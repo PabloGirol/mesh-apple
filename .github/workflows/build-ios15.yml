@@ -52,16 +52,29 @@ jobs:
       - name: Remove old Core Data model versions (keep only V58)
         run: |
           cd Meshtastic/Meshtastic.xcdatamodeld
-          # Keep only V58, move others to backup
-          mkdir -p ../.xcdatamodeld_backup
-          for f in MeshtasticDataModel*.xcdatamodel; do
-            if [[ "$f" != "MeshtasticDataModelV 58.xcdatamodel" ]]; then
-              mv "$f" ../.xcdatamodeld_backup/
-            fi
-          done
+          # Keep only V58, remove others completely (cleaner than mv)
+          find . -maxdepth 1 -name 'MeshtasticDataModel*.xcdatamodel' -not -name 'MeshtasticDataModelV 58.xcdatamodel' -exec rm -rf {} +
+          echo "Remaining model versions:"
           ls -la
+          # Verify only V58 exists
+          COUNT=$(find . -maxdepth 1 -name 'MeshtasticDataModel*.xcdatamodel' | wc -l)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "ERROR: Expected exactly 1 model version, found $COUNT"
+            exit 1
+          fi
 
       - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Verify generated project only references V58
+        run: |
+          # Check that the generated project only has V58 in Compile Sources
+          if grep -r "MeshtasticDataModelV [0-9]\{1,2\}\.xcdatamodel" Meshtastic.xcodeproj/project.pbxproj | grep -v "MeshtasticDataModelV 58.xcdatamodel"; then
+            echo "ERROR: Generated project references old model versions"
+            grep -r "MeshtasticDataModelV" Meshtastic.xcodeproj/project.pbxproj
+            exit 1
+          fi
+          echo "Project verification passed: Only V58 referenced"
         run: xcodegen generate
 
       - name: Generate Core Data entities
