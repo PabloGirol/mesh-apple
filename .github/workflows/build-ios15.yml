@@ -76,6 +76,35 @@ jobs:
           fi
           echo "Project verification passed: Only V58 referenced"
 
+      - name: Verify Compile Sources build phase has xcdatamodeld exactly once
+        run: |
+          # Extract the Meshtastic target's Compile Sources build phase and check xcdatamodeld references
+          # Look for file references to Meshtastic.xcdatamodeld in the PBXSourcesBuildPhase
+          PBXPROJ="Meshtastic.xcodeproj/project.pbxproj"
+
+          # Count occurrences of Meshtastic.xcdatamodeld in the project file
+          COUNT=$(grep -c "Meshtastic\.xcdatamodeld" "$PBXPROJ" || true)
+          echo "Meshtastic.xcdatamodeld references in project.pbxproj: $COUNT"
+
+          if [ "$COUNT" -gt 2 ]; then
+            echo "WARNING: Meshtastic.xcdatamodeld appears $COUNT times in project.pbxproj (expected ~2: file ref + build phase)"
+            grep -n "Meshtastic\.xcdatamodeld" "$PBXPROJ"
+          fi
+
+          # Check for duplicate entries in PBXSourcesBuildPhase for Meshtastic target
+          # Look for the Meshtastic target's sources build phase
+          echo "Checking for duplicate xcdatamodeld in Compile Sources..."
+
+          # Verify the xcdatamodeld has a proper build rule (momc)
+          if grep -q "compilerSpec.*=.*Xcode\.DataModelCompiler" "$PBXPROJ"; then
+            echo "✓ Core Data model compiler build rule found"
+          else
+            echo "WARNING: No Core Data model compiler build rule found in project.pbxproj"
+            echo "This may cause the model to be compiled by Swift compiler instead of momc"
+          fi
+
+          echo "Compile Sources verification complete"
+
       - name: Generate Core Data entities
         run: |
           python3 scripts/generate_coredata_entities.py
