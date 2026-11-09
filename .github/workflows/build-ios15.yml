@@ -83,7 +83,7 @@ jobs:
       - name: Verify generated project only references V58
         run: |
           # Check that the generated project only has V58 in Compile Sources
-          if grep -r "MeshtasticDataModelV [0-9]\{1,2\}\.xcdatamodel" Meshtastic.xcodeproj/project.pbxproj | grep -v "MeshtasticDataModelV 58.xcdatamodel"; then
+          if grep -r "MeshtasticDataModelV[[:space:]]*[0-9]{1,2}.xcdatamodel" Meshtastic.xcodeproj/project.pbxproj | grep -v "MeshtasticDataModelV 58.xcdatamodel" | grep -v "MeshtasticDataModelV58.xcdatamodel"; then
             echo "ERROR: Generated project references old model versions"
             grep -r "MeshtasticDataModelV" Meshtastic.xcodeproj/project.pbxproj
             exit 1

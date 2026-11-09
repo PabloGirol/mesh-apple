@@ -290,8 +290,6 @@ targets:
         product: Markdown
       - package: mvt-tools
         product: MVTTools
-    coreDataModels:
-      - Meshtastic/Meshtastic.xcdatamodeld
     preBuildScripts:
       - script: |
           if [[ "$(uname -m)" == arm64 ]]
@@ -315,6 +313,26 @@ targets:
           - "$(SRCROOT)/MeshtasticMessages"
           - "$(SRCROOT)/Shared"
           - "$(SRCROOT)/Widgets"
+      # Compile Core Data model (V58) with momc for iOS 15 bundle
+      # xcodegen coreDataModels is broken for subdirectory .xcdatamodeld
+      - script: |
+          set -e
+          MODEL_DIR="Meshtastic/Meshtastic.xcdatamodeld"
+          CURRENT_VERSION="MeshtasticDataModelV 58.xcdatamodel"
+          MOMD_DIR="${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Meshtastic.momd"
+
+          echo "Compiling Core Data model: $CURRENT_VERSION"
+          mkdir -p "$MOMD_DIR"
+
+          # Use momc to compile the current version
+          xcrun momc "$MODEL_DIR/$CURRENT_VERSION" "$MOMD_DIR/MeshtasticDataModelV 58.mom"
+
+          echo "Core Data model compiled to $MOMD_DIR"
+        name: "Compile Core Data Model"
+        inputFiles:
+          - "$(SRCROOT)/Meshtastic/Meshtastic.xcdatamodeld/MeshtasticDataModelV 58.xcdatamodel/contents"
+        outputFiles:
+          - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Meshtastic.momd/MeshtasticDataModelV 58.mom"
     settings:
       configs:
         Debug:
