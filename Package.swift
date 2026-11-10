@@ -13,7 +13,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/swhitty/SwiftDraw", "0.22.0"..<"1.0.0"),
         .package(url: "https://github.com/NordicSemiconductor/IOS-DFU-Library", "4.16.0"..<"5.0.0"),
-        .package(url: "https://github.com/emqx/CocoaMQTT", "1.2.5"..<"2.0.0"),
+        .package(url: "https://github.com/emqx/CocoaMQTT", "1.3.0-rc.2"..<"2.0.0"),
         .package(url: "https://github.com/DataDog/dd-sdk-ios.git", "3.3.0"..<"4.0.0"),
         .package(url: "https://github.com/swiftlang/swift-markdown", "0.5.0"..<"1.0.0"),
         .package(url: "https://github.com/apple/swift-protobuf.git", "1.26.0"..<"2.0.0"),
