@@ -2,9 +2,8 @@
 //  TraceRouteNodePositionEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for TraceRouteNodePositionEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,9 +14,18 @@ public class TraceRouteNodePositionEntity: NSManagedObject {
 }
 
 extension TraceRouteNodePositionEntity {
-    @NSManaged public var nodeNum: Int64
-    @NSManaged public var latitudeI: Int32
-    @NSManaged public var longitudeI: Int32
+    public var nodeNum: Int64 {
+        get { value(forKey: "nodeNum") as! Int64 }
+        set { setValue(newValue, forKey: "nodeNum") }
+    }
+    public var latitudeI: Int32 {
+        get { value(forKey: "latitudeI") as! Int32 }
+        set { setValue(newValue, forKey: "latitudeI") }
+    }
+    public var longitudeI: Int32 {
+        get { value(forKey: "longitudeI") as! Int32 }
+        set { setValue(newValue, forKey: "longitudeI") }
+    }
 }
 
 extension TraceRouteNodePositionEntity: CoreDataEntity {

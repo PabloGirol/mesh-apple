@@ -2,9 +2,8 @@
 //  TraceRouteEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for TraceRouteEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,23 +14,46 @@ public class TraceRouteEntity: NSManagedObject {
 }
 
 extension TraceRouteEntity {
-    @NSManaged public var id: UUID
-    @NSManaged public var targetNodeNum: Int64
-    @NSManaged public var startTime: Date
-    @NSManaged public var completed: Bool
-    @NSManaged public var hops: NSSet
+    public var id: UUID {
+        get { value(forKey: "id") as! UUID }
+        set { setValue(newValue, forKey: "id") }
+    }
+    public var targetNodeNum: Int64 {
+        get { value(forKey: "targetNodeNum") as! Int64 }
+        set { setValue(newValue, forKey: "targetNodeNum") }
+    }
+    public var startTime: Date {
+        get { value(forKey: "startTime") as! Date }
+        set { setValue(newValue, forKey: "startTime") }
+    }
+    public var completed: Bool {
+        get { value(forKey: "completed") as! Bool }
+        set { setValue(newValue, forKey: "completed") }
+    }
+    public var hops: NSSet? {
+        get { value(forKey: "hops") as? NSSet }
+        set { setValue(newValue, forKey: "hops") }
+    }
 
     @objc(addHopsObject:)
-    @NSManaged public func addToHops(_ value: TraceRouteHopEntity)
+    public func addToHops(_ value: TraceRouteHopEntity) {
+        mutableSetValue(forKey: "hops").add(value)
+    }
 
     @objc(removeHopsObject:)
-    @NSManaged public func removeFromHops(_ value: TraceRouteHopEntity)
+    public func removeFromHops(_ value: TraceRouteHopEntity) {
+        mutableSetValue(forKey: "hops").remove(value)
+    }
 
     @objc(addHops:)
-    @NSManaged public func addToHops(_ values: NSSet)
+    public func addToHops(_ values: NSSet) {
+        mutableSetValue(forKey: "hops").union(values)
+    }
 
     @objc(removeHops:)
-    @NSManaged public func removeFromHops(_ values: NSSet)
+    public func removeFromHops(_ values: NSSet) {
+        mutableSetValue(forKey: "hops").minus(values)
+    }
 
 }
 

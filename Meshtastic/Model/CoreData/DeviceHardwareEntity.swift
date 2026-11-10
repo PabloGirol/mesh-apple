@@ -2,9 +2,8 @@
 //  DeviceHardwareEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for DeviceHardwareEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,35 +14,63 @@ public class DeviceHardwareEntity: NSManagedObject {
 }
 
 extension DeviceHardwareEntity {
-    @NSManaged public var hwModel: String
-    @NSManaged public var variant: String??
-    @NSManaged public var tags: NSSet
-    @NSManaged public var images: NSSet
+    public var hwModel: String {
+        get { value(forKey: "hwModel") as! String }
+        set { setValue(newValue, forKey: "hwModel") }
+    }
+    public var variant: String?? {
+        get { value(forKey: "variant") as? String? }
+        set { setValue(newValue, forKey: "variant") }
+    }
+    public var tags: NSSet? {
+        get { value(forKey: "tags") as? NSSet }
+        set { setValue(newValue, forKey: "tags") }
+    }
+    public var images: NSSet? {
+        get { value(forKey: "images") as? NSSet }
+        set { setValue(newValue, forKey: "images") }
+    }
 
     @objc(addTagsObject:)
-    @NSManaged public func addToTags(_ value: DeviceHardwareTagEntity)
+    public func addToTags(_ value: DeviceHardwareTagEntity) {
+        mutableSetValue(forKey: "tags").add(value)
+    }
 
     @objc(removeTagsObject:)
-    @NSManaged public func removeFromTags(_ value: DeviceHardwareTagEntity)
+    public func removeFromTags(_ value: DeviceHardwareTagEntity) {
+        mutableSetValue(forKey: "tags").remove(value)
+    }
 
     @objc(addTags:)
-    @NSManaged public func addToTags(_ values: NSSet)
+    public func addToTags(_ values: NSSet) {
+        mutableSetValue(forKey: "tags").union(values)
+    }
 
     @objc(removeTags:)
-    @NSManaged public func removeFromTags(_ values: NSSet)
+    public func removeFromTags(_ values: NSSet) {
+        mutableSetValue(forKey: "tags").minus(values)
+    }
 
 
     @objc(addImagesObject:)
-    @NSManaged public func addToImages(_ value: DeviceHardwareImageEntity)
+    public func addToImages(_ value: DeviceHardwareImageEntity) {
+        mutableSetValue(forKey: "images").add(value)
+    }
 
     @objc(removeImagesObject:)
-    @NSManaged public func removeFromImages(_ value: DeviceHardwareImageEntity)
+    public func removeFromImages(_ value: DeviceHardwareImageEntity) {
+        mutableSetValue(forKey: "images").remove(value)
+    }
 
     @objc(addImages:)
-    @NSManaged public func addToImages(_ values: NSSet)
+    public func addToImages(_ values: NSSet) {
+        mutableSetValue(forKey: "images").union(values)
+    }
 
     @objc(removeImages:)
-    @NSManaged public func removeFromImages(_ values: NSSet)
+    public func removeFromImages(_ values: NSSet) {
+        mutableSetValue(forKey: "images").minus(values)
+    }
 
 }
 

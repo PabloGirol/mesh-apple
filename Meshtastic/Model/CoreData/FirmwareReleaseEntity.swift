@@ -2,9 +2,8 @@
 //  FirmwareReleaseEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for FirmwareReleaseEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,14 +14,38 @@ public class FirmwareReleaseEntity: NSManagedObject {
 }
 
 extension FirmwareReleaseEntity {
-    @NSManaged public var channel: String
-    @NSManaged public var version: String
-    @NSManaged public var releaseDate: Date
-    @NSManaged public var changelog: String??
-    @NSManaged public var downloadURL: String
-    @NSManaged public var hardwareModel: String
-    @NSManaged public var minAppVersion: Int32
-    @NSManaged public var signature: String??
+    public var channel: String {
+        get { value(forKey: "channel") as! String }
+        set { setValue(newValue, forKey: "channel") }
+    }
+    public var version: String {
+        get { value(forKey: "version") as! String }
+        set { setValue(newValue, forKey: "version") }
+    }
+    public var releaseDate: Date {
+        get { value(forKey: "releaseDate") as! Date }
+        set { setValue(newValue, forKey: "releaseDate") }
+    }
+    public var changelog: String?? {
+        get { value(forKey: "changelog") as? String? }
+        set { setValue(newValue, forKey: "changelog") }
+    }
+    public var downloadURL: String {
+        get { value(forKey: "downloadURL") as! String }
+        set { setValue(newValue, forKey: "downloadURL") }
+    }
+    public var hardwareModel: String {
+        get { value(forKey: "hardwareModel") as! String }
+        set { setValue(newValue, forKey: "hardwareModel") }
+    }
+    public var minAppVersion: Int32 {
+        get { value(forKey: "minAppVersion") as! Int32 }
+        set { setValue(newValue, forKey: "minAppVersion") }
+    }
+    public var signature: String?? {
+        get { value(forKey: "signature") as? String? }
+        set { setValue(newValue, forKey: "signature") }
+    }
 }
 
 extension FirmwareReleaseEntity: CoreDataEntity {

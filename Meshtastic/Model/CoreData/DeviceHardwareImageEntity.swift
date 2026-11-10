@@ -2,9 +2,8 @@
 //  DeviceHardwareImageEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for DeviceHardwareImageEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,9 +14,18 @@ public class DeviceHardwareImageEntity: NSManagedObject {
 }
 
 extension DeviceHardwareImageEntity {
-    @NSManaged public var imageData: Data
-    @NSManaged public var isDefault: Bool
-    @NSManaged public var device: DeviceHardwareEntity?
+    public var imageData: Data {
+        get { value(forKey: "imageData") as! Data }
+        set { setValue(newValue, forKey: "imageData") }
+    }
+    public var isDefault: Bool {
+        get { value(forKey: "isDefault") as! Bool }
+        set { setValue(newValue, forKey: "isDefault") }
+    }
+    public var device: DeviceHardwareEntity? {
+        get { value(forKey: "device") as? DeviceHardwareEntity }
+        set { setValue(newValue, forKey: "device") }
+    }
 }
 
 extension DeviceHardwareImageEntity: CoreDataEntity {

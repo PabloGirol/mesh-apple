@@ -2,9 +2,8 @@
 //  NeighborLinkEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for NeighborLinkEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,12 +14,30 @@ public class NeighborLinkEntity: NSManagedObject {
 }
 
 extension NeighborLinkEntity {
-    @NSManaged public var id: UUID
-    @NSManaged public var localNodeNum: Int64
-    @NSManaged public var neighborNodeNum: Int64
-    @NSManaged public var snr: Float
-    @NSManaged public var channel: Int32
-    @NSManaged public var lastHeard: Date
+    public var id: UUID {
+        get { value(forKey: "id") as! UUID }
+        set { setValue(newValue, forKey: "id") }
+    }
+    public var localNodeNum: Int64 {
+        get { value(forKey: "localNodeNum") as! Int64 }
+        set { setValue(newValue, forKey: "localNodeNum") }
+    }
+    public var neighborNodeNum: Int64 {
+        get { value(forKey: "neighborNodeNum") as! Int64 }
+        set { setValue(newValue, forKey: "neighborNodeNum") }
+    }
+    public var snr: Float {
+        get { value(forKey: "snr") as! Float }
+        set { setValue(newValue, forKey: "snr") }
+    }
+    public var channel: Int32 {
+        get { value(forKey: "channel") as! Int32 }
+        set { setValue(newValue, forKey: "channel") }
+    }
+    public var lastHeard: Date {
+        get { value(forKey: "lastHeard") as! Date }
+        set { setValue(newValue, forKey: "lastHeard") }
+    }
 }
 
 extension NeighborLinkEntity: CoreDataEntity {

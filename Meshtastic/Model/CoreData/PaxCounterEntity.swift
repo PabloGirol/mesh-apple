@@ -2,9 +2,8 @@
 //  PaxCounterEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for PaxCounterEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,9 +14,18 @@ public class PaxCounterEntity: NSManagedObject {
 }
 
 extension PaxCounterEntity {
-    @NSManaged public var time: Date
-    @NSManaged public var count: Int32
-    @NSManaged public var snr: Float
+    public var time: Date {
+        get { value(forKey: "time") as! Date }
+        set { setValue(newValue, forKey: "time") }
+    }
+    public var count: Int32 {
+        get { value(forKey: "count") as! Int32 }
+        set { setValue(newValue, forKey: "count") }
+    }
+    public var snr: Float {
+        get { value(forKey: "snr") as! Float }
+        set { setValue(newValue, forKey: "snr") }
+    }
 }
 
 extension PaxCounterEntity: CoreDataEntity {

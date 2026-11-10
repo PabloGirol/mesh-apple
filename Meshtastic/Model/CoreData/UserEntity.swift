@@ -2,9 +2,8 @@
 //  UserEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for UserEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,40 +14,83 @@ public class UserEntity: NSManagedObject {
 }
 
 extension UserEntity {
-    @NSManaged public var hwModel: String??
-    @NSManaged public var isLicensed: Bool
-    @NSManaged public var longName: String??
-    @NSManaged public var num: Int64
-    @NSManaged public var shortName: String??
-    @NSManaged public var userId: String??
-    @NSManaged public var userNode: NodeInfoEntity?
-    @NSManaged public var messagesFrom: NSSet
-    @NSManaged public var messagesTo: NSSet
+    public var hwModel: String?? {
+        get { value(forKey: "hwModel") as? String? }
+        set { setValue(newValue, forKey: "hwModel") }
+    }
+    public var isLicensed: Bool {
+        get { value(forKey: "isLicensed") as! Bool }
+        set { setValue(newValue, forKey: "isLicensed") }
+    }
+    public var longName: String?? {
+        get { value(forKey: "longName") as? String? }
+        set { setValue(newValue, forKey: "longName") }
+    }
+    public var num: Int64 {
+        get { value(forKey: "num") as! Int64 }
+        set { setValue(newValue, forKey: "num") }
+    }
+    public var shortName: String?? {
+        get { value(forKey: "shortName") as? String? }
+        set { setValue(newValue, forKey: "shortName") }
+    }
+    public var userId: String?? {
+        get { value(forKey: "userId") as? String? }
+        set { setValue(newValue, forKey: "userId") }
+    }
+    public var userNode: NodeInfoEntity? {
+        get { value(forKey: "userNode") as? NodeInfoEntity }
+        set { setValue(newValue, forKey: "userNode") }
+    }
+    public var messagesFrom: NSSet? {
+        get { value(forKey: "messagesFrom") as? NSSet }
+        set { setValue(newValue, forKey: "messagesFrom") }
+    }
+    public var messagesTo: NSSet? {
+        get { value(forKey: "messagesTo") as? NSSet }
+        set { setValue(newValue, forKey: "messagesTo") }
+    }
 
-    @objc(addMessagesfromObject:)
-    @NSManaged public func addToMessagesfrom(_ value: MessageEntity)
+    @objc(addMessagesFromObject:)
+    public func addToMessagesFrom(_ value: MessageEntity) {
+        mutableSetValue(forKey: "messagesFrom").add(value)
+    }
 
-    @objc(removeMessagesfromObject:)
-    @NSManaged public func removeFromMessagesfrom(_ value: MessageEntity)
+    @objc(removeMessagesFromObject:)
+    public func removeFromMessagesFrom(_ value: MessageEntity) {
+        mutableSetValue(forKey: "messagesFrom").remove(value)
+    }
 
-    @objc(addMessagesfrom:)
-    @NSManaged public func addToMessagesfrom(_ values: NSSet)
+    @objc(addMessagesFrom:)
+    public func addToMessagesFrom(_ values: NSSet) {
+        mutableSetValue(forKey: "messagesFrom").union(values)
+    }
 
-    @objc(removeMessagesfrom:)
-    @NSManaged public func removeFromMessagesfrom(_ values: NSSet)
+    @objc(removeMessagesFrom:)
+    public func removeFromMessagesFrom(_ values: NSSet) {
+        mutableSetValue(forKey: "messagesFrom").minus(values)
+    }
 
 
-    @objc(addMessagestoObject:)
-    @NSManaged public func addToMessagesto(_ value: MessageEntity)
+    @objc(addMessagesToObject:)
+    public func addToMessagesTo(_ value: MessageEntity) {
+        mutableSetValue(forKey: "messagesTo").add(value)
+    }
 
-    @objc(removeMessagestoObject:)
-    @NSManaged public func removeFromMessagesto(_ value: MessageEntity)
+    @objc(removeMessagesToObject:)
+    public func removeFromMessagesTo(_ value: MessageEntity) {
+        mutableSetValue(forKey: "messagesTo").remove(value)
+    }
 
-    @objc(addMessagesto:)
-    @NSManaged public func addToMessagesto(_ values: NSSet)
+    @objc(addMessagesTo:)
+    public func addToMessagesTo(_ values: NSSet) {
+        mutableSetValue(forKey: "messagesTo").union(values)
+    }
 
-    @objc(removeMessagesto:)
-    @NSManaged public func removeFromMessagesto(_ values: NSSet)
+    @objc(removeMessagesTo:)
+    public func removeFromMessagesTo(_ values: NSSet) {
+        mutableSetValue(forKey: "messagesTo").minus(values)
+    }
 
 }
 

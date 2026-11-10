@@ -2,9 +2,8 @@
 //  DiscoveryPresetResultEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for DiscoveryPresetResultEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,12 +14,30 @@ public class DiscoveryPresetResultEntity: NSManagedObject {
 }
 
 extension DiscoveryPresetResultEntity {
-    @NSManaged public var presetIndex: Int32
-    @NSManaged public var presetName: String
-    @NSManaged public var nodesHeard: Int32
-    @NSManaged public var snrSum: Float
-    @NSManaged public var snrCount: Int32
-    @NSManaged public var session: DiscoverySessionEntity?
+    public var presetIndex: Int32 {
+        get { value(forKey: "presetIndex") as! Int32 }
+        set { setValue(newValue, forKey: "presetIndex") }
+    }
+    public var presetName: String {
+        get { value(forKey: "presetName") as! String }
+        set { setValue(newValue, forKey: "presetName") }
+    }
+    public var nodesHeard: Int32 {
+        get { value(forKey: "nodesHeard") as! Int32 }
+        set { setValue(newValue, forKey: "nodesHeard") }
+    }
+    public var snrSum: Float {
+        get { value(forKey: "snrSum") as! Float }
+        set { setValue(newValue, forKey: "snrSum") }
+    }
+    public var snrCount: Int32 {
+        get { value(forKey: "snrCount") as! Int32 }
+        set { setValue(newValue, forKey: "snrCount") }
+    }
+    public var session: DiscoverySessionEntity? {
+        get { value(forKey: "session") as? DiscoverySessionEntity }
+        set { setValue(newValue, forKey: "session") }
+    }
 }
 
 extension DiscoveryPresetResultEntity: CoreDataEntity {

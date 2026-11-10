@@ -2,9 +2,8 @@
 //  DiscoverySessionEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for DiscoverySessionEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,53 +14,104 @@ public class DiscoverySessionEntity: NSManagedObject {
 }
 
 extension DiscoverySessionEntity {
-    @NSManaged public var id: UUID
-    @NSManaged public var startTime: Date
-    @NSManaged public var endTime: Date??
-    @NSManaged public var selectedPresets: Data
-    @NSManaged public var dwellDuration: Int32
-    @NSManaged public var completed: Bool
-    @NSManaged public var presetResults: NSSet
-    @NSManaged public var discoveredNodes: NSSet
-    @NSManaged public var discoveredBeacons: NSSet
+    public var id: UUID {
+        get { value(forKey: "id") as! UUID }
+        set { setValue(newValue, forKey: "id") }
+    }
+    public var startTime: Date {
+        get { value(forKey: "startTime") as! Date }
+        set { setValue(newValue, forKey: "startTime") }
+    }
+    public var endTime: Date?? {
+        get { value(forKey: "endTime") as? Date? }
+        set { setValue(newValue, forKey: "endTime") }
+    }
+    public var selectedPresets: Data {
+        get { value(forKey: "selectedPresets") as! Data }
+        set { setValue(newValue, forKey: "selectedPresets") }
+    }
+    public var dwellDuration: Int32 {
+        get { value(forKey: "dwellDuration") as! Int32 }
+        set { setValue(newValue, forKey: "dwellDuration") }
+    }
+    public var completed: Bool {
+        get { value(forKey: "completed") as! Bool }
+        set { setValue(newValue, forKey: "completed") }
+    }
+    public var presetResults: NSSet? {
+        get { value(forKey: "presetResults") as? NSSet }
+        set { setValue(newValue, forKey: "presetResults") }
+    }
+    public var discoveredNodes: NSSet? {
+        get { value(forKey: "discoveredNodes") as? NSSet }
+        set { setValue(newValue, forKey: "discoveredNodes") }
+    }
+    public var discoveredBeacons: NSSet? {
+        get { value(forKey: "discoveredBeacons") as? NSSet }
+        set { setValue(newValue, forKey: "discoveredBeacons") }
+    }
 
-    @objc(addPresetresultsObject:)
-    @NSManaged public func addToPresetresults(_ value: DiscoveryPresetResultEntity)
+    @objc(addPresetResultsObject:)
+    public func addToPresetResults(_ value: DiscoveryPresetResultEntity) {
+        mutableSetValue(forKey: "presetResults").add(value)
+    }
 
-    @objc(removePresetresultsObject:)
-    @NSManaged public func removeFromPresetresults(_ value: DiscoveryPresetResultEntity)
+    @objc(removePresetResultsObject:)
+    public func removeFromPresetResults(_ value: DiscoveryPresetResultEntity) {
+        mutableSetValue(forKey: "presetResults").remove(value)
+    }
 
-    @objc(addPresetresults:)
-    @NSManaged public func addToPresetresults(_ values: NSSet)
+    @objc(addPresetResults:)
+    public func addToPresetResults(_ values: NSSet) {
+        mutableSetValue(forKey: "presetResults").union(values)
+    }
 
-    @objc(removePresetresults:)
-    @NSManaged public func removeFromPresetresults(_ values: NSSet)
-
-
-    @objc(addDiscoverednodesObject:)
-    @NSManaged public func addToDiscoverednodes(_ value: DiscoveredNodeEntity)
-
-    @objc(removeDiscoverednodesObject:)
-    @NSManaged public func removeFromDiscoverednodes(_ value: DiscoveredNodeEntity)
-
-    @objc(addDiscoverednodes:)
-    @NSManaged public func addToDiscoverednodes(_ values: NSSet)
-
-    @objc(removeDiscoverednodes:)
-    @NSManaged public func removeFromDiscoverednodes(_ values: NSSet)
+    @objc(removePresetResults:)
+    public func removeFromPresetResults(_ values: NSSet) {
+        mutableSetValue(forKey: "presetResults").minus(values)
+    }
 
 
-    @objc(addDiscoveredbeaconsObject:)
-    @NSManaged public func addToDiscoveredbeacons(_ value: DiscoveredBeaconEntity)
+    @objc(addDiscoveredNodesObject:)
+    public func addToDiscoveredNodes(_ value: DiscoveredNodeEntity) {
+        mutableSetValue(forKey: "discoveredNodes").add(value)
+    }
 
-    @objc(removeDiscoveredbeaconsObject:)
-    @NSManaged public func removeFromDiscoveredbeacons(_ value: DiscoveredBeaconEntity)
+    @objc(removeDiscoveredNodesObject:)
+    public func removeFromDiscoveredNodes(_ value: DiscoveredNodeEntity) {
+        mutableSetValue(forKey: "discoveredNodes").remove(value)
+    }
 
-    @objc(addDiscoveredbeacons:)
-    @NSManaged public func addToDiscoveredbeacons(_ values: NSSet)
+    @objc(addDiscoveredNodes:)
+    public func addToDiscoveredNodes(_ values: NSSet) {
+        mutableSetValue(forKey: "discoveredNodes").union(values)
+    }
 
-    @objc(removeDiscoveredbeacons:)
-    @NSManaged public func removeFromDiscoveredbeacons(_ values: NSSet)
+    @objc(removeDiscoveredNodes:)
+    public func removeFromDiscoveredNodes(_ values: NSSet) {
+        mutableSetValue(forKey: "discoveredNodes").minus(values)
+    }
+
+
+    @objc(addDiscoveredBeaconsObject:)
+    public func addToDiscoveredBeacons(_ value: DiscoveredBeaconEntity) {
+        mutableSetValue(forKey: "discoveredBeacons").add(value)
+    }
+
+    @objc(removeDiscoveredBeaconsObject:)
+    public func removeFromDiscoveredBeacons(_ value: DiscoveredBeaconEntity) {
+        mutableSetValue(forKey: "discoveredBeacons").remove(value)
+    }
+
+    @objc(addDiscoveredBeacons:)
+    public func addToDiscoveredBeacons(_ values: NSSet) {
+        mutableSetValue(forKey: "discoveredBeacons").union(values)
+    }
+
+    @objc(removeDiscoveredBeacons:)
+    public func removeFromDiscoveredBeacons(_ values: NSSet) {
+        mutableSetValue(forKey: "discoveredBeacons").minus(values)
+    }
 
 }
 

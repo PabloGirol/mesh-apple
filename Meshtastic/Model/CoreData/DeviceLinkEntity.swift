@@ -2,9 +2,8 @@
 //  DeviceLinkEntity.swift
 //  Meshtastic
 //
-//  Core Data entity for DeviceLinkEntity
-//  Generated from SwiftData model + CoreDataMigrationService
-//
+//  Core Data entity generated from SwiftData model.
+//  Uses KVC instead of @NSManaged to avoid .stringsdata generation conflicts.
 
 import CoreData
 import Foundation
@@ -15,9 +14,18 @@ public class DeviceLinkEntity: NSManagedObject {
 }
 
 extension DeviceLinkEntity {
-    @NSManaged public var deviceId: String
-    @NSManaged public var deviceName: String
-    @NSManaged public var lastConnected: Date
+    public var deviceId: String {
+        get { value(forKey: "deviceId") as! String }
+        set { setValue(newValue, forKey: "deviceId") }
+    }
+    public var deviceName: String {
+        get { value(forKey: "deviceName") as! String }
+        set { setValue(newValue, forKey: "deviceName") }
+    }
+    public var lastConnected: Date {
+        get { value(forKey: "lastConnected") as! Date }
+        set { setValue(newValue, forKey: "lastConnected") }
+    }
 }
 
 extension DeviceLinkEntity: CoreDataEntity {
