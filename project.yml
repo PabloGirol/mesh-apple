@@ -39,7 +39,7 @@ packages:
     version: "0.5.0"
   swift-protobuf:
     url: https://github.com/apple/swift-protobuf.git
-    version: "1.26.0"
+    version: "1.39.0"
   MeshtasticProtobufs:
     path: MeshtasticProtobufs
   # Kp1812: (binary target XCFramework name mismatch - disabled for iOS 15 build)
