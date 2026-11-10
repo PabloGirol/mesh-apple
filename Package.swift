@@ -25,6 +25,7 @@ let package = Package(
         .package(url: "https://github.com/weichsel/ZIPFoundation", "0.9.0"..<"1.0.0"),
         .package(path: "MeshtasticProtobufs"),
         .package(path: "Packages/mvt-tools"),
+        .package(path: "Packages/Kp1812"),
     ],
     targets: [
         .target(
@@ -48,6 +49,7 @@ let package = Package(
                 "ZIPFoundation",
                 "MeshtasticProtobufs",
                 "MVTTools",
+                "Kp1812",
             ],
             path: "Meshtastic"
         )

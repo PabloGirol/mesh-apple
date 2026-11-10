@@ -240,3 +240,4 @@ enum LocalCoverage {
 		return 2 * earthRadiusKm * asin(min(1, sqrt(a)))
 	}
 }
+

@@ -42,8 +42,8 @@ packages:
     version: "1.39.0"
   MeshtasticProtobufs:
     path: MeshtasticProtobufs
-  # Kp1812: (binary target XCFramework name mismatch - disabled for iOS 15 build)
-  #   path: Packages/Kp1812
+  Kp1812:
+    path: Packages/Kp1812
 
 settings:
   configs:
@@ -271,9 +271,9 @@ targets:
       #   product: MeshtasticTAK
       - package: MeshtasticProtobufs
         product: MeshtasticProtobufs
-      # On-device coverage estimates (ITU-R P.1812) - disabled: binary target mismatch
-      # - package: Kp1812
-      #   product: Kp1812
+      # On-device coverage estimates (ITU-R P.1812)
+      - package: Kp1812
+        product: Kp1812
       - package: dd-sdk-ios
         product: DatadogCore
       - package: dd-sdk-ios
