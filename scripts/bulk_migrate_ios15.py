@@ -21,6 +21,7 @@ SOURCE_DIRS = [
     "Meshtastic/Services",
     "Meshtastic/Helpers",
     "Meshtastic/Model",
+    "!Meshtastic/Model/CoreData",
     "Meshtastic/Persistence",
     "Meshtastic/Router",
     "Meshtastic/Extensions",
@@ -187,6 +188,9 @@ def main():
 
         for ext in EXTENSIONS:
             for filepath in path.rglob(f"*{ext}"):
+                # Skip CoreData entities (generated with KVC, not @NSManaged)
+                if "CoreData" in str(filepath):
+                    continue
                 total_files += 1
                 if process_file(filepath):
                     modified_files += 1
