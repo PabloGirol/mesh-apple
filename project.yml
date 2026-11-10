@@ -27,7 +27,7 @@ packages:
   #   minorVersion: 0.9.1
   CocoaMQTT:
     url: https://github.com/emqx/CocoaMQTT
-    version: "2.0.0"
+    version: "1.3.0"
   mvt-tools:
     path: Packages/mvt-tools
   dd-sdk-ios:
