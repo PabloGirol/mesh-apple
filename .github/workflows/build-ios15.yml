@@ -168,6 +168,13 @@ jobs:
               print('\n✗ Xcode.DataModelCompiler build rule NOT FOUND in project')
           PYEOF
 
+      - name: Resolve package dependencies
+        run: |
+          xcodebuild \
+            -project Meshtastic.xcodeproj \
+            -scheme Meshtastic \
+            -resolvePackageDependencies
+
       - name: Install xcodes CLI (binary)
         run: |
           curl -L https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes.zip -o /tmp/xcodes.zip
