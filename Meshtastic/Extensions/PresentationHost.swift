@@ -79,8 +79,8 @@ private struct PanelPresentationHostModifier: ViewModifier {
 }
 
 /// The pages and the alert banner a panel is showing.
-@MainActor @Observable
-final class PanelPresenter {
+@MainActor
+final class PanelPresenter: ObservableObject {
 	struct Page {
 		let id: UUID
 		let content: PanelPageContent
@@ -164,8 +164,8 @@ final class PanelPresenter {
 /// What a pushed page shows. A sheet's content is rebuilt each time the view presenting it
 /// updates; the presenting modifier does the same by replacing this, so the page follows the
 /// state it was built from (a button enabled once a text field has text, a list of results).
-@MainActor @Observable
-final class PanelPageContent {
+@MainActor
+final class PanelPageContent: ObservableObject {
 	var view: AnyView
 
 	init(_ view: AnyView) {

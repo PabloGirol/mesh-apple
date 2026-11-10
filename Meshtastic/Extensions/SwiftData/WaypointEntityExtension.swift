@@ -72,7 +72,6 @@ extension WaypointEntity {
 		String(expire != nil ? "\n⌛ Expires \(String(describing: expire?.formatted()))" : "") +
 		String(locked ? "\n🔒 Locked" : "")
 	}
-}
 
 class WaypointAnnotation: NSObject, MKAnnotation {
 	let waypointEntity: WaypointEntity

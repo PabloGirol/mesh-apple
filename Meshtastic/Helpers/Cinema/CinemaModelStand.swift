@@ -17,8 +17,8 @@ import RealityKit
 /// its screen live, and can stand at up to five times its size to read it. It stands in the air
 /// rather than on something in the image: the image is painted far away, so a real-size model on a
 /// painted table would float.
-@MainActor @Observable
-final class CinemaModelStand {
+@MainActor
+final class CinemaModelStand: ObservableObject {
 	@ObservationIgnored let root = Entity()
 	/// Pinch and drag to move the stand, the model and its readings.
 	@ObservationIgnored private let grabber = CinemaModelStand.makeGrabber()

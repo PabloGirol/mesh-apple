@@ -22,8 +22,8 @@ struct ShowcaseRackComponent: Component {}
 /// display tables, and the wall rack, whose cells are one mesh colored by a small texture, one texel
 /// per cell. Takes the reader's snapshots, places them with `ShowcaseLayout`, glows senders as
 /// packets arrive, and keeps the state the control panel and cards show.
-@MainActor @Observable
-final class ShowcaseSceneController {
+@MainActor
+final class ShowcaseSceneController: ObservableObject {
 	/// Everything that moves with the seated/standing setting: the room and what is in it.
 	@ObservationIgnored let world = Entity()
 	@ObservationIgnored private(set) var room: ShowcaseRoom?

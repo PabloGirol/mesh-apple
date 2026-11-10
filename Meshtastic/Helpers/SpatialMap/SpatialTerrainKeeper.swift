@@ -62,8 +62,8 @@ struct SpatialTerrainCheckSchedule: Equatable {
 /// automatic download and its retry rules, so the spatial map volume and the app's own check
 /// never start two downloads or keep separate backoffs. The volume shows the progress and notes
 /// from here.
-@MainActor @Observable
-final class SpatialTerrainKeeper {
+@MainActor
+final class SpatialTerrainKeeper: ObservableObject {
 	static let shared = SpatialTerrainKeeper()
 	/// How often the app's own check wakes up. Most ticks only look at the schedule.
 	static let tick: Duration = .seconds(30)

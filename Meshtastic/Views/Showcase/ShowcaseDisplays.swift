@@ -18,8 +18,8 @@ struct ShowcaseItemComponent: Component {
 /// The display tables: a real-size model of each device we have one for, one maker per row.
 /// They are examples of the devices, not nodes on the mesh. A hand can pick one up and turn it
 /// over; let go and it goes back on its stand.
-@MainActor @Observable
-final class ShowcaseDisplays {
+@MainActor
+final class ShowcaseDisplays: ObservableObject {
 	@ObservationIgnored let root = Entity()
 	/// Each loaded model as it was in its file; the tables use it directly, the connected radio a clone.
 	@ObservationIgnored private var templates: [String: Entity] = [:]

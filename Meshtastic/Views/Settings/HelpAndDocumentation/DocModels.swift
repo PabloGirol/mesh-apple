@@ -143,8 +143,7 @@ struct DocPage: Identifiable, Hashable {
 // MARK: - DocBundle
 
 @MainActor
-@Observable
-final class DocBundle {
+final class DocBundle: ObservableObject {
 
 	static let shared = DocBundle()
 

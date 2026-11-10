@@ -126,8 +126,8 @@ struct ScanTarget: Equatable {
 
 // MARK: - DiscoveryScanEngine
 
-@MainActor @Observable
-final class DiscoveryScanEngine {
+@MainActor
+final class DiscoveryScanEngine: ObservableObject {
 
 	// MARK: Published State
 

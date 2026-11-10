@@ -57,8 +57,8 @@ private struct SpatialCoverageImage: @unchecked Sendable {
 /// State for one spatial map volume: the nodes in the box, the terrain for it, routes and the
 /// selection. Reads SwiftData on the main actor every couple of seconds like the 2D map does;
 /// the scene only ever sees snapshots.
-@MainActor @Observable
-final class SpatialMapModel {
+@MainActor
+final class SpatialMapModel: ObservableObject {
 	static let labelLimit = 40
 
 	private(set) var nodes: [SpatialNodeSnapshot] = []

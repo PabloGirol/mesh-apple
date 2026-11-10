@@ -7,7 +7,7 @@
 
 import Foundation
 import MeshtasticProtobufs
-import MeshtasticTAK
+// import MeshtasticTAK  // Disabled for iOS 15 build
 import OSLog
 
 extension AccessoryManager {

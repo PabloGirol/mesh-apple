@@ -108,7 +108,6 @@ extension PositionEntity {
 			return nil
 		}
 	}
-}
 
 class PositionAnnotation: NSObject, MKAnnotation {
 	let positionEntity: PositionEntity

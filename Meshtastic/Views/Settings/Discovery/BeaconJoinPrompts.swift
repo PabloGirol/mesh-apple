@@ -14,8 +14,8 @@ import SwiftUI
 /// Holds which beacon is waiting on a confirmation and runs the join once confirmed. A screen
 /// keeps one in `@State`, attaches `beaconJoinPrompts(_:)` and calls `askToSwitch(to:)` or
 /// `askToAdd(_:)` from its buttons.
-@MainActor @Observable
-final class BeaconJoinController {
+@MainActor
+final class BeaconJoinController: ObservableObject {
 	/// Beacon awaiting a "switch to this channel" confirmation; drives the alert.
 	var beaconToJoin: DiscoveredBeaconEntity?
 	var joinErrorMessage: String?

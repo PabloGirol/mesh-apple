@@ -27,8 +27,8 @@ enum RadioSetupStep: Hashable, CaseIterable {
 	}
 }
 
-@MainActor @Observable
-final class RadioSetupModel {
+@MainActor
+final class RadioSetupModel: ObservableObject {
 	static let shortNameBytes = 4
 
 	let nodeNum: Int64
