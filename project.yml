@@ -198,6 +198,8 @@ targets:
         type: syncedFolder
       - path: "Meshtastic/Model"
         type: syncedFolder
+        excludes:
+          - "CoreData/**"
       - path: "Meshtastic/Persistence"
         type: syncedFolder
       - path: "Meshtastic/Provisioning"
