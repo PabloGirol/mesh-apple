@@ -16,7 +16,7 @@ let package = Package(
         .package(url: "https://github.com/emqx/CocoaMQTT", "1.3.0-rc.2"..<"2.0.0"),
         .package(url: "https://github.com/DataDog/dd-sdk-ios.git", "3.3.0"..<"4.0.0"),
         .package(url: "https://github.com/swiftlang/swift-markdown", "0.5.0"..<"1.0.0"),
-        .package(url: "https://github.com/apple/swift-protobuf.git", "1.26.0"..<"2.0.0"),
+        .package(url: "https://github.com/apple/swift-protobuf.git", "1.39.0"..<"2.0.0"),
         .package(url: "https://github.com/apple/swift-log.git", "1.0.0"..<"2.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", "1.0.0"..<"2.0.0"),
         .package(url: "https://github.com/1024jp/GzipSwift", "5.0.0"..<"6.0.0"),
