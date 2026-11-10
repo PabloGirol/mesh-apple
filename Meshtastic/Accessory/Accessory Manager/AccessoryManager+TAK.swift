@@ -1,3 +1,4 @@
+#if os(visionOS)
 //
 //  AccessoryManager+TAK.swift
 //  Meshtastic
@@ -424,3 +425,5 @@ extension AccessoryManager {
 		MeshtasticTAK.CotMeshSanitizer.stripNonEssentialForMesh(xml)
 	}
 }
+
+#endif
