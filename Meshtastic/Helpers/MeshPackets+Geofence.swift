@@ -8,7 +8,7 @@
 //  notifyFavoritesOnly) — there is no separate geofence model.
 //
 
-@preconcurrency import SwiftData
+import CoreData
 import CoreLocation
 import Foundation
 import OSLog
@@ -41,10 +41,9 @@ extension MeshPackets {
 		let location = CLLocation(latitude: Double(latitudeI) / 1e7, longitude: Double(longitudeI) / 1e7)
 
 		// Only consider waypoints that actually want enter/exit notifications.
-		let descriptor = FetchDescriptor<WaypointEntity>(
-			predicate: #Predicate<WaypointEntity> { $0.notifyOnEnter || $0.notifyOnExit }
-		)
-		guard let waypoints = try? modelContext.fetch(descriptor) else { return }
+		let request = NSFetchRequest<WaypointEntity>(entityName: "WaypointEntity")
+		request.predicate = NSPredicate(format: "notifyOnEnter == YES OR notifyOnExit == YES")
+		guard let waypoints = try? PersistenceController.shared.context.fetch(request) else { return }
 
 		// Resolved lazily once per call: whether this node is a favorite on THIS receiver, used by
 		// waypoints set to notify for favorites only.
@@ -78,9 +77,10 @@ extension MeshPackets {
 
 	/// Whether `nodeNum` is marked as a favorite on this device (resolved locally per receiver).
 	private func isFavoriteNode(_ nodeNum: Int64) -> Bool {
-		var descriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == nodeNum })
-		descriptor.fetchLimit = 1
-		return ((try? modelContext.fetch(descriptor))?.first?.favorite) ?? false
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", nodeNum)
+		request.fetchLimit = 1
+		return ((try? PersistenceController.shared.context.fetch(request))?.first?.favorite) ?? false
 	}
 
 	private func scheduleGeofenceNotification(waypointId: Int64, waypointName: String, nodeNum: Int64, nodeName: String, entered: Bool) {

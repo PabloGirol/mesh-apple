@@ -4,7 +4,8 @@
 //
 //  Copyright (c) Garth Vander Houwen 1/13/23.
 //
-@preconcurrency import SwiftData
+
+import Foundation
 import CoreLocation
 import MapKit
 import MeshtasticProtobufs
@@ -13,14 +14,12 @@ import SwiftUI
 extension WaypointEntity {
 
 	@MainActor
-	static func allWaypointsFetchDescriptor() -> FetchDescriptor<WaypointEntity> {
+	static func allWaypointsFetchRequest() -> NSFetchRequest<WaypointEntity> {
 		let now = Date()
-		return FetchDescriptor<WaypointEntity>(
-			predicate: #Predicate<WaypointEntity> { wp in
-				wp.expire == nil || wp.expire! >= now
-			},
-			sortBy: [SortDescriptor(\.name, order: .reverse)]
-		)
+		let request = NSFetchRequest<WaypointEntity>(entityName: "WaypointEntity")
+		request.predicate = NSPredicate(format: "expire == nil OR expire >= %@", now as NSDate)
+		request.sortDescriptors = [NSSortDescriptor(key: "name", ascending: false)]
+		return request
 	}
 
 	var latitude: Double? {
@@ -73,26 +72,27 @@ extension WaypointEntity {
 		String(locked ? "\n🔒 Locked" : "")
 	}
 
-class WaypointAnnotation: NSObject, MKAnnotation {
-	let waypointEntity: WaypointEntity
-	@objc dynamic var coordinate: CLLocationCoordinate2D
-	var title: String?
-	var subtitle: String?
+	class WaypointAnnotation: NSObject, MKAnnotation {
+		let waypointEntity: WaypointEntity
+		@objc dynamic var coordinate: CLLocationCoordinate2D
+		var title: String?
+		var subtitle: String?
 
-	@MainActor
-	init(waypoint: WaypointEntity) {
-		self.waypointEntity = waypoint
-		self.coordinate = waypoint.mapCoordinate
-		self.title = waypoint.mapTitle
-		self.subtitle = waypoint.mapSubtitle
-		super.init()
+		@MainActor
+		init(waypoint: WaypointEntity) {
+			self.waypointEntity = waypoint
+			self.coordinate = waypoint.mapCoordinate
+			self.title = waypoint.mapTitle
+			self.subtitle = waypoint.mapSubtitle
+			super.init()
+		}
 	}
-}
 
-struct WaypointCoordinate: Identifiable {
-	let id: UUID
-	let coordinate: CLLocationCoordinate2D?
-	let waypointId: Int64
+	struct WaypointCoordinate: Identifiable {
+		let id: UUID
+		let coordinate: CLLocationCoordinate2D?
+		let waypointId: Int64
+	}
 }
 
 // MARK: - Geofence

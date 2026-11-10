@@ -8,7 +8,7 @@
 import Foundation
 import CocoaMQTT
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 import MeshtasticProtobufs
 
 // Serialises MQTT-sourced BLE writes by allowing at most one forwarded packet
@@ -45,9 +45,8 @@ extension AccessoryManager {
 		}
 
 		let nodeNum = Int64(deviceNum)
-		let descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate { $0.num == nodeNum }
-		)
+		let descriptor = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		descriptor.predicate = NSPredicate(format: "num == %lld", nodeNum)
 		do {
 			let fetchedNodeInfo = try context.fetch(descriptor)
 			if fetchedNodeInfo.count == 1 {

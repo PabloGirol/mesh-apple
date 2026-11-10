@@ -7,7 +7,7 @@
 
 import CoreLocation
 import Foundation
-@preconcurrency import SwiftData
+import CoreData
 import MeshtasticProtobufs
 import SwiftUI
 import RegexBuilder

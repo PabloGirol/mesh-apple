@@ -4,7 +4,7 @@
 //
 
 import Foundation
-@preconcurrency import SwiftData
+import CoreData
 
 struct DirectMessageSummary: Equatable, Sendable {
 	let messageId: Int64
@@ -90,23 +90,23 @@ private struct DirectMessageSummaryAccumulator {
 }
 
 /// Fetches direct-message summaries on a background context. Only value types cross
-/// the actor boundary; SwiftData entities remain isolated to this actor's context.
-/// `ModelContext.fetch` is synchronous and cannot be interrupted once entered, so the
-/// view coalesces bursts before calling here. The view builds one per refresh.
-@ModelActor
+/// the actor boundary; Core Data entities remain isolated to this actor's context.
 actor DirectMessageSummaryActor {
+	private let context: NSManagedObjectContext
+
+	init(context: NSManagedObjectContext) {
+		self.context = context
+	}
+
 	func summaries(for peerNums: Set<Int64>) throws -> [Int64: DirectMessageSummary] {
 		try Task.checkCancellation()
 		guard !peerNums.isEmpty else { return [:] }
 
 		let detectionSensorPortNum: Int32 = 10
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> {
-				$0.isEmoji == false && $0.admin == false && $0.portNum != detectionSensorPortNum
-					&& $0.toUser != nil
-			}
-		)
-		let messages = try modelContext.fetch(descriptor)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "isEmoji == NO AND admin == NO AND portNum != %d AND toUser != nil", detectionSensorPortNum)
+
+		let messages = try context.fetch(request)
 		try Task.checkCancellation()
 
 		return try DirectMessageSummaryReducer.summaries(

@@ -10,7 +10,7 @@ import Foundation
 import MeshtasticProtobufs
 import CocoaMQTT
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 
 extension AccessoryManager {
 
@@ -212,12 +212,12 @@ extension AccessoryManager {
 
 		// Resolve on a throwaway context, NOT the long-lived main context. After a database clear
 		// (manual reset, or the clear inside a device switch) the main context can still hold an
-		// invalidated instance registered under a rowid that SwiftData then reuses for the
-		// freshly-inserted row — model(for:) would hand that dead instance back and accessing it
-		// traps with "destroyed by ModelContext.reset". A fresh context has no such registrations,
-		// so it faults the current row from the store.
-		let myInfoResolveContext = ModelContext(context.container)
-		if let myInfoId, let myInfo = try? myInfoResolveContext.model(for: myInfoId) as? MyInfoEntity {
+		// invalidated instance registered under a rowid that Core Data then reuses for the
+		// freshly-inserted row — object(with:) would hand that dead instance back and accessing it
+		// traps. A fresh context has no such registrations, so it faults the current row from the store.
+		let myInfoResolveContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+		myInfoResolveContext.persistentStoreCoordinator = context.persistentStoreCoordinator
+		if let myInfoId, let myInfo = try? myInfoResolveContext.existingObject(with: myInfoId) as? MyInfoEntity {
 			if let bleName = myInfo.bleName {
 				updateDevice(key: \.name, value: bleName)
 				updateDevice(key: \.longName, value: bleName)
@@ -242,7 +242,9 @@ extension AccessoryManager {
 		firmwareEdition = FirmwareEditions(from: myNodeInfo.firmwareEdition)
 
 		// Initialize TAK bridge for TAK integration
+		#if os(visionOS)
 		initializeTAKBridge()
+		#endif
 	}
 
 	/// Detects a connect that landed on a different radio's database (no MyInfo row for the
@@ -253,8 +255,10 @@ extension AccessoryManager {
 	private func defensiveResetIfForeignDatabase(incomingNodeNum: Int64, incomingDeviceId: Data) async {
 		// Fresh throwaway context: no stale registrations, and this runs before any ingest for
 		// the new radio, so what it sees is exactly what the previous session left behind.
-		let checkContext = ModelContext(context.container)
-		guard let myInfos = try? checkContext.fetch(FetchDescriptor<MyInfoEntity>()), !myInfos.isEmpty else {
+		let checkContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+		checkContext.persistentStoreCoordinator = context.persistentStoreCoordinator
+		let myInfosRequest = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		guard let myInfos = try? checkContext.fetch(myInfosRequest), !myInfos.isEmpty else {
 			return // Fresh/empty store — nothing to protect.
 		}
 		let nums = myInfos.map(\.myNodeNum)
@@ -500,7 +504,8 @@ extension AccessoryManager {
 
 		// Before we get started delete the existing channels from the myNodeInfo
 		let num = Int64(deviceNum)
-		let fetchMyInfoRequest = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == num })
+		let fetchMyInfoRequest = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		fetchMyInfoRequest.predicate = NSPredicate(format: "myNodeNum == %lld", num)
 
 		do {
 			let fetchedMyInfo = try context.fetch(fetchMyInfoRequest)
@@ -513,7 +518,8 @@ extension AccessoryManager {
 
 				// Clean orphaned channels from older app versions where channels were
 				// detached but not deleted, which can create duplicate rows in queries.
-				let allChannels = try context.fetch(FetchDescriptor<ChannelEntity>())
+				let allChannelsRequest = NSFetchRequest<ChannelEntity>(entityName: "ChannelEntity")
+				let allChannels = try context.fetch(allChannelsRequest)
 				for channel in allChannels where channel.myInfoChannel == nil {
 					context.delete(channel)
 				}

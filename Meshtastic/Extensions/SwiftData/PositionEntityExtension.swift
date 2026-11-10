@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 11/28/21.
 //
 
-@preconcurrency import SwiftData
+import Foundation
 import CoreLocation
 import MapKit
 import MeshtasticProtobufs
@@ -13,15 +13,13 @@ import SwiftUI
 
 extension PositionEntity {
 
-	static func allPositionsFetchDescriptor() -> FetchDescriptor<PositionEntity> {
-		var descriptor = FetchDescriptor<PositionEntity>(
-			predicate: #Predicate<PositionEntity> { pos in
-				pos.nodePosition != nil && pos.latest == true
-			},
-			sortBy: [SortDescriptor(\.time, order: .reverse)]
-		)
+	static func allPositionsFetchRequest() -> NSFetchRequest<PositionEntity> {
+		let descriptor = NSFetchRequest<PositionEntity>(entityName: "PositionEntity")
+		descriptor.predicate = NSPredicate(format: "nodePosition != nil AND latest == YES")
+		descriptor.sortDescriptors = [NSSortDescriptor(key: "time", ascending: false)]
 		return descriptor
 	}
+
 	var latitude: Double? {
 
 		let d = Double(latitudeI)
@@ -78,10 +76,10 @@ extension PositionEntity {
 	/// finer precision than the default) neither precise nor reduced-precision, so they were dropped
 	/// from the map entirely instead of showing as a fuzzed pin. Centralized here so the map's
 	/// filter/render/snapshot paths can't drift if the range ever changes.
-	static let reducedPrecisionBits: ClosedRange<Int32> = 2...24
+	nonisolated(unsafe) static let reducedPrecisionBits: ClosedRange<Int32> = 2...24
 
 	var isReducedPrecision: Bool {
-		Self.reducedPrecisionBits ~= precisionBits
+		PositionEntity.reducedPrecisionBits ~= precisionBits
 	}
 
 	var fuzzedNodeCoordinate: CLLocationCoordinate2D? {
@@ -109,19 +107,20 @@ extension PositionEntity {
 		}
 	}
 
-class PositionAnnotation: NSObject, MKAnnotation {
-	let positionEntity: PositionEntity
-	@objc dynamic var coordinate: CLLocationCoordinate2D
-	var fuzzedCoordinate: CLLocationCoordinate2D
-	var title: String?
-	var subtitle: String?
+	class PositionAnnotation: NSObject, MKAnnotation {
+		let positionEntity: PositionEntity
+		@objc dynamic var coordinate: CLLocationCoordinate2D
+		var fuzzedCoordinate: CLLocationCoordinate2D
+		var title: String?
+		var subtitle: String?
 
-	init(position: PositionEntity) {
-		self.positionEntity = position
-		self.coordinate = position.nodeCoordinate ?? LocationsHandler.DefaultLocation
-		self.fuzzedCoordinate = position.fuzzedNodeCoordinate ?? LocationsHandler.DefaultLocation
-		self.title = position.nodePosition?.user?.shortName ?? "Unknown".localized
-		self.subtitle = position.time?.formatted()
-		super.init()
+		init(position: PositionEntity) {
+			self.positionEntity = position
+			self.coordinate = position.nodeCoordinate ?? LocationsHandler.DefaultLocation
+			self.fuzzedCoordinate = position.fuzzedNodeCoordinate ?? LocationsHandler.DefaultLocation
+			self.title = position.nodePosition?.user?.shortName ?? "Unknown".localized
+			self.subtitle = position.time?.formatted()
+			super.init()
+		}
 	}
 }

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-@preconcurrency import SwiftData
+import CoreData
 import MeshtasticProtobufs
 
 extension UserEntity {
@@ -31,7 +31,7 @@ extension UserEntity {
 
 	@MainActor
 	var messageList: [MessageEntity] {
-		guard let ctx = modelContext else { return [] }
+		guard let ctx = managedObjectContext else { return [] }
 		let messages = (try? fetchIncomingMessages(context: ctx) + fetchOutgoingMessages(context: ctx)) ?? []
 		return messages.sorted {
 			if $0.messageTimestamp == $1.messageTimestamp {
@@ -43,7 +43,7 @@ extension UserEntity {
 
 	@MainActor
 	var mostRecentMessage: MessageEntity? {
-		guard let ctx = modelContext, self.lastMessage != nil else { return nil }
+		guard let ctx = managedObjectContext, self.lastMessage != nil else { return nil }
 		let incoming = try? fetchIncomingMessages(context: ctx, limit: 1).first
 		let outgoing = try? fetchOutgoingMessages(context: ctx, limit: 1).first
 		switch (incoming, outgoing) {
@@ -63,95 +63,74 @@ extension UserEntity {
 
 	@MainActor
 	var sensorMessageList: [MessageEntity] {
-		guard let ctx = modelContext else { return [] }
+		guard let ctx = managedObjectContext else { return [] }
 		let userNum = self.num
 		let portNum: Int32 = 10
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { $0.fromUser?.num == userNum && $0.portNum == portNum },
-			sortBy: [SortDescriptor(\MessageEntity.messageTimestamp)]
-		)
-		return (try? ctx.fetch(descriptor)) ?? []
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "fromUser.num == %lld AND portNum == %d", userNum, portNum)
+		request.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: true)]
+		return (try? ctx.fetch(request)) ?? []
 	}
 
 	@MainActor
-	func unreadMessages(context: ModelContext, skipLastMessageCheck: Bool = false) -> Int {
+	func unreadMessages(context: NSManagedObjectContext, skipLastMessageCheck: Bool = false) -> Int {
 		guard self.lastMessage != nil || skipLastMessageCheck else { return 0 }
-		guard let ctx = modelContext else { return 0 }
+		guard let ctx = managedObjectContext else { return 0 }
 		return ((try? fetchIncomingMessageCount(context: ctx, unreadOnly: true)) ?? 0)
 			+ ((try? fetchOutgoingMessageCount(context: ctx, unreadOnly: true)) ?? 0)
 	}
 
 	@MainActor
-	var unreadMessages: Int { unreadMessages(context: PersistenceController.shared.context) }
+	var unreadMessages: Int { unreadMessages(context: CoreDataStackImpl.shared.context) }
 
 	@MainActor
-	private func fetchIncomingMessages(context: ModelContext, limit: Int? = nil) throws -> [MessageEntity] {
+	private func fetchIncomingMessages(context: NSManagedObjectContext, limit: Int? = nil) throws -> [MessageEntity] {
 		let userNum = self.num
 		let portNum: Int32 = 10
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> {
-				$0.fromUser?.num == userNum
-				&& $0.toUser != nil
-				&& $0.isEmoji == false && $0.admin == false && $0.portNum != portNum
-			},
-			sortBy: [
-				SortDescriptor(\MessageEntity.messageTimestamp, order: .reverse),
-				SortDescriptor(\MessageEntity.messageId, order: .reverse)
-			]
-		)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "fromUser.num == %lld AND toUser != nil AND isEmoji == NO AND admin == NO AND portNum != %d", userNum, portNum)
+		request.sortDescriptors = [
+			NSSortDescriptor(key: "messageTimestamp", ascending: false),
+			NSSortDescriptor(key: "messageId", ascending: false)
+		]
 		if let limit {
-			descriptor.fetchLimit = limit
+			request.fetchLimit = limit
 		}
-		return try context.fetch(descriptor)
+		return try context.fetch(request)
 	}
 
 	@MainActor
-	private func fetchOutgoingMessages(context: ModelContext, limit: Int? = nil) throws -> [MessageEntity] {
+	private func fetchOutgoingMessages(context: NSManagedObjectContext, limit: Int? = nil) throws -> [MessageEntity] {
 		let userNum = self.num
 		let portNum: Int32 = 10
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> {
-				$0.toUser?.num == userNum
-				&& $0.isEmoji == false && $0.admin == false && $0.portNum != portNum
-			},
-			sortBy: [
-				SortDescriptor(\MessageEntity.messageTimestamp, order: .reverse),
-				SortDescriptor(\MessageEntity.messageId, order: .reverse)
-			]
-		)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "toUser.num == %lld AND isEmoji == NO AND admin == NO AND portNum != %d", userNum, portNum)
+		request.sortDescriptors = [
+			NSSortDescriptor(key: "messageTimestamp", ascending: false),
+			NSSortDescriptor(key: "messageId", ascending: false)
+		]
 		if let limit {
-			descriptor.fetchLimit = limit
+			request.fetchLimit = limit
 		}
-		return try context.fetch(descriptor)
+		return try context.fetch(request)
 	}
 
 	@MainActor
-	private func fetchIncomingMessageCount(context: ModelContext, unreadOnly: Bool) throws -> Int {
+	private func fetchIncomingMessageCount(context: NSManagedObjectContext, unreadOnly: Bool) throws -> Int {
 		let userNum = self.num
 		let portNum: Int32 = 10
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> {
-				$0.fromUser?.num == userNum
-				&& $0.toUser != nil
-				&& (!unreadOnly || $0.read == false)
-				&& $0.isEmoji == false && $0.admin == false && $0.portNum != portNum
-			}
-		)
-		return try context.fetchCount(descriptor)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "fromUser.num == %lld AND toUser != nil AND isEmoji == NO AND admin == NO AND portNum != %d AND (%@ == NO OR read == NO)", userNum, portNum, NSNumber(value: !unreadOnly))
+		return try context.count(for: request)
 	}
 
 	@MainActor
-	private func fetchOutgoingMessageCount(context: ModelContext, unreadOnly: Bool) throws -> Int {
+	private func fetchOutgoingMessageCount(context: NSManagedObjectContext, unreadOnly: Bool) throws -> Int {
 		let userNum = self.num
 		let portNum: Int32 = 10
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> {
-				$0.toUser?.num == userNum
-				&& (!unreadOnly || $0.read == false)
-				&& $0.isEmoji == false && $0.admin == false && $0.portNum != portNum
-			}
-		)
-		return try context.fetchCount(descriptor)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "toUser.num == %lld AND isEmoji == NO AND admin == NO AND portNum != %d AND (%@ == NO OR read == NO)", userNum, portNum, NSNumber(value: !unreadOnly))
+		return try context.count(for: request)
 	}
 
 	/// SVG Images for Vendors who are signed project backers
@@ -248,29 +227,40 @@ extension UserEntity {
 	}
 }
 
-func createUser(num: Int64, context: ModelContext) throws -> UserEntity {
+/// The `userNode` relationship, but only when this user is still live in its context. Reading a
+/// relationship on a deleted/zombie managed object fatally traps in Core Data; callers on render paths
+/// use this so a node pruned underneath them can't crash the read.
+extension UserEntity {
+	var liveUserNode: NodeInfoEntity? {
+		guard managedObjectContext != nil, !isDeleted else { return nil }
+		return userNode
+	}
+}
+
+func createUser(num: Int64, context: NSManagedObjectContext) throws -> UserEntity {
 	// Validate Input
 	guard num >= 0 else {
 		throw PersistenceError.invalidInput(message: "User number cannot be negative.")
 	}
 
 	// Return an existing user for this num rather than inserting a duplicate. UserEntity.num is
-	// @Attribute(.unique); SwiftData resolves unique collisions only against the SAVED store, so
+	// unique; Core Data resolves unique collisions only against the SAVED store, so
 	// two un-saved inserts with the same num (e.g. crafted back-to-back mesh packets from a new
-	// node inside the debounced-save window) would trap with a fatal SwiftData assertion. Mirror
+	// node inside the debounced-save window) would trap with a fatal Core Data assertion. Mirror
 	// findOrCreateUser: check the saved store AND pending inserts before creating.
-	var existingDescriptor = FetchDescriptor<UserEntity>(predicate: #Predicate<UserEntity> { $0.num == num })
+	let existingDescriptor = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+	existingDescriptor.predicate = NSPredicate(format: "num == %lld", num)
 	existingDescriptor.fetchLimit = 1
 	if let existing = (try? context.fetch(existingDescriptor))?.first {
 		return existing
 	}
-	if let pending = context.insertedModelsArray.lazy
+	if let pending = context.insertedObjects.lazy
 		.compactMap({ $0 as? UserEntity })
 		.first(where: { $0.num == num }) {
 		return pending
 	}
 
-	let newUser = UserEntity()
+	let newUser = UserEntity(context: context)
 	newUser.num = num
 	let userId = num.toHex()
 	newUser.userId = userId
@@ -279,7 +269,6 @@ func createUser(num: Int64, context: ModelContext) throws -> UserEntity {
 	newUser.shortName = last4
 	newUser.hwModel = "UNSET"
 	newUser.unmessagable = false
-	context.insert(newUser)
 	return newUser
 }
 

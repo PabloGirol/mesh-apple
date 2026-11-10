@@ -5,8 +5,8 @@
 //  Created by Ben on 8/22/23.
 //
 
-@preconcurrency import SwiftData
 import CoreLocation
+import CoreData
 import Foundation
 import MapKit
 import MeshtasticProtobufs
@@ -112,15 +112,12 @@ extension MessageEntity {
 
 	@MainActor
 	var tapbacks: [MessageEntity] {
-		let context = PersistenceController.shared.context
+		let context = CoreDataStackImpl.shared.context
 		let msgId = self.messageId
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { msg in
-				msg.replyID == msgId && msg.isEmoji == true
-			},
-			sortBy: [SortDescriptor(\MessageEntity.messageTimestamp, order: .forward)]
-		)
-		return (try? context.fetch(descriptor)) ?? []
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "replyID == %@ AND isEmoji == YES", msgId as CVarArg)
+		request.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: true)]
+		return (try? context.fetch(request)) ?? []
 	}
 
 	func displayTimestamp(aboveMessage: MessageEntity?) -> Bool {
@@ -133,25 +130,24 @@ extension MessageEntity {
 	@MainActor
 	func relayDisplay() -> String? {
 		// This message can be read from a retained row after it (or the models it reaches through)
-		// were deleted underneath the list; reading a persisted property of a dead @Model fatally
-		// traps in SwiftData (SIGTRAP). Bail while `self` is no longer live before touching any of
+		// were deleted underneath the list; reading a persisted property of a dead managed object fatally
+		// traps in Core Data. Bail while `self` is no longer live before touching any of
 		// its stored properties. Mirrors the row guard in ChannelMessageRow/UserMessageRow (#2014).
-		guard modelContext != nil, !isDeleted else { return nil }
+		guard managedObjectContext != nil, !isDeleted else { return nil }
 
 		guard self.relayNode != 0 else { return nil }
 		let relaySuffix = Int64(self.relayNode & 0xFF)
 		let hexFallback = String(format: "Node 0x%02X", UInt32(self.relayNode & 0xFF))
 
 		let context = PersistenceController.shared.context
-		let descriptor = FetchDescriptor<UserEntity>()
-
-		guard let users = try? context.fetch(descriptor) else {
+		let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+		guard let users = try? context.fetch(request) else {
 			return hexFallback
 		}
 		// Only consider users still live in the context — a freshly-fetched set can still contain
 		// entries being torn down, and reading their name or `userNode` relationship would trap.
 		let matchingUsers = users.filter { user in
-			user.modelContext != nil && !user.isDeleted && (user.num & 0xFF) == relaySuffix
+			user.managedObjectContext != nil && !user.isDeleted && (user.num & 0xFF) == relaySuffix
 		}
 
 		// If exactly one match is found, return its name

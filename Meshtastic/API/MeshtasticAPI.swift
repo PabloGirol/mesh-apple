@@ -8,7 +8,7 @@
 import Foundation
 import OSLog
 import SwiftUI
-import SwiftData
+import CoreData
 import os
 
 // These structs are public becase tehy are used elsewhere in the app to represent
@@ -285,7 +285,9 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 			// Same short-circuit as the catalog: an unchanged list is not worth re-writing.
 			if let eTag, eTag == Self.lastETag(for: Self.firmwareListETagKey) {
 				let hasReleases = await MainActor.run {
-					((try? container.mainContext.fetchCount(FetchDescriptor<FirmwareReleaseEntity>())) ?? 0) > 0
+					let context = container.mainContext
+					let request = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
+					return ((try? context.count(for: request)) ?? 0) > 0
 				}
 				if hasReleases {
 					Logger.services.debug("Firmware list unchanged (ETag match), skipping the upsert")
@@ -338,13 +340,9 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 			let alphaArray = Array(alphaVersions)
 			let stableRaw = ReleaseType.stable.rawValue
 			let alphaRaw = ReleaseType.alpha.rawValue
-			let deleteDescriptor = FetchDescriptor<FirmwareReleaseEntity>(
-				predicate: #Predicate {
-					($0.releaseType == stableRaw && !stableArray.contains($0.versionId))
-					|| ($0.releaseType == alphaRaw && !alphaArray.contains($0.versionId))
-				}
-			)
-			if let objectsToDelete = try? context.fetch(deleteDescriptor) {
+			let deleteRequest = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
+			deleteRequest.predicate = NSPredicate(format: "(releaseType == %@ AND NOT (versionId IN %@)) OR (releaseType == %@ AND NOT (versionId IN %@))", stableRaw, stableArray, alphaRaw, alphaArray)
+			if let objectsToDelete = try? context.fetch(deleteRequest) {
 				for object in objectsToDelete {
 					Logger.services.info("Deleting orphaned firmware release: \(object.versionId, privacy: .public)")
 					context.delete(object)
@@ -378,7 +376,8 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 		if let eTag, eTag == Self.lastETag(for: Self.deviceCatalogETagKey) {
 			let hasRows = await MainActor.run {
 				let context = container.mainContext
-				return ((try? context.fetchCount(FetchDescriptor<DeviceHardwareEntity>())) ?? 0) > 0
+				let request = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
+				return ((try? context.count(for: request)) ?? 0) > 0
 			}
 			if hasRows {
 				Logger.services.debug("Device catalog unchanged (ETag match), skipping the upsert")
@@ -398,9 +397,8 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 			// 1. Update Devices and Tags
 			for device in decodedDevices {
 				let target = device.platformioTarget
-				var descriptor = FetchDescriptor<DeviceHardwareEntity>(
-					predicate: #Predicate { $0.platformioTarget == target }
-				)
+				var descriptor = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
+				descriptor.predicate = NSPredicate(format: "platformioTarget == %@", target)
 				descriptor.fetchLimit = 1
 
 				let existing = try? context.fetch(descriptor).first
@@ -493,9 +491,8 @@ deviceEntity.architecture = device.architecture
 
 				let redirectUrl = "https://msh.to/\(code)"
 
-				var descriptor = FetchDescriptor<DeviceLinkEntity>(
-					predicate: #Predicate { $0.shortCode == code }
-				)
+				var descriptor = NSFetchRequest<DeviceLinkEntity>(entityName: "DeviceLinkEntity")
+				descriptor.predicate = NSPredicate(format: "shortCode == %@", code)
 				descriptor.fetchLimit = 1
 
 				if let existing = try? context.fetch(descriptor).first {
@@ -520,8 +517,8 @@ deviceEntity.architecture = device.architecture
 			}
 
 			// Delete orphaned links no longer present in the catalog
-			let allLinksDescriptor = FetchDescriptor<DeviceLinkEntity>()
-			if let allLinks = try? context.fetch(allLinksDescriptor) {
+			let allLinksRequest = NSFetchRequest<DeviceLinkEntity>(entityName: "DeviceLinkEntity")
+			if let allLinks = try? context.fetch(allLinksRequest) {
 				for link in allLinks where !importedShortCodes.contains(link.shortCode) {
 					context.delete(link)
 				}
@@ -561,17 +558,14 @@ deviceEntity.architecture = device.architecture
 	/// Store the current nightly and drop yesterday's row: only one nightly exists at a
 	/// time, because the host overwrites it with each build.
 	@MainActor
-	private func applyNightlyRelease(_ nightlyRelease: FirmwareRelease, context: ModelContext) {
+	private func applyNightlyRelease(_ nightlyRelease: FirmwareRelease, context: NSManagedObjectContext) {
 		processFirmware(release: nightlyRelease, releaseType: .nightly, context: context)
 
 		let nightlyRaw = ReleaseType.nightly.rawValue
 		let currentNightly = [nightlyRelease.id]
-		let staleNightlyDescriptor = FetchDescriptor<FirmwareReleaseEntity>(
-			predicate: #Predicate {
-				$0.releaseType == nightlyRaw && !currentNightly.contains($0.versionId)
-			}
-		)
-		if let staleNightlies = try? context.fetch(staleNightlyDescriptor) {
+		let staleNightlyRequest = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
+		staleNightlyRequest.predicate = NSPredicate(format: "releaseType == %@ AND NOT (versionId IN %@)", nightlyRaw, currentNightly)
+		if let staleNightlies = try? context.fetch(staleNightlyRequest) {
 			for staleNightly in staleNightlies {
 				context.delete(staleNightly)
 			}
@@ -610,11 +604,10 @@ deviceEntity.architecture = device.architecture
 		}
 	}
 
-	private func processFirmware(release: FirmwareRelease, releaseType: ReleaseType, context: ModelContext) {
+	private func processFirmware(release: FirmwareRelease, releaseType: ReleaseType, context: NSManagedObjectContext) {
 		let releaseId = release.id
-		var descriptor = FetchDescriptor<FirmwareReleaseEntity>(
-			predicate: #Predicate { $0.versionId == releaseId }
-		)
+		var descriptor = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
+		descriptor.predicate = NSPredicate(format: "versionId == %@", releaseId)
 		descriptor.fetchLimit = 1
 
 		let existingRelease: FirmwareReleaseEntity
@@ -661,11 +654,10 @@ deviceEntity.architecture = device.architecture
 		let isUpToDate: Bool = await MainActor.run {
 			let context = container.mainContext
 			for platform in platforms {
-				var deviceDescriptor = FetchDescriptor<DeviceHardwareEntity>(
-					predicate: #Predicate { $0.platformioTarget == platform }
-				)
-				deviceDescriptor.fetchLimit = 1
-				guard let deviceEntity = try? context.fetch(deviceDescriptor).first else { continue }
+				let deviceRequest = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
+				deviceRequest.predicate = NSPredicate(format: "platformioTarget == %@", platform)
+				deviceRequest.fetchLimit = 1
+				guard let deviceEntity = try? context.fetch(deviceRequest).first else { continue }
 				guard let existing = deviceEntity.images.first(where: { $0.fileName == imageName }),
 					  let data = existing.svgData, !data.isEmpty else { return false }
 				if let remoteETag = networkResult?.eTag {
@@ -717,11 +709,10 @@ deviceEntity.architecture = device.architecture
 			// its own entity — appending one shared entity to several devices would move
 			// it, leaving only the last platform linked.
 			for platform in platforms {
-				var deviceDescriptor = FetchDescriptor<DeviceHardwareEntity>(
-					predicate: #Predicate { $0.platformioTarget == platform }
-				)
-				deviceDescriptor.fetchLimit = 1
-				guard let deviceEntity = try? context.fetch(deviceDescriptor).first else { continue }
+				let deviceRequest = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
+				deviceRequest.predicate = NSPredicate(format: "platformioTarget == %@", platform)
+				deviceRequest.fetchLimit = 1
+				guard let deviceEntity = try? context.fetch(deviceRequest).first else { continue }
 
 				let existing = deviceEntity.images.first(where: { $0.fileName == imageName })
 				if networkResult == nil, existing?.svgData?.isEmpty == false { continue }
@@ -742,35 +733,33 @@ deviceEntity.architecture = device.architecture
 
 	// MARK: - Helpers
 	
-	private static func findOrCreateTag(tag: String, context: ModelContext) throws -> DeviceHardwareTagEntity {
-		var descriptor = FetchDescriptor<DeviceHardwareTagEntity>(
-			predicate: #Predicate { $0.tag == tag }
-		)
+	private static func findOrCreateTag(tag: String, context: NSManagedObjectContext) throws -> DeviceHardwareTagEntity {
+		var descriptor = NSFetchRequest<DeviceHardwareTagEntity>(entityName: "DeviceHardwareTagEntity")
+		descriptor.predicate = NSPredicate(format: "tag == %@", tag)
 		descriptor.fetchLimit = 1
-		
+
 		if let existingTag = try context.fetch(descriptor).first {
 			return existingTag
 		}
-		
+
 		let newTag = DeviceHardwareTagEntity()
 		newTag.tag = tag
 		context.insert(newTag)
 		return newTag
 	}
-	
-	private static func deleteOrphanedTags(context: ModelContext) {
-		let descriptor = FetchDescriptor<DeviceHardwareTagEntity>()
+
+	private static func deleteOrphanedTags(context: NSManagedObjectContext) {
+		let descriptor = NSFetchRequest<DeviceHardwareTagEntity>(entityName: "DeviceHardwareTagEntity")
 		if let tags = try? context.fetch(descriptor) {
 			for tag in tags where tag.devices.isEmpty {
 				context.delete(tag)
 			}
 		}
 	}
-	
-	private static func deleteOrphanedImages(context: ModelContext) {
-		let descriptor = FetchDescriptor<DeviceHardwareImageEntity>(
-			predicate: #Predicate { $0.device == nil }
-		)
+
+	private static func deleteOrphanedImages(context: NSManagedObjectContext) {
+		let descriptor = NSFetchRequest<DeviceHardwareImageEntity>(entityName: "DeviceHardwareImageEntity")
+		descriptor.predicate = NSPredicate(format: "device == nil")
 		if let images = try? context.fetch(descriptor) {
 			images.forEach { context.delete($0) }
 		}
@@ -796,7 +785,8 @@ extension MeshtasticAPI {
 			let context = container.mainContext
 			for device in decodedDevices {
 				let target = device.platformioTarget
-				var descriptor = FetchDescriptor<DeviceHardwareEntity>(predicate: #Predicate { $0.platformioTarget == target })
+				let descriptor = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
+				descriptor.predicate = NSPredicate(format: "platformioTarget == %@", target)
 				descriptor.fetchLimit = 1
 				let existing = try? context.fetch(descriptor).first
 				let deviceEntity: DeviceHardwareEntity
@@ -1205,9 +1195,8 @@ extension MeshtasticAPI {
 
 			for payload in editions {
 				let key = payload.edition
-				var descriptor = FetchDescriptor<EventFirmwareEntity>(
-					predicate: #Predicate { $0.edition == key }
-				)
+				let descriptor = NSFetchRequest<EventFirmwareEntity>(entityName: "EventFirmwareEntity")
+				descriptor.predicate = NSPredicate(format: "edition == %@", key)
 				descriptor.fetchLimit = 1
 
 				let entity: EventFirmwareEntity

@@ -16,7 +16,7 @@ import CarPlay
 import Combine
 import Intents
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 import UserNotifications
 
 class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPInterfaceControllerDelegate {
@@ -41,7 +41,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 	// message, so a newer unread message re-donates and stays readable by Siri.
 	private var donatedReadKeys = Set<String>()
 
-	private lazy var context: ModelContext = PersistenceController.shared.context
+	private lazy var context: NSManagedObjectContext = PersistenceController.shared.context
 
 	/// Returns a human-readable "last heard" string.
 	/// `now` is passed in so all rows in a single render share one `Date()` allocation.
@@ -205,12 +205,11 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 	private func fetchFavoriteContactItems() -> [CPMessageListItem] {
 		do {
 			let activeNum = Int64(AccessoryManager.shared.activeDeviceNum ?? 0)
-			var descriptor = FetchDescriptor<NodeInfoEntity>(
-				predicate: #Predicate<NodeInfoEntity> { $0.favorite == true && $0.num != activeNum },
-				sortBy: [SortDescriptor(\.lastHeard, order: .reverse)]
-			)
-			descriptor.fetchLimit = 50
-			let nodes = try context.fetch(descriptor)
+			let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+			request.predicate = NSPredicate(format: "favorite == YES AND num != %lld", activeNum)
+			request.sortDescriptors = [NSSortDescriptor(key: "lastHeard", ascending: false)]
+			request.fetchLimit = 50
+			let nodes = try context.fetch(request)
 			let nodeNums = nodes.compactMap { $0.user != nil ? $0.num : nil as Int64? }
 			let unreadCounts = fetchUnreadCountsForDMs(nodeNums: nodeNums)
 			let now = Date()
@@ -326,12 +325,11 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 
 	private func fetchDirectMessageItems() -> [CPMessageListItem] {
 		do {
-			var descriptor = FetchDescriptor<UserEntity>(
-				predicate: #Predicate<UserEntity> { $0.userNode != nil },
-				sortBy: [SortDescriptor(\UserEntity.lastMessage, order: .reverse)]
-			)
-			descriptor.fetchLimit = 200
-			let users = try context.fetch(descriptor)
+			let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+			request.predicate = NSPredicate(format: "userNode != nil")
+			request.sortDescriptors = [NSSortDescriptor(key: "lastMessage", ascending: false)]
+			request.fetchLimit = 200
+			let users = try context.fetch(request)
 			let connectedNum = AccessoryManager.shared.activeDeviceNum ?? 0
 			let filteredUsers = users
 				.filter { user in
@@ -419,11 +417,8 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 		guard !nodeNums.isEmpty else { return [:] }
 		let nodeNumSet = Set(nodeNums)
 
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate { message in
-				message.read == false
-			}
-		)
+		let descriptor = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		descriptor.predicate = NSPredicate(format: "read == NO")
 		let results = (try? context.fetch(descriptor)) ?? []
 		var counts = [Int64: Int]()
 		// toUser != nil: only direct messages count toward a DM row. Without the
@@ -445,11 +440,8 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 		guard !channelIndices.isEmpty else { return [:] }
 		let channelSet = Set(channelIndices)
 
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate { message in
-				message.read == false
-			}
-		)
+		let descriptor = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		descriptor.predicate = NSPredicate(format: "read == NO")
 		let results = (try? context.fetch(descriptor)) ?? []
 		var counts = [Int32: Int]()
 		for message in results where message.toUser == nil && channelSet.contains(message.channel) {
@@ -531,18 +523,12 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 	/// Posts a Communication Notification for the most recent unread channel message.
 	/// This is required for CarPlay to offer read-back instead of compose when tapped.
 	private func donateLatestIncomingChannelMessage(channelIndex: Int32, conversationId: String, channelName: String) {
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate { message in
-				message.read == false &&
-				message.admin == false &&
-				message.isEmoji == false &&
-				message.channel == channelIndex
-			},
-			sortBy: [SortDescriptor(\MessageEntity.messageTimestamp, order: .reverse)]
-		)
+		var descriptor = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		descriptor.predicate = NSPredicate(format: "read == NO AND admin == NO AND isEmoji == NO AND channel == %d", channelIndex)
 		// toUser == nil intentionally absent from predicate (crashes SwiftData on iOS 26).
 		// Fetch a small batch and pick the first channel message in Swift.
 		descriptor.fetchLimit = 5
+		descriptor.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: false)]
 
 		guard let message = (try? context.fetch(descriptor))?.first(where: { $0.toUser == nil }),
 			  let fromUser = message.fromUser else { return }
@@ -560,19 +546,13 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 
 	/// Posts a Communication Notification for the most recent unread DM.
 	private func donateLatestIncomingDM(nodeNum: Int64, conversationId: String, name: String) {
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate { message in
-				message.read == false &&
-				message.admin == false &&
-				message.isEmoji == false &&
-				message.fromUser?.num == nodeNum
-			},
-			sortBy: [SortDescriptor(\MessageEntity.messageTimestamp, order: .reverse)]
-		)
+		var descriptor = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		descriptor.predicate = NSPredicate(format: "read == NO AND admin == NO AND isEmoji == NO AND fromUser.num == %lld", nodeNum)
 		// Small batch + toUser filter in Swift (see channel variant): this donation
 		// must read back a DIRECT message — the sender's unread channel messages
 		// don't belong to this conversation.
 		descriptor.fetchLimit = 5
+		descriptor.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: false)]
 
 		guard let message = (try? context.fetch(descriptor))?.first(where: { $0.toUser != nil }),
 			  let fromUser = message.fromUser else { return }
@@ -660,13 +640,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 	private func donateUnreadMessages() {
 		Task { @MainActor in
 			let context = PersistenceController.shared.context
-			var descriptor = FetchDescriptor<MessageEntity>(
-				predicate: #Predicate<MessageEntity> { message in
-					message.read == false && message.admin == false && message.isEmoji == false
-				},
-				sortBy: [SortDescriptor(\.messageTimestamp, order: .reverse)]
-			)
+			let descriptor = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+			descriptor.predicate = NSPredicate(format: "read == NO AND admin == NO AND isEmoji == NO")
 			descriptor.fetchLimit = 50
+			descriptor.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: false)]
 
 			guard let messages = try? context.fetch(descriptor) else { return }
 			for message in messages {

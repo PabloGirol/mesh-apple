@@ -1,9 +1,11 @@
-import SwiftData
+import Foundation
+import CoreData
 import MeshtasticProtobufs
 
 extension SerialConfigEntity {
-	convenience init(config: ModuleConfig.SerialConfig) {
-		self.init()
+	convenience init(config: ModuleConfig.SerialConfig, context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "SerialConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
 		self.enabled = config.enabled
 		self.echo = config.echo
 		self.rxd = Int32(config.rxd)

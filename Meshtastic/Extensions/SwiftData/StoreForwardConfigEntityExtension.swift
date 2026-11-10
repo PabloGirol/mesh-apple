@@ -1,9 +1,11 @@
-import SwiftData
+import Foundation
+import CoreData
 import MeshtasticProtobufs
 
 extension StoreForwardConfigEntity {
-	convenience init(config: ModuleConfig.StoreForwardConfig) {
-		self.init()
+	convenience init(config: ModuleConfig.StoreForwardConfig, context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "StoreForwardConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
 		self.enabled = config.enabled
 		self.heartbeat = config.heartbeat
 		self.records = Int32(config.records)

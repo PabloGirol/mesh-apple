@@ -182,15 +182,15 @@ struct OfflineDecodeStats: CustomStringConvertible {
 	let stitchedRoads: Int
 	let rawVertices: Int
 	let stitchedVertices: Int
-	let decode: Duration
-	let stitch: Duration
+	let decode: TimeInterval
+	let stitch: TimeInterval
 
 	/// Overlay count is the dominant SwiftUI-Map cost; this is what we're driving down.
 	var overlayCount: Int { polygons + stitchedRoads }
 
 	var description: String {
 		let segReduction = rawSegments > 0 ? Int(100.0 * (1 - Double(stitchedRoads) / Double(rawSegments))) : 0
-		return "z\(zoom) \(tiles) tiles | \(polygons) fills + \(rawSegments) segs → \(stitchedRoads) roads (-\(segReduction)%) | overlays=\(overlayCount) | verts \(rawVertices)→\(stitchedVertices) | decode \(decode.formatted()) stitch \(stitch.formatted())"
+		return "z\(zoom) \(tiles) tiles | \(polygons) fills + \(rawSegments) segs → \(stitchedRoads) roads (-\(segReduction)%) | overlays=\(overlayCount) | verts \(rawVertices)→\(stitchedVertices) | decode \(decode)s stitch \(stitch)s"
 	}
 }
 
@@ -383,14 +383,13 @@ final class OfflineVectorTileProvider: ObservableObject {
 		minRoadMeters: Double = defaultMinRoadMeters,
 		shouldStop: () -> Bool = { false }
 	) -> BuildResult {
-		let clock = ContinuousClock()
 		var polys: [OfflineMapPolygon] = []
 		var rawSegmentsByRole: [OfflineFeatureRole: [OfflineMapPolyline]] = [:]
 		var rawSegmentCount = 0
 		var rawVertexCount = 0
 		var labels: [OfflineMapLabel] = []
 		var labelKeys: Set<String> = []
-		let decodeDuration = clock.measure {
+		let decodeStart = Date()
 			for tile in tiles {
 				if shouldStop() { break }
 				autoreleasepool {
@@ -416,7 +415,9 @@ final class OfflineVectorTileProvider: ObservableObject {
 		var counter = 0
 		var usedIDs: [String: Int] = [:]
 		var stitchedVertexCount = 0
-		let stitchDuration = clock.measure {
+		let decodeDuration = -decodeStart.timeIntervalSinceNow
+		let stitchStart = Date()
+		let stitchStart = Date()
 			for role in roadDrawOrder {
 				guard let allSegments = rawSegmentsByRole[role] else { continue }
 				// A bridge or tunnel is stitched apart from the road it carries on from.
@@ -459,6 +460,7 @@ final class OfflineVectorTileProvider: ObservableObject {
 				.sorted { ($0.element.sortRank, $0.offset) < ($1.element.sortRank, $1.offset) }
 				.map(\.element)
 		}
+		let stitchDuration = -stitchStart.timeIntervalSinceNow
 
 		let stats = OfflineDecodeStats(
 			tiles: tiles.count,
@@ -815,10 +817,19 @@ extension OfflineVectorTileProvider {
 
 	/// The name in the app's language when the basemap has it (`name:fr`, `name:zh-Hant`), else the
 	/// local name.
-	nonisolated static func localizedName(_ properties: [String: Sendable], language: Locale.Language = Locale.current.language) -> String? {
-		if let code = language.languageCode?.identifier {
-			if let script = language.script?.identifier, let name = properties["name:\(code)-\(script)"] as? String, !name.isEmpty { return name }
-			if let name = properties["name:\(code)"] as? String, !name.isEmpty { return name }
+	nonisolated static func localizedName(_ properties: [String: Sendable], language: Locale = Locale.current) -> String? {
+		if #available(iOS 16.0, *) {
+			if let code = language.language.languageCode?.identifier {
+				if let script = language.language.script?.identifier, let name = properties["name:\(code)-\(script)"] as? String, !name.isEmpty { return name }
+				if let name = properties["name:\(code)"] as? String, !name.isEmpty { return name }
+			}
+		} else {
+			// iOS 15 fallback
+			let localeId = language.identifier
+			if let code = Locale.components(fromIdentifier: localeId)[NSLocale.Key.languageCode.rawValue] as? String {
+				if let script = Locale.components(fromIdentifier: localeId)[NSLocale.Key.scriptCode.rawValue] as? String, let name = properties["name:\(code)-\(script)"] as? String, !name.isEmpty { return name }
+				if let name = properties["name:\(code)"] as? String, !name.isEmpty { return name }
+			}
 		}
 		guard let name = properties["name"] as? String, !name.isEmpty else { return nil }
 		return name

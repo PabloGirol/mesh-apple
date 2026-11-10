@@ -42,6 +42,12 @@ extension Bundle {
 	/// the chrome the user actually sees. Falls back to "en".
 	public var documentationLanguageCode: String {
 		let preferred = preferredLocalizations.first ?? "en"
-		return Locale(identifier: preferred).language.languageCode?.identifier ?? "en"
+		if #available(iOS 16.0, *) {
+			return Locale(identifier: preferred).language.languageCode?.identifier ?? "en"
+		} else {
+			// iOS 15 fallback: use locale components
+			let components = Locale.components(fromIdentifier: preferred)
+			return components[NSLocale.Key.languageCode.rawValue] as? String ?? "en"
+		}
 	}
 }

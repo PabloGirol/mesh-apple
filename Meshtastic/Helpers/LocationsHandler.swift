@@ -11,10 +11,11 @@ import OSLog
 
 // The @MainActor annotation ensures that all state changes and UI updates happen on the main thread,
 // preventing potential race conditions and crashes related to UI updates from background threads.
-@MainActor class LocationsHandler: NSObject, ObservableObject, CLLocationManagerDelegate {
+@MainActor class LocationsHandler: NSObject, ObservableObject {
 
 	static let shared = LocationsHandler()  // Create a single, shared instance of the object.
 	public var manager = CLLocationManager()
+	@available(iOS 17.0, *)
 	private var background: CLBackgroundActivitySession?
 	private var locationDeliveryStarted = false
 	var enableSmartPosition: Bool = UserDefaults.enableSmartPosition
@@ -41,7 +42,9 @@ import OSLog
 	var backgroundActivity: Bool = UserDefaults.standard.bool(forKey: "BGActivitySessionStarted") {
 		didSet {
 			// Invalidate or create the background activity session based on the new value.
-			backgroundActivity ? self.background = CLBackgroundActivitySession() : self.background?.invalidate()
+			if #available(iOS 17.0, *) {
+				backgroundActivity ? self.background = CLBackgroundActivitySession() : self.background?.invalidate()
+			}
 			UserDefaults.standard.set(backgroundActivity, forKey: "BGActivitySessionStarted")
 		}
 	}
@@ -104,7 +107,11 @@ import OSLog
 			// we'll resume the continuation with .notDetermined to prevent a leak.
 			self.permissionTimeoutTask = Task { @MainActor in // Ensure this task runs on the MainActor
 				do {
-					try await Task.sleep(for: .seconds(5)) // Wait for 5 seconds
+					if #available(iOS 16.0, *) {
+						try await Task.sleep(for: .seconds(5))
+					} else {
+						try await Task.sleep(nanoseconds: 5_000_000_000)
+					}
 					// Bail out if this timeout belongs to a request that already completed;
 					// the stored continuation may belong to a newer request.
 					guard requestID == self.permissionRequestID,

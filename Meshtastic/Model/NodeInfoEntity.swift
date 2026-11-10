@@ -240,13 +240,12 @@ extension NodeInfoEntity {
 	/// the two `statusMessageDisplay` draws on. It can't tell a whitespace-only status from a
 	/// real one, so read `statusMessageDisplay` on each node fetched. `num` is left out, for the
 	/// connected radio, whose row is read separately.
-	static func statusCandidates(excluding num: Int64) -> FetchDescriptor<NodeInfoEntity> {
-		FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate {
-				($0.nodeStatus != nil || ($0.statusMessageConfig?.nodeStatus != nil && $0.statusMessageConfig?.nodeStatus != "")) && $0.num != num
-			},
-			sortBy: [SortDescriptor(\.lastHeard, order: .reverse)]
-		)
+	@MainActor
+	static func statusCandidates(excluding num: Int64) -> NSFetchRequest<NodeInfoEntity> {
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "(nodeStatus != nil OR (statusMessageConfig != nil AND statusMessageConfig.nodeStatus != '')) AND num != %@", NSNumber(value: num))
+		request.sortDescriptors = [NSSortDescriptor(key: "lastHeard", ascending: false)]
+		return request
 	}
 
 	/// Trims a candidate status and returns `nil` unless it contains at least one *visible*

@@ -5,7 +5,7 @@
 
 import Foundation
 import SwiftUI
-import SwiftData
+import CoreData
 import MeshtasticProtobufs
 import CoreBluetooth
 import OSLog
@@ -1385,9 +1385,8 @@ extension AccessoryManager {
 	/// MyInfo lands, and for a radio whose firmware reports none.
 	var connectedDeviceId: Data? {
 		guard let connectedNodeNum = activeDeviceNum else { return nil }
-		let descriptor = FetchDescriptor<MyInfoEntity>(
-			predicate: #Predicate { $0.myNodeNum == connectedNodeNum }
-		)
+		let descriptor = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		descriptor.predicate = NSPredicate(format: "myNodeNum == %lld", connectedNodeNum)
 		return try? context.fetch(descriptor).first?.deviceId
 	}
 
@@ -1617,13 +1616,8 @@ extension AccessoryManager {
 		// De-dupe: skip if we already stored a session-less beacon from this node + channel within the
 		// last 5 minutes. (The session-less check is done in memory to avoid a relationship predicate.)
 		let cutoff = Date().addingTimeInterval(-300)
-		let descriptor = FetchDescriptor<DiscoveredBeaconEntity>(
-			predicate: #Predicate { entity in
-				entity.nodeNum == fromNodeNum
-				&& entity.offerChannelName == channelName
-				&& entity.timestamp > cutoff
-			}
-		)
+		let descriptor = NSFetchRequest<DiscoveredBeaconEntity>(entityName: "DiscoveredBeaconEntity")
+		descriptor.predicate = NSPredicate(format: "nodeNum == %lld AND offerChannelName == %@ AND timestamp > %@", fromNodeNum, channelName, cutoff as NSDate)
 		if let existing = try? context.fetch(descriptor),
 		   existing.contains(where: { $0.session == nil }) {
 			return

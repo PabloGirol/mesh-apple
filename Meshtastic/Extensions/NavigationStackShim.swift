@@ -173,7 +173,7 @@ struct CompatNavigationPath {
 /// Use `NavigationStack` instead of `NavigationStack` in your code.
 /// Add `import NavigationStackShim` or just use the type directly.
 @available(iOS 15.0, *)
-typealias NavigationStack = CompatNavigationStack
+typealias CompatNavigationStackAlias = CompatNavigationStack
 
 /// Use `NavigationStack` with path binding.
 @available(iOS 15.0, *)

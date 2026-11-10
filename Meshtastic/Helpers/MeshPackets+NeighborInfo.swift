@@ -8,7 +8,7 @@
 import Foundation
 import MeshtasticProtobufs
 import OSLog
-import SwiftData
+import CoreData
 
 extension MeshPackets {
 
@@ -45,9 +45,10 @@ extension MeshPackets {
 			return
 		}
 		do {
-			let existing = try modelContext.fetch(FetchDescriptor<NeighborLinkEntity>(
-				predicate: #Predicate { $0.reporterNum == reporter }
-			))
+			let context = modelContext
+			let existingRequest = NSFetchRequest<NeighborLinkEntity>(entityName: "NeighborLinkEntity")
+			existingRequest.predicate = NSPredicate(format: "reporterNum == %lld", reporter)
+			let existing = try context.fetch(existingRequest)
 			// A report the radio replays after the node database can be older than what we have.
 			if existing.contains(where: { $0.receivedAt > receivedAt }) {
 				Logger.mesh.info("[Neighbor Info] Skipped an older report from \(packet.from.toHex(), privacy: .public)")
@@ -60,7 +61,7 @@ extension MeshPackets {
 					row.reporterIntervalSecs = interval
 					row.viaMqtt = packet.viaMqtt
 				} else {
-					modelContext.delete(row)
+					context.delete(row)
 				}
 			}
 			for (neighbor, snr) in listed {
@@ -72,7 +73,7 @@ extension MeshPackets {
 				row.receivedAt = receivedAt
 				row.reporterIntervalSecs = interval
 				row.viaMqtt = packet.viaMqtt
-				modelContext.insert(row)
+				context.insert(row)
 			}
 			savePendingChanges()
 		} catch {
@@ -105,9 +106,10 @@ extension MeshPackets {
 	@discardableResult
 	func pruneNeighborLinks(now: Date = Date(), cap: Int = MeshPackets.maxNeighborLinks) -> Int {
 		let rows: [NeighborLinkEntity]
+		let context = modelContext
 		do {
-			rows = try modelContext.fetch(FetchDescriptor<NeighborLinkEntity>())
-				.sorted { $0.receivedAt > $1.receivedAt }
+			let request = NSFetchRequest<NeighborLinkEntity>(entityName: "NeighborLinkEntity")
+			rows = try context.fetch(request).sorted { $0.receivedAt > $1.receivedAt }
 		} catch {
 			Logger.data.error("💥 [NeighborLinkEntity] Failed to prune neighbor links: \(error.localizedDescription, privacy: .public)")
 			return 0
@@ -116,7 +118,7 @@ extension MeshPackets {
 		var removed = 0
 		for row in rows {
 			if now.timeIntervalSince(row.receivedAt) > Self.neighborLinkMaxAge(interval: row.reporterIntervalSecs) || kept >= cap {
-				modelContext.delete(row)
+				context.delete(row)
 				removed += 1
 			} else {
 				kept += 1

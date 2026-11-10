@@ -8,7 +8,7 @@
 import Foundation
 import MeshtasticProtobufs
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 
 extension LocalStatsRequestTransport {
 	static func configure(
@@ -392,7 +392,8 @@ extension AccessoryManager {
 			return
 		}
 
-			let messageUsers = FetchDescriptor<UserEntity>(predicate: #Predicate { $0.num == fromUserNum || $0.num == toUserNum })
+			let messageUsers = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+			messageUsers.predicate = NSPredicate(format: "num == %lld OR num == %lld", fromUserNum, toUserNum)
 
 			do {
 				let fetchedUsers = try context.fetch(messageUsers)
@@ -744,7 +745,8 @@ extension AccessoryManager {
 		let targetChannelIndexes: [Int32]
 
 		if addChannels {
-			let fetchMyInfoRequest = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == deviceNum })
+			let fetchMyInfoRequest = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+			fetchMyInfoRequest.predicate = NSPredicate(format: "myNodeNum == %lld", deviceNum)
 
 			let fetchedMyInfo = try context.fetch(fetchMyInfoRequest)
 			guard fetchedMyInfo.count == 1, let fetched = fetchedMyInfo.first else {
@@ -910,7 +912,8 @@ extension AccessoryManager {
 	/// Leaves one row per channel index, keeping the same row `canonicalValidUniqueChannels`
 	/// would pick so nothing visible changes.
 	private func removeDuplicateChannelRows(for deviceNum: Int64) {
-		let descriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == deviceNum })
+		let descriptor = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		descriptor.predicate = NSPredicate(format: "myNodeNum == %lld", deviceNum)
 		guard let myInfo = try? context.fetch(descriptor).first else { return }
 		let keep = Set(canonicalValidUniqueChannels(from: myInfo.channels).map { ObjectIdentifier($0) })
 		var removed = false
@@ -928,7 +931,8 @@ extension AccessoryManager {
 
 	func applyLocalChannelMutation(_ channel: Channel, fromNum: Int64) throws {
 		guard channel.isInitialized && (channel.hasSettings || channel.role == .disabled) else { return }
-		let descriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == fromNum })
+		let descriptor = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		descriptor.predicate = NSPredicate(format: "myNodeNum == %lld", fromNum)
 		let fetchedMyInfo = try context.fetch(descriptor)
 		guard fetchedMyInfo.count == 1, let myInfo = fetchedMyInfo.first else {
 			if channel.role.rawValue > 0 {
@@ -973,7 +977,8 @@ extension AccessoryManager {
 	}
 
 	private func currentLoRaConfig(for deviceNum: Int64) -> Config.LoRaConfig? {
-		let request = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == deviceNum })
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", deviceNum)
 		do {
 			return try context.fetch(request).first?.loRaConfig?.toProto()
 		} catch {
@@ -1441,7 +1446,8 @@ extension AccessoryManager {
 			context.insert(traceRoute)
 			traceRoute.sent = true
 			// TODO: Not sure what's going on here. We always have a fromNodeNum
-			let nodes = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == destNum || $0.num == fromNodeNum })
+			let nodes = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+			nodes.predicate = NSPredicate(format: "num == %lld OR num == %lld", destNum, fromNodeNum)
 			do {
 				let fetchedNodes = try context.fetch(nodes)
 				let receivingNode = fetchedNodes.first(where: { $0.num == destNum })

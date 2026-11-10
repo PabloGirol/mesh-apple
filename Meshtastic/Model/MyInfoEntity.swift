@@ -2,27 +2,34 @@
 //  MyInfoEntity.swift
 //  Meshtastic
 //
-//  SwiftData model for connected device info.
+//  Core Data model for connected device info.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class MyInfoEntity {
-	var bleName: String?
-	var deviceId: Data?
-	var minAppVersion: Int32 = 0
-	var myNodeNum: Int64 = 0
-	var peripheralId: String?
-	var pioEnv: String?
-	var rebootCount: Int32 = 0
-	var registered: Bool = false
+@objc(MyInfoEntity)
+public class MyInfoEntity: NSManagedObject {
 
-	@Relationship(deleteRule: .cascade, inverse: \ChannelEntity.myInfoChannel)
-	var channels: [ChannelEntity] = []
+	@NSManaged public var bleName: String?
+	@NSManaged public var deviceId: Data?
+	@NSManaged public var minAppVersion: Int32
+	@NSManaged public var myNodeNum: Int64
+	@NSManaged public var peripheralId: String?
+	@NSManaged public var pioEnv: String?
+	@NSManaged public var rebootCount: Int32
+	@NSManaged public var registered: Bool
 
-	var myInfoNode: NodeInfoEntity?
+	@NSManaged public var channels: [ChannelEntity]
+	@NSManaged public var myInfoNode: NodeInfoEntity?
 
-	init() {}
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "MyInfoEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.minAppVersion = 0
+		self.myNodeNum = 0
+		self.rebootCount = 0
+		self.registered = false
+		self.channels = []
+	}
 }

@@ -6,16 +6,15 @@
 //
 #if os(visionOS)
 import CoreLocation
+import CoreData
 import Foundation
 import OSLog
 import RealityKit
-import SwiftData
 
 /// What the fire lookout can look out on: the summits in the terrain downloaded for the spatial
 /// map, the terrain around the one chosen, and the nodes placed by bearing and distance from it.
 @MainActor
-@Observable
-final class LookoutScene {
+final class LookoutScene: ObservableObject {
 	/// Why there are no sites yet, for the panel.
 	enum Status: Equatable {
 		case idle
@@ -111,11 +110,10 @@ final class LookoutScene {
 	}
 
 	/// The nodes with a position nearest `site`, placed as seen from its cab.
-	func labels(for site: LookoutSite, context: ModelContext, radioNum: Int64?) async -> [LookoutLabel] {
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate { $0.lastHeard != nil },
-			sortBy: [SortDescriptor(\.lastHeard, order: .reverse)]
-		)
+	func labels(for site: LookoutSite, context: NSManagedObjectContext, radioNum: Int64?) async -> [LookoutLabel] {
+		let descriptor = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		descriptor.predicate = NSPredicate(format: "lastHeard != nil")
+		descriptor.sortDescriptors = [NSSortDescriptor(key: "lastHeard", ascending: false)]
 		descriptor.fetchLimit = 400
 		guard let nodes = try? context.fetch(descriptor) else { return [] }
 		let positions = NodeInfoEntity.latestPositions(for: nodes, context: context)

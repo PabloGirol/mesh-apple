@@ -6,7 +6,7 @@
 //
 
 import Foundation
-@preconcurrency import SwiftData
+import CoreData
 @preconcurrency import CoreBluetooth
 import SwiftUI
 import OSLog
@@ -539,9 +539,8 @@ actor BLETransport: Transport {
 			let nodeNumVal = Int64(nodeNum)
 			let names: (String?, String?) = await MainActor.run {
 				do {
-					let descriptor = FetchDescriptor<NodeInfoEntity>(
-						predicate: #Predicate { $0.num == nodeNumVal }
-					)
+					let descriptor = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+					descriptor.predicate = NSPredicate(format: "num == %lld", nodeNumVal)
 					let context = PersistenceController.shared.context
 					let fetchedNodes = try context.fetch(descriptor)
 					if let first = fetchedNodes.first {

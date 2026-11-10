@@ -243,7 +243,7 @@ struct NodeListItem: View {
 		return desc
 	}
 
-	@Bindable var node: NodeInfoEntity
+	@ObservedObject var node: NodeInfoEntity
 	/// The memoized value-type snapshot the row renders from. Captured while the node is live and
 	/// never re-derived from the live model during a plain re-evaluation, so a retained row can't
 	/// fault on a zombie @Model. Refreshed (guarded) when the node's `lastHeard` changes.

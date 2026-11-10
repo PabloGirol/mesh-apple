@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 11/28/21.
 //
 
-import SwiftData
+import CoreData
 import OSLog
 import Foundation
 import UIKit
@@ -136,14 +136,9 @@ class PersistenceController {
 			recreateContainer()
 			return
 		}
-		let schema = Schema(versionedSchema: MeshtasticSchema.current)
-		let config = ModelConfiguration(storeName, schema: schema, isStoredInMemoryOnly: false, allowsSave: true)
-		// Park, don't unlink — a leaked previous container may still hold the store open
-		// (see restoreStoreFromBackup); unlinking it live invalidates its fds and the broken
-		// container traps on the next save notification in the process.
-		Self.parkStoreFiles(at: config.url)
-		recreateContainer()
-		Logger.data.warning("💾 Store files destroyed and container recreated (escalated database reset)")
+		// For Core Data, we use CoreDataStackImpl
+		CoreDataStackImpl.shared.clearDatabase()
+		Logger.data.warning("💾 Core Data store destroyed and container recreated (escalated database reset)")
 	}
 
 	/// File-swap restore: replace the on-disk store with a copy of a backup and reopen the

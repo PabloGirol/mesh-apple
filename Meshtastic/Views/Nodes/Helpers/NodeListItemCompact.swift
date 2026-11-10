@@ -123,7 +123,7 @@ struct NodeListItemCompact: View {
 		return desc
 	}
 
-		@Bindable var node: NodeInfoEntity
+		@ObservedObject var node: NodeInfoEntity
 		// Memoized value-type snapshot; rendered from instead of re-reading the live @Model on every
 		// body re-evaluation, so a retained row can't fault on a deleted/zombie node. See NodeListItem.
 		@State private var rowSummary: NodeListRowSummary?

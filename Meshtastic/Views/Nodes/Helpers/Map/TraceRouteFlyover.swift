@@ -13,7 +13,7 @@ import QuartzCore
 import SwiftUI
 
 @MainActor
-final class TraceRouteFlyover: NSObject, ObservableObject {
+final class TraceRouteFlyover: ObservableObject {
 	/// True while a flyover is animating; drives the play/stop affordance in the map UI.
 	@Published private(set) var isFlying = false
 
@@ -44,6 +44,7 @@ final class TraceRouteFlyover: NSObject, ObservableObject {
 	private var holdUntil: CFTimeInterval = 0
 	private var savedCamera: MKMapCamera?
 	/// The map's basemap config from before the flyover, restored when it ends.
+	@available(iOS 16.0, *)
 	private var savedConfiguration: MKMapConfiguration?
 
 	/// Smoothed camera heading/altitude carried frame-to-frame (and across legs) so the camera eases
@@ -93,8 +94,10 @@ final class TraceRouteFlyover: NSObject, ObservableObject {
 		savedCamera = mapView.camera.copy() as? MKMapCamera
 
 		// Always fly over a 3D satellite basemap (realistic elevation), whatever the current layer is.
-		savedConfiguration = mapView.preferredConfiguration
-		mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
+		if #available(iOS 16.0, *) {
+			savedConfiguration = mapView.preferredConfiguration
+			mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
+		}
 
 		isFlying = true
 		let link = CADisplayLink(target: self, selector: #selector(step(_:)))

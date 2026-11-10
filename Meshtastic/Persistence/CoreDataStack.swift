@@ -12,13 +12,13 @@ import Foundation
 import UIKit
 
 @MainActor
-final class CoreDataStack {
+final class CoreDataStackImpl {
 
     // MARK: - Singleton
 
-    static let shared = CoreDataStack()
-    static var preview: CoreDataStack = {
-        let stack = CoreDataStack(inMemory: true)
+    static let shared = CoreDataStackImpl()
+    static var preview: CoreDataStackImpl = {
+        let stack = CoreDataStackImpl(inMemory: true)
         // Add sample data for previews if needed
         return stack
     }()
@@ -41,6 +41,7 @@ final class CoreDataStack {
     // MARK: - Initialization
 
     private init(inMemory: Bool = false, storeName: String = "Meshtastic") {
+        // CoreDataStackImpl initializer
         self.storeName = storeName
         self.inMemory = inMemory
 

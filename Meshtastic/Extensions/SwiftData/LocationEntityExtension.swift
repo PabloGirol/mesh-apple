@@ -5,7 +5,7 @@
 //  Copyright (c) Garth Vander Houwen 11/21/23.
 //
 
-import SwiftData
+import Foundation
 import CoreLocation
 import MapKit
 import SwiftUI

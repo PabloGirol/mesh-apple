@@ -123,13 +123,13 @@ public struct PublishedOptional<Value: Equatable> {
 
 /// Protocol that mimics the `@Observable` macro's implicit conformance.
 /// Classes conforming to this can be used with SwiftUI's observation system.
-public protocol Observable: AnyObject {
+public protocol ObservableProtocol: AnyObject {
     associatedtype _ObservableSelf: ObservableObject
     var _observableObject: _ObservableSelf { get }
 }
 
 // Default implementation for ObservableObject subclasses
-extension Observable where Self: ObservableObject {
+extension ObservableProtocol where Self: ObservableObject {
     public var _observableObject: Self { self }
 }
 

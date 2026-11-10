@@ -1,7 +1,7 @@
 import Combine
 import MeshtasticProtobufs
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 import SwiftUI
 
 /// A contact parsed from a shared contact URL, waiting for the user to
@@ -101,16 +101,10 @@ class AppState: ObservableObject {
 	/// the app icon badge. Call this when the app becomes active or
 	/// after any bulk read/delete operation to keep the badge in sync.
 	@MainActor
-	func refreshBadgeCount(context: ModelContext) {
-		// NOTE: Comparing an optional relationship to nil in a #Predicate crashes SwiftData on
-		// iOS 26 (SIGTRAP / heap corruption from the @Query machinery). Fetch all unread messages
-		// and split channel vs DM in Swift — unread counts are small so this is inexpensive.
-		let unreadDescriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { msg in
-				msg.isEmoji == false && msg.read == false
-			}
-		)
-		let unread = (try? context.fetch(unreadDescriptor)) ?? []
+	func refreshBadgeCount(context: NSManagedObjectContext) {
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "isEmoji == NO AND read == NO")
+		let unread = (try? context.fetch(request)) ?? []
 		let channelCount = unread.filter { $0.toUser == nil }.count
 		let dmCount = unread.filter { $0.toUser != nil && !$0.admin }.count
 		if unreadChannelMessages != channelCount {

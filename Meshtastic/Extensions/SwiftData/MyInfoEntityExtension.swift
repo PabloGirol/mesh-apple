@@ -6,39 +6,31 @@
 //
 
 import Foundation
-@preconcurrency import SwiftData
+import CoreData
 
 extension MyInfoEntity {
 	@MainActor
 	var messageList: [MessageEntity] {
-		let context = PersistenceController.shared.context
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { msg in
-				msg.isEmoji == false
-			},
-			sortBy: [SortDescriptor(\MessageEntity.messageTimestamp, order: .forward)]
-		)
-		let messages = (try? context.fetch(descriptor)) ?? []
+		let context = CoreDataStackImpl.shared.context
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "isEmoji == NO")
+		request.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: true)]
+		let messages = (try? context.fetch(request)) ?? []
 		return messages.filter { $0.toUser == nil }
 	}
 
 	@MainActor
-	func unreadMessages(context: ModelContext) -> Int {
-		// NOTE: do NOT push `toUser == nil` into the #Predicate — comparing an optional
-		// relationship to nil crashes SwiftData on iOS 26 (see AppState.refreshBadgeCount),
-		// and on other OSes returns a wrong count (broke the channel badge). Fetch the
-		// unread set and split in Swift. Callers must throttle this — it's O(unread).
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { msg in
-				msg.isEmoji == false && msg.read == false
-			}
-		)
-		let messages = (try? context.fetch(descriptor)) ?? []
+	func unreadMessages(context: NSManagedObjectContext) -> Int {
+		// NOTE: do NOT push `toUser == nil` into the predicate — comparing an optional
+		// relationship to nil crashes. Fetch the unread set and split in Swift.
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "isEmoji == NO AND read == NO")
+		let messages = (try? context.fetch(request)) ?? []
 		return messages.filter { $0.toUser == nil }.count
 	}
 
 	@MainActor
-	var unreadMessages: Int { unreadMessages(context: PersistenceController.shared.context) }
+	var unreadMessages: Int { unreadMessages(context: CoreDataStackImpl.shared.context) }
 
 	var hasAdmin: Bool {
 		let adminChannel = channels.filter { $0.name?.lowercased() == "admin" }

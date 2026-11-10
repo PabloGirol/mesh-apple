@@ -82,7 +82,7 @@ struct OnboardingControlRow<Control: View>: View {
 }
 
 #Preview("Control rows") {
-	@Previewable @State var region = 1
+	@State var region = 1
 	VStack(alignment: .leading, spacing: 24) {
 		OnboardingControlRow(symbol: "globe.americas.fill", color: .red, title: "Region") {
 			Picker("Region", selection: $region) {

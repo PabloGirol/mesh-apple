@@ -7,7 +7,7 @@
 
 import Foundation
 import OSLog
-import SwiftData
+import CoreData
 import MeshtasticProtobufs
 import CoreBluetooth
 
@@ -369,8 +369,10 @@ extension AccessoryManager {
 	/// a second radio connects before its metadata arrives.
 	func storedFirmwareVersion(for nodeNum: Int64?) -> String? {
 		guard let nodeNum else { return nil }
-		let descriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == nodeNum })
-		guard let stored = try? context.fetch(descriptor).first?.metadata?.firmwareVersion,
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", nodeNum)
+		request.fetchLimit = 1
+		guard let stored = try? context.fetch(request).first?.metadata?.firmwareVersion,
 			  !stored.isEmpty else { return nil }
 		return stored
 	}

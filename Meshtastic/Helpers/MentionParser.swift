@@ -2,7 +2,7 @@
 // Meshtastic
 
 import Foundation
-import SwiftData
+import CoreData
 
 /// Parses and resolves `@!<hex-id>` mention tokens embedded in message text.
 ///
@@ -98,7 +98,7 @@ enum MentionParser {
 	/// back to `@!<hexId>` unchanged.
 	///
 	/// Processes tokens in reverse order to preserve string indices after replacement.
-	static func resolveMentions(in text: String, context: ModelContext) -> String {
+	static func resolveMentions(in text: String, context: NSManagedObjectContext) -> String {
 		let ranges = mentionRanges(in: text)
 		guard !ranges.isEmpty else { return text }
 
@@ -132,12 +132,11 @@ enum MentionParser {
 		return escaped
 	}
 
-	private static func resolveDisplayName(nodeNum: Int64, context: ModelContext) -> String {
-		var descriptor = FetchDescriptor<UserEntity>(
-			predicate: #Predicate<UserEntity> { $0.num == nodeNum }
-		)
-		descriptor.fetchLimit = 1
-		if let user = (try? context.fetch(descriptor))?.first {
+	private static func resolveDisplayName(nodeNum: Int64, context: NSManagedObjectContext) -> String {
+		let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+		request.predicate = NSPredicate(format: "num == %lld", nodeNum)
+		request.fetchLimit = 1
+		if let user = (try? context.fetch(request))?.first {
 			if let name = user.longName, !name.isEmpty { return name }
 			if let name = user.shortName, !name.isEmpty { return name }
 		}

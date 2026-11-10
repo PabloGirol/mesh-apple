@@ -8,7 +8,7 @@
 import Foundation
 import AppIntents
 import CoreLocation
-@preconcurrency import SwiftData
+import CoreData
 
 struct NodePositionIntent: AppIntent {
 
@@ -16,19 +16,18 @@ struct NodePositionIntent: AppIntent {
 	var nodeNum: Int
 
 	static let title: LocalizedStringResource = "Get Node Position"
-	static let description: IntentDescription = "Fetch the latest position of a cetain node"
+	static let description: IntentDescription = "Fetch the latest position of a certain node"
 
 	func perform() async throws -> some IntentResult & ReturnsValue<CLPlacemark> {
 		if !(await AccessoryManager.shared.isConnected) {
 			throw AppIntentErrors.AppIntentError.notConnected
 		}
 		let nodeNumInt64 = Int64(nodeNum)
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.num == nodeNumInt64 }
-		)
-		descriptor.fetchLimit = 1
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", nodeNumInt64)
+		request.fetchLimit = 1
 		do {
-			let fetchedNode = try await MainActor.run { try PersistenceController.shared.context.fetch(descriptor) }
+			let fetchedNode = try await MainActor.run { try PersistenceController.shared.context.fetch(request) }
 			guard fetchedNode.count == 1 else {
 				throw $nodeNum.needsValueError("Could not find node")
 			}

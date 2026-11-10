@@ -87,7 +87,7 @@ struct OnboardingFeatureRow: View {
 }
 
 #Preview("Rows") {
-	@Previewable @State var isOn = true
+	@State var isOn = true
 	VStack(alignment: .leading, spacing: 24) {
 		OnboardingFeatureRow(
 			symbol: "antenna.radiowaves.left.and.right",

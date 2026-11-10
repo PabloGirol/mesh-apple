@@ -1,9 +1,11 @@
-import SwiftData
+import Foundation
+import CoreData
 import MeshtasticProtobufs
 
 extension ExternalNotificationConfigEntity {
-	convenience init(config: ModuleConfig.ExternalNotificationConfig) {
-		self.init()
+	convenience init(config: ModuleConfig.ExternalNotificationConfig, context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "ExternalNotificationConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
 		self.enabled = config.enabled
 		self.usePWM = config.usePwm
 		self.alertBell = config.alertBell

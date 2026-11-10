@@ -1,9 +1,11 @@
-import SwiftData
+import Foundation
+import CoreData
 import MeshtasticProtobufs
 
 extension MQTTConfigEntity {
-	convenience init(config: ModuleConfig.MQTTConfig) {
-		self.init()
+	convenience init(config: ModuleConfig.MQTTConfig, context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "MQTTConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
 		self.enabled = config.enabled
 		self.proxyToClientEnabled = config.proxyToClientEnabled
 		self.address = config.address
