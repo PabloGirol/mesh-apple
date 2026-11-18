@@ -13,7 +13,7 @@
 
 import MapKit
 import OSLog
-import SwiftData
+import CoreData
 import SwiftUI
 import WidgetKit
 
@@ -154,13 +154,12 @@ final class WidgetTraceRouteRenderer {
 	/// `response` is a scalar, so the predicate is safe; rate-limited and
 	/// pending records are skipped in Swift by `state()`. The cinema's trace
 	/// route board shows the same one.
-	static func latestRoute(context: ModelContext) -> TraceRouteEntity? {
-		var descriptor = FetchDescriptor<TraceRouteEntity>(
-			predicate: #Predicate { $0.response == true },
-			sortBy: [SortDescriptor(\.time, order: .reverse)]
-		)
-		descriptor.fetchLimit = 5
-		let routes = (try? context.fetch(descriptor)) ?? []
+	static func latestRoute(context: NSManagedObjectContext) -> TraceRouteEntity? {
+		let request = NSFetchRequest<TraceRouteEntity>(entityName: "TraceRouteEntity")
+		request.predicate = NSPredicate(format: "response == YES")
+		request.sortDescriptors = [NSSortDescriptor(key: "time", ascending: false)]
+		request.fetchLimit = 5
+		let routes = (try? context.fetch(request)) ?? []
 		return routes.first { route in
 			let state = route.state()
 			return state == .complete || state == .observed

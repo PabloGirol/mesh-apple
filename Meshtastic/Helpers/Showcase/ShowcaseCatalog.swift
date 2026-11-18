@@ -6,7 +6,7 @@
 //
 import Foundation
 import simd
-@preconcurrency import SwiftData
+import CoreData
 
 /// The makers the showcase shows. The raw value is the hardware catalog's tag for the maker.
 enum ShowcaseVendor: String, CaseIterable, Sendable {
@@ -198,7 +198,7 @@ enum ShowcaseCatalog {
 	}
 
 	/// The catalog the app keeps fresh from the API, or the one bundled with it when that is empty.
-	static func hardware(in container: ModelContainer) async -> [ShowcaseHardwareRecord] {
+	static func hardware(in container: NSPersistentContainer) async -> [ShowcaseHardwareRecord] {
 		let reader = await Task.detached { ShowcaseHardwareReader(modelContainer: container) }.value
 		let stored = await reader.records()
 		return stored.isEmpty ? bundledHardware() : stored
@@ -248,11 +248,20 @@ enum ShowcaseRowPacking {
 	}
 }
 
-/// Reads the hardware catalog out of SwiftData on its own context, off the main actor.
-@ModelActor
+/// Reads the hardware catalog out of Core Data on its own context, off the main actor.
 actor ShowcaseHardwareReader {
+	let modelContext: NSManagedObjectContext
+
+	init(modelContainer: NSPersistentContainer) {
+		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+		context.persistentStoreCoordinator = modelContainer.persistentStoreCoordinator
+		context.automaticallyMergesChangesFromParent = true
+		self.modelContext = context
+	}
+
 	func records() -> [ShowcaseHardwareRecord] {
-		let devices = (try? modelContext.fetch(FetchDescriptor<DeviceHardwareEntity>())) ?? []
+		let request = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
+		let devices = (try? modelContext.fetch(request)) ?? []
 		return devices.map { device in
 			ShowcaseHardwareRecord(
 				hwModel: Int(device.hwModel),

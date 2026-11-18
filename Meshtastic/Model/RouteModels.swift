@@ -2,52 +2,89 @@
 //  RouteModels.swift
 //  Meshtastic
 //
-//  SwiftData models for routes and locations.
+//  Core Data models for routes, locations, and PaxCounter.
+//  Converted from SwiftData for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class RouteEntity {
-	var color: Int64 = 0
-	var date: Date?
-	var distance: Double = 0
-	var elevationGain: Double = 0
-	var enabled: Bool = false
-	var endDate: Date?
-	var id: Int32 = 0
-	var name: String?
-	var notes: String?
+@objc(RouteEntity)
+public class RouteEntity: NSManagedObject {
 
-	@Relationship(deleteRule: .cascade, inverse: \LocationEntity.routeLocation)
-	var locations: [LocationEntity] = []
+	@NSManaged public var color: Int64
+	@NSManaged public var date: Date?
+	@NSManaged public var distance: Double
+	@NSManaged public var elevationGain: Double
+	@NSManaged public var enabled: Bool
+	@NSManaged public var endDate: Date?
+	@NSManaged public var id: Int32
+	@NSManaged public var name: String?
+	@NSManaged public var notes: String?
 
-	init() {}
+	// locations relationship becomes @NSManaged array
+	@NSManaged public var locations: [LocationEntity]
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "RouteEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.color = 0
+		self.date = nil
+		self.distance = 0
+		self.elevationGain = 0
+		self.enabled = false
+		self.endDate = nil
+		self.id = 0
+		self.name = nil
+		self.notes = nil
+		self.locations = []
+	}
 }
 
-@Model
-final class LocationEntity {
-	var altitude: Int32 = 0
-	var heading: Int32 = 0
-	var id: Int32 = 0
-	var latitudeI: Int32 = 0
-	var longitudeI: Int32 = 0
-	var speed: Int32 = 0
+@objc(LocationEntity)
+public class LocationEntity: NSManagedObject {
 
-	var routeLocation: RouteEntity?
+	@NSManaged public var altitude: Int32
+	@NSManaged public var heading: Int32
+	@NSManaged public var id: Int32
+	@NSManaged public var latitudeI: Int32
+	@NSManaged public var longitudeI: Int32
+	@NSManaged public var speed: Int32
 
-	init() {}
+	// routeLocation becomes @NSManaged optional
+	@NSManaged public var routeLocation: RouteEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "LocationEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.altitude = 0
+		self.heading = 0
+		self.id = 0
+		self.latitudeI = 0
+		self.longitudeI = 0
+		self.speed = 0
+		self.routeLocation = nil
+	}
 }
 
-@Model
-final class PaxCounterEntity {
-	var ble: Int32 = 0
-	var time: Date?
-	var uptime: Int32 = 0
-	var wifi: Int32 = 0
+@objc(PaxCounterEntity)
+public class PaxCounterEntity: NSManagedObject {
 
-	var paxNode: NodeInfoEntity?
+	@NSManaged public var ble: Int32
+	@NSManaged public var time: Date?
+	@NSManaged public var uptime: Int32
+	@NSManaged public var wifi: Int32
 
-	init() {}
+	// paxNode becomes @NSManaged optional
+	@NSManaged public var paxNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "PaxCounterEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.ble = 0
+		self.time = nil
+		self.uptime = 0
+		self.wifi = 0
+		self.paxNode = nil
+	}
 }

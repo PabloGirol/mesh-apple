@@ -4,11 +4,13 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct DeviceLinkDirectory: View {
-	@Query(sort: [SortDescriptor(\DeviceLinkEntity.shortCode)])
-	var allLinks: [DeviceLinkEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \DeviceLinkEntity.shortCode, ascending: true)],
+		animation: .default)
+	private var allLinks: FetchedResults<DeviceLinkEntity>
 	@Environment(\.openURL) private var openURL
 
 	var body: some View {

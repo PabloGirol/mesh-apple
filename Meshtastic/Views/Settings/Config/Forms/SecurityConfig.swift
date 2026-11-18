@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 9/19/26.
 //
 import SwiftUI
-import SwiftData
+import CoreData
 import MeshtasticProtobufs
 import OSLog
 import CryptoKit
@@ -133,7 +133,7 @@ extension Config.SecurityConfig {
 }
 
 struct SecurityConfig: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@EnvironmentObject private var lockdown: LockdownCoordinator
 	@State private var showLockNowAlert = false

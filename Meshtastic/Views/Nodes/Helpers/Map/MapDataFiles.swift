@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import OSLog
 
 struct MapDataFiles: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@ObservedObject private var mapDataManager = MapDataManager.shared
 

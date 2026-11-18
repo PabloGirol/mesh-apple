@@ -10,7 +10,7 @@ import Network
 import OSLog
 import Combine
 import SwiftUI
-import SwiftData
+import CoreData
 import MeshtasticProtobufs
 
 enum TAKServerError: LocalizedError {
@@ -165,14 +165,14 @@ final class TAKServerManager: ObservableObject {
 	/// Returns true if the primary channel is valid for TAK server operation
 	func checkPrimaryChannelValidity() {
 		let context = PersistenceController.shared.context
-		var descriptor = FetchDescriptor<MyInfoEntity>()
-		descriptor.fetchLimit = 1
-		
+		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		request.fetchLimit = 1
+
 		var issues: [PrimaryChannelIssue] = []
 		var isValid = true
-		
+
 		do {
-			let myInfos = try context.fetch(descriptor)
+			let myInfos = try context.fetch(request)
 			guard let myInfo = myInfos.first,
 				  let primaryChannel = myInfo.channels.first(where: { $0.index == 0 || $0.role == 1 }) else {
 				issues.append(PrimaryChannelIssue(
@@ -184,11 +184,11 @@ final class TAKServerManager: ObservableObject {
 				updateChannelStatus(issues: issues, isValid: isValid)
 				return
 			}
-			
+
 		let channelName = primaryChannel.name ?? ""
 		let channelPsk = primaryChannel.psk ?? Data()
 		let pskBase64 = channelPsk.base64EncodedString()
-		
+
 		if channelName.isEmpty {
 			issues.append(PrimaryChannelIssue(
 				title: "Unnamed Primary Channel",
@@ -197,7 +197,7 @@ final class TAKServerManager: ObservableObject {
 			))
 			isValid = false
 		}
-		
+
 		// Use byte length for encryption strength checks (not Base64 string length)
 		let pskBytes = channelPsk.count
 		if pskBytes == 0 {
@@ -224,9 +224,9 @@ final class TAKServerManager: ObservableObject {
 			))
 			isValid = false
 		}
-			
+
 			updateChannelStatus(issues: issues, isValid: isValid)
-			
+
 		} catch {
 			Logger.tak.error("Failed to fetch MyInfo for channel validation: \(error.localizedDescription)")
 			issues.append(PrimaryChannelIssue(
@@ -758,11 +758,11 @@ final class TAKServerManager: ObservableObject {
 			return false
 		}
 
-		var descriptor = FetchDescriptor<MyInfoEntity>()
-		descriptor.fetchLimit = 1
+		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		request.fetchLimit = 1
 
 		do {
-			let myInfos = try context.fetch(descriptor)
+			let myInfos = try context.fetch(request)
 			guard let myInfo = myInfos.first,
 				  let primaryChannel = myInfo.channels.first(where: { $0.index == 0 || $0.role == 1 }) else {
 				Logger.tak.error("Cannot fix channel: No primary channel found")
@@ -806,7 +806,7 @@ final class TAKServerManager: ObservableObject {
 			loraConfig.usePreset = true
 			loraConfig.txEnabled = true
 			loraConfig.hopLimit = 3
-			
+
 			// Get current LoRa config to preserve other settings
 			if let currentLoRa = connectedNode.loRaConfig {
 				loraConfig.region = Config.LoRaConfig.RegionCode(rawValue: Int(currentLoRa.regionCode)) ?? .unset
@@ -816,7 +816,7 @@ final class TAKServerManager: ObservableObject {
 				loraConfig.codingRate = UInt32(currentLoRa.codingRate)
 				loraConfig.spreadFactor = UInt32(currentLoRa.spreadFactor)
 			}
-			
+
 			do {
 				try await accessoryManager.saveLoRaConfig(config: loraConfig, fromUser: user, toUser: user)
 				Logger.tak.info("Successfully set LoRa modem preset to shortFast")

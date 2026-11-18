@@ -109,6 +109,7 @@
     </entity>
     <entity name="DisplayConfigEntity" representedClassName="DisplayConfigEntity" syncable="YES" codeGenerationType="none">
         <attribute name="compassNorthTop" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="compassOrientation" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="displayMode" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="flipScreen" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="headingBold" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
@@ -243,13 +244,51 @@
             </uniquenessConstraint>
         </uniquenessConstraints>
     </entity>
+    <entity name="AudioConfigEntity" representedClassName="AudioConfigEntity" syncable="YES" codeGenerationType="none">
+        <attribute name="bitrate" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="codec2Enabled" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="i2sDin" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="i2sSck" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="i2sSd" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="i2sWs" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="pttPin" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="audioConfigNode" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NodeInfoEntity" inverseName="audioConfig" inverseEntity="NodeInfoEntity"/>
+    </entity>
+    <entity name="BroadcastTargetEntity" representedClassName="BroadcastTargetEntity" syncable="YES" codeGenerationType="none">
+        <attribute name="channelIndex" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="channelName" optional="YES" attributeType="String"/>
+        <attribute name="frequencySlot" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="preset" optional="YES" attributeType="Integer 32" defaultValueString="-1" usesScalarValueType="YES"/>
+        <attribute name="psk" optional="YES" attributeType="Binary"/>
+        <attribute name="region" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="meshBeaconConfig" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="MeshBeaconConfigEntity" inverseName="broadcastTargets" inverseEntity="MeshBeaconConfigEntity"/>
+    </entity>
+    <entity name="MeshBeaconConfigEntity" representedClassName="MeshBeaconConfigEntity" syncable="YES" codeGenerationType="none">
+        <attribute name="broadcastIntervalSecs" optional="YES" attributeType="Integer 32" defaultValueString="3600" usesScalarValueType="YES"/>
+        <attribute name="broadcastMessage" optional="YES" attributeType="String" defaultValueString=""/>
+        <attribute name="broadcastOfferChannelName" optional="YES" attributeType="String" defaultValueString=""/>
+        <attribute name="broadcastOfferChannelPSK" optional="YES" attributeType="Binary"/>
+        <attribute name="broadcastOfferFrequencySlot" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="broadcastOfferPreset" optional="YES" attributeType="Integer 32" defaultValueString="-1" usesScalarValueType="YES"/>
+        <attribute name="broadcastOfferRegion" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="broadcastOnChannelName" optional="YES" attributeType="String" defaultValueString=""/>
+        <attribute name="broadcastOnChannelPSK" optional="YES" attributeType="Binary"/>
+        <attribute name="broadcastOnPreset" optional="YES" attributeType="Integer 32" defaultValueString="-1" usesScalarValueType="YES"/>
+        <attribute name="broadcastOnRegion" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="broadcastSendAsNode" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="flags" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="broadcastTargets" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="BroadcastTargetEntity" inverseName="meshBeaconConfig" inverseEntity="BroadcastTargetEntity"/>
+        <relationship name="meshBeaconConfigNode" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NodeInfoEntity" inverseName="meshBeaconConfig" inverseEntity="NodeInfoEntity"/>
+    </entity>
     <entity name="NetworkConfigEntity" representedClassName="NetworkConfigEntity" syncable="YES" codeGenerationType="none">
+        <attribute name="addressMode" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="dns" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="enabledProtocols" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="ethEnabled" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="gateway" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="ip" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="ntpServer" optional="YES" attributeType="String"/>
+        <attribute name="rsyslogServer" optional="YES" attributeType="String"/>
         <attribute name="subnet" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="wifiEnabled" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="wifiMode" optional="YES" attributeType="Integer 32" defaultValueString="NO" usesScalarValueType="YES"/>
@@ -285,6 +324,8 @@
         <relationship name="mqttConfig" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="MQTTConfigEntity" inverseName="mqttConfigNode" inverseEntity="MQTTConfigEntity"/>
         <relationship name="myInfo" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="MyInfoEntity" inverseName="myInfoNode" inverseEntity="MyInfoEntity"/>
         <relationship name="networkConfig" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NetworkConfigEntity" inverseName="networkConfigNode" inverseEntity="NetworkConfigEntity"/>
+        <relationship name="audioConfig" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="AudioConfigEntity" inverseName="audioConfigNode" inverseEntity="AudioConfigEntity"/>
+        <relationship name="meshBeaconConfig" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="MeshBeaconConfigEntity" inverseName="meshBeaconConfigNode" inverseEntity="MeshBeaconConfigEntity"/>
         <relationship name="pax" optional="YES" toMany="YES" deletionRule="Nullify" ordered="YES" destinationEntity="PaxCounterEntity" inverseName="paxNode" inverseEntity="PaxCounterEntity"/>
         <relationship name="paxCounterConfig" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PaxCounterConfigEntity" inverseName="paxCounterConfigNode" inverseEntity="PaxCounterConfigEntity"/>
         <relationship name="positionConfig" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PositionConfigEntity" inverseName="positionConfigNode" inverseEntity="PositionConfigEntity"/>

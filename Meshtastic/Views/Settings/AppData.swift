@@ -7,12 +7,12 @@
 
 import SwiftUI
 import OSLog
-import SwiftData
+import CoreData
 import Foundation
 import UniformTypeIdentifiers
 
 struct AppData: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@State private var documentsFiles = [URL]()
 	@State private var applicationSupportFiles = [URL]()
@@ -306,5 +306,5 @@ struct BinaryFileDocument: FileDocument {
 #Preview {
 	AppData()
 		.environmentObject(AccessoryManager.shared)
-		.modelContainer(PersistenceController.preview.container)
+		.environment(\.managedObjectContext, CoreDataStackImpl.preview.context)
 }

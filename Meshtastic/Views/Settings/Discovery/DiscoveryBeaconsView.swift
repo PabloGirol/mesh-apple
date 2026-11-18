@@ -11,17 +11,20 @@
 //  mesh in a scan without having run one first.
 //
 
+import CoreData
 import OSLog
-import SwiftData
 import SwiftUI
 
 struct DiscoveryBeaconsView: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
 	/// All beacons, newest first; passive (session-less) ones are filtered in memory to avoid a
-	/// relationship-based SwiftData predicate.
-	@Query(sort: \DiscoveredBeaconEntity.timestamp, order: .reverse)
-	private var allBeacons: [DiscoveredBeaconEntity]
+	/// relationship-based Core Data predicate.
+	@FetchRequest(
+		entity: DiscoveredBeaconEntity.entity(),
+		sortDescriptors: [NSSortDescriptor(keyPath: \DiscoveredBeaconEntity.timestamp, ascending: false)]
+	)
+	private var allBeacons: FetchedResults<DiscoveredBeaconEntity>
 
 	private var passiveBeacons: [DiscoveredBeaconEntity] {
 		allBeacons.filter { $0.session == nil }

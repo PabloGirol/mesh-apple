@@ -3,81 +3,142 @@
 //  Meshtastic
 //
 //  SwiftData model for telemetry data.
-//  Replaces the manual Core Data TelemetryEntity+CoreDataClass/Properties files.
+//  Converted to Core Data NSManagedObject subclass for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class TelemetryEntity {
+@objc(TelemetryEntity)
+public class TelemetryEntity: NSManagedObject {
+
 	// Non-optional scalars
-	var metricsType: Int32 = 0
-	var numOnlineNodes: Int32 = 0
-	var numPacketsRx: Int32 = 0
-	var numPacketsRxBad: Int32 = 0
-	var numPacketsTx: Int32 = 0
-	var numRxDupe: Int32 = 0
-	var numTotalNodes: Int32 = 0
-	var numTxRelay: Int32 = 0
-	var numTxRelayCanceled: Int32 = 0
-	var time: Date?
+	@NSManaged public var metricsType: Int32
+	@NSManaged public var numOnlineNodes: Int32
+	@NSManaged public var numPacketsRx: Int32
+	@NSManaged public var numPacketsRxBad: Int32
+	@NSManaged public var numPacketsTx: Int32
+	@NSManaged public var numRxDupe: Int32
+	@NSManaged public var numTotalNodes: Int32
+	@NSManaged public var numTxRelay: Int32
+	@NSManaged public var numTxRelayCanceled: Int32
+	@NSManaged public var time: Date?
 
-	// Optional scalars (previously used @ManagedAttribute wrapper)
-	var airUtilTx: Float?
-	var barometricPressure: Float?
-	var batteryLevel: Int32?
-	var channelUtilization: Float?
-	var current: Float?
-	var distance: Float?
-	var gasResistance: Float?
-	var iaq: Int32?
-	var irLux: Float?
-	var lux: Float?
-	var noiseFloor: Int32?
-	var powerCh1Current: Float?
-	var powerCh1Voltage: Float?
-	var powerCh2Current: Float?
-	var powerCh2Voltage: Float?
-	var powerCh3Current: Float?
-	var powerCh3Voltage: Float?
-	var radiation: Float?
-	var rainfall1H: Float?
-	var rainfall24H: Float?
-	var relativeHumidity: Float?
-	var rssi: Int32?
-	var snr: Float?
-	var soilMoisture: UInt32?
-	var soilTemperature: Float?
-	var temperature: Float?
-	var uptimeSeconds: Int32?
-	var uvLux: Float?
-	var voltage: Float?
-	var weight: Float?
-	var whiteLux: Float?
-	var windDirection: Int32?
-	var windGust: Float?
-	var windLull: Float?
-	var windSpeed: Float?
+	// Optional scalars
+	@NSManaged public var airUtilTx: Float?
+	@NSManaged public var barometricPressure: Float?
+	@NSManaged public var batteryLevel: Int32?
+	@NSManaged public var channelUtilization: Float?
+	@NSManaged public var current: Float?
+	@NSManaged public var distance: Float?
+	@NSManaged public var gasResistance: Float?
+	@NSManaged public var iaq: Int32?
+	@NSManaged public var irLux: Float?
+	@NSManaged public var lux: Float?
+	@NSManaged public var noiseFloor: Int32?
+	@NSManaged public var powerCh1Current: Float?
+	@NSManaged public var powerCh1Voltage: Float?
+	@NSManaged public var powerCh2Current: Float?
+	@NSManaged public var powerCh2Voltage: Float?
+	@NSManaged public var powerCh3Current: Float?
+	@NSManaged public var powerCh3Voltage: Float?
+	@NSManaged public var radiation: Float?
+	@NSManaged public var rainfall1H: Float?
+	@NSManaged public var rainfall24H: Float?
+	@NSManaged public var relativeHumidity: Float?
+	@NSManaged public var rssi: Int32?
+	@NSManaged public var snr: Float?
+	@NSManaged public var soilMoisture: UInt32?
+	@NSManaged public var soilTemperature: Float?
+	@NSManaged public var temperature: Float?
+	@NSManaged public var uptimeSeconds: Int32?
+	@NSManaged public var uvLux: Float?
+	@NSManaged public var voltage: Float?
+	@NSManaged public var weight: Float?
+	@NSManaged public var whiteLux: Float?
+	@NSManaged public var windDirection: Int32?
+	@NSManaged public var windGust: Float?
+	@NSManaged public var windLull: Float?
+	@NSManaged public var windSpeed: Float?
 
 	// MARK: - Air Quality Metrics
 	// Particulate matter concentrations (µg/m³) from the firmware's AirQualityMetrics telemetry
 	// variant (metricsType 3), persisted like the other environment telemetry fields. See issue #2040.
-	var pm10Standard: UInt32?
-	var pm25Standard: UInt32?
-	var pm100Standard: UInt32?
-	var pm10Environmental: UInt32?
-	var pm25Environmental: UInt32?
-	var pm100Environmental: UInt32?
+	@NSManaged public var pm10Standard: UInt32?
+	@NSManaged public var pm25Standard: UInt32?
+	@NSManaged public var pm100Standard: UInt32?
+	@NSManaged public var pm10Environmental: UInt32?
+	@NSManaged public var pm25Environmental: UInt32?
+	@NSManaged public var pm100Environmental: UInt32?
 
 	/// The node this reading belongs to. New rows are found by this number rather than through
 	/// `nodeTelemetry`: setting the relationship makes SwiftData load every telemetry row the
 	/// node has to update the inverse array, on each insert. See `TelemetryEntity+NodeNum.swift`.
-	var nodeNum: Int64 = 0
+	@NSManaged public var nodeNum: Int64
 
 	// Relationship. Only rows saved before `nodeNum` existed still use it; new rows leave it nil.
-	var nodeTelemetry: NodeInfoEntity?
+	@NSManaged public var nodeTelemetry: NodeInfoEntity?
 
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "TelemetryEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.metricsType = 0
+		self.numOnlineNodes = 0
+		self.numPacketsRx = 0
+		self.numPacketsRxBad = 0
+		self.numPacketsTx = 0
+		self.numRxDupe = 0
+		self.numTotalNodes = 0
+		self.numTxRelay = 0
+		self.numTxRelayCanceled = 0
+		self.time = nil
+		self.airUtilTx = nil
+		self.barometricPressure = nil
+		self.batteryLevel = nil
+		self.channelUtilization = nil
+		self.current = nil
+		self.distance = nil
+		self.gasResistance = nil
+		self.iaq = nil
+		self.irLux = nil
+		self.lux = nil
+		self.noiseFloor = nil
+		self.powerCh1Current = nil
+		self.powerCh1Voltage = nil
+		self.powerCh2Current = nil
+		self.powerCh2Voltage = nil
+		self.powerCh3Current = nil
+		self.powerCh3Voltage = nil
+		self.radiation = nil
+		self.rainfall1H = nil
+		self.rainfall24H = nil
+		self.relativeHumidity = nil
+		self.rssi = nil
+		self.snr = nil
+		self.soilMoisture = nil
+		self.soilTemperature = nil
+		self.temperature = nil
+		self.uptimeSeconds = nil
+		self.uvLux = nil
+		self.voltage = nil
+		self.weight = nil
+		self.whiteLux = nil
+		self.windDirection = nil
+		self.windGust = nil
+		self.windLull = nil
+		self.windSpeed = nil
+		self.pm10Standard = nil
+		self.pm25Standard = nil
+		self.pm100Standard = nil
+		self.pm10Environmental = nil
+		self.pm25Environmental = nil
+		self.pm100Environmental = nil
+		self.nodeNum = 0
+		self.nodeTelemetry = nil
+	}
+}
+
+extension TelemetryEntity {
 	// Computed property
 	var dewPoint: Float? {
 		guard let temp = self.temperature, let rh = self.relativeHumidity else {
@@ -85,6 +146,4 @@ final class TelemetryEntity {
 		}
 		return Float(calculateDewPoint(temp: temp, relativeHumidity: rh, convertToLocale: false))
 	}
-
-	init() {}
 }

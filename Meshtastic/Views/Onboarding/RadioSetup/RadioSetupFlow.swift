@@ -9,7 +9,7 @@
 //  Settings.
 //
 
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// Which radio to set up; presenting one of these opens the flow.
@@ -36,7 +36,7 @@ struct RadioSetupFlow: View {
 	var onClose: (() -> Void)?
 
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.dismiss) private var dismiss
 	@State private var model: RadioSetupModel?
 	@State private var hasLoaded = false

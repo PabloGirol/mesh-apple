@@ -8,16 +8,19 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 import MeshtasticProtobufs
 
 struct TAKServerConfig: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 
-	@Query(filter: #Predicate<ChannelEntity> { $0.role > 0 },
-		   sort: \ChannelEntity.index)
-	private var channels: [ChannelEntity]
+	@FetchRequest(
+		entity: ChannelEntity.entity(),
+		sortDescriptors: [NSSortDescriptor(keyPath: \ChannelEntity.index, ascending: true)],
+		predicate: NSPredicate(format: "role > 0")
+	)
+	private var channels: FetchedResults<ChannelEntity>
 
 	@StateObject private var takServer = TAKServerManager.shared
 	@Environment(\.dismiss) private var dismiss
@@ -543,7 +546,7 @@ struct ZipDocument: FileDocument {
 // for nodes that aren't the locally-connected one.
 
 struct TAKIdentitySection: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 
 	let node: NodeInfoEntity?

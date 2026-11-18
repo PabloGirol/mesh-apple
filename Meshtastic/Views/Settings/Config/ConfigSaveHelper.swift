@@ -4,7 +4,7 @@
 //
 
 import OSLog
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// Performs the common save-config-and-dismiss pattern used across all config views.
@@ -33,7 +33,7 @@ import SwiftUI
 @MainActor
 func performConfigSave(
 	node: NodeInfoEntity?,
-	context: ModelContext,
+	context: NSManagedObjectContext,
 	accessoryManager: AccessoryManager,
 	hasChanges: Binding<Bool>,
 	dismiss: DismissAction,

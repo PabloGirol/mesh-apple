@@ -6,19 +6,19 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import OSLog
 import TipKit
 
 struct Messages: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.colorScheme) private var colorScheme
 	@ObservedObject	var router: Router
 	@Binding var unreadChannelMessages: Int
 	@Binding var unreadDirectMessages: Int
 	/// Store the connected node's `num`, NOT the `NodeInfoEntity` itself, and resolve the object
-	/// from the live context every render (see `node`). Caching the SwiftData model here traps
+	/// from the live context every render (see `node`). Caching the Core Data model here traps
 	/// ("destroyed by ModelContext.reset") when the container is recreated (data clear / node
 	/// switch) while this view still reads `node?.myInfo`; a fresh fetch returns nil safely.
 	@State private var nodeNum: Int64?
@@ -142,11 +142,11 @@ struct Messages: View {
 					if let myInfo = node?.myInfo, let channelSelection {
 						ChannelMessageList(myInfo: myInfo, channel: channelSelection)
 							// Keep conversation state separate when the split view reuses its detail pane.
-							.id(channelSelection.persistentModelID)
+							.id(channelSelection.objectID)
 							.trackScreen(.channelMessages)
 					} else if let userSelection {
 						UserMessageList(user: userSelection)
-							.id(userSelection.persistentModelID)
+							.id(userSelection.objectID)
 							.trackScreen(.directMessages)
 					} else if case .channels = router.messagesSection {
 						Text("Select a channel")

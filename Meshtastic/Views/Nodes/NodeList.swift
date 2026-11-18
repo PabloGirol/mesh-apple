@@ -7,11 +7,11 @@
 import SwiftUI
 import CoreLocation
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 import Foundation
 
 struct NodeList: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@EnvironmentObject var router: Router
@@ -299,7 +299,7 @@ private struct NodeListEntry: Identifiable {
 private struct FilteredNodeList: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@EnvironmentObject var router: Router
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	/// Throttled snapshot of the filtered/sorted nodes actually shown. Recomputed on a gentle
 	/// cadence (see `.task`) instead of in `body`, so the full-node-set scan in `displayNodes`
 	/// doesn't run on every SwiftData write — which pegged the CPU on reconnect with a large DB.
@@ -340,13 +340,13 @@ private struct FilteredNodeList: View {
 		self._selectedNodeNum = selectedNodeNum
 	}
 
-	/// Fetch descriptor for the node set, built from this window's `filters` at fetch time so
+	/// Fetch request for the node set, built from this window's `filters` at fetch time so
 	/// predicate-level filter edits apply on the next refresh tick. Applied via explicit fetches
-	/// on a throttled cadence (see `.task`) rather than a live `@Query` — a live query
-	/// re-evaluated `body` on every SwiftData write, and under heavy ingestion that meant a
+	/// on a throttled cadence (see `.task`) rather than a live `@FetchRequest` — a live fetch
+	/// re-evaluated `body` on every Core Data write, and under heavy ingestion that meant a
 	/// full-node-set scan per packet, even while the Nodes tab was off-screen (TabView keeps
 	/// tabs alive). Simple filters are pushed into the predicate to reduce in-memory work.
-	private func makeNodeFetchDescriptor() -> FetchDescriptor<NodeInfoEntity> {
+	private func makeNodeFetchRequest() -> NSFetchRequest<NodeInfoEntity> {
 		let showIgnored = filters.isIgnored
 		let showFavorite = filters.isFavorite
 		let filterViaLoraOnly = filters.viaLora && !filters.viaMqtt
@@ -355,24 +355,27 @@ private struct FilteredNodeList: View {
 		let filterHopsMax = filters.hopsAway > 0.0
 		let maxHops = Int32(filters.hopsAway)
 
-		return FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { node in
-				// Ignored filter (always applied)
-				(showIgnored || !node.ignored) &&
-				(!showIgnored || node.ignored) &&
-				// Favorite filter
-				(!showFavorite || node.favorite) &&
-				// Via LoRa only (exclude MQTT)
-				(!filterViaLoraOnly || !node.viaMqtt) &&
-				// Via MQTT only
-				(!filterViaMqttOnly || node.viaMqtt) &&
-				// Direct nodes only
-				(!filterHopsDirect || node.hopsAway == 0) &&
-				// Hops within range
-				(!filterHopsMax || (node.hopsAway > 0 && node.hopsAway <= maxHops))
-			},
-			sortBy: [SortDescriptor(\NodeInfoEntity.lastHeard, order: .reverse)]
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: """
+			(%@ == YES OR ignored == NO) AND
+			(%@ == NO OR ignored == YES) AND
+			(%@ == NO OR favorite == YES) AND
+			(%@ == NO OR viaMqtt == NO) AND
+			(%@ == NO OR viaMqtt == YES) AND
+			(%@ == NO OR hopsAway == 0) AND
+			(%@ == NO OR (hopsAway > 0 AND hopsAway <= %d))
+			""",
+			showIgnored as NSNumber,
+			showIgnored as NSNumber,
+			showFavorite as NSNumber,
+			filterViaLoraOnly as NSNumber,
+			filterViaMqttOnly as NSNumber,
+			filterHopsDirect as NSNumber,
+			filterHopsMax as NSNumber,
+			maxHops
 		)
+		request.sortDescriptors = [NSSortDescriptor(key: "lastHeard", ascending: false)]
+		return request
 	}
 
 	private func displayNodes(from allNodes: [NodeInfoEntity], activeNodeNum: Int64?) -> [NodeListEntry] {
@@ -499,10 +502,9 @@ private struct FilteredNodeList: View {
 	}
 
 	private func refreshDisplayedNodes() {
-		// Accessing any property on a ModelContext whose container was replaced can trap in SwiftData.
 		guard boundContainerGeneration == PersistenceController.shared.containerGeneration else { return }
 		guard router.selectedTab == .nodes else { return }
-		let allNodes = (try? context.fetch(makeNodeFetchDescriptor())) ?? []
+		let allNodes = (try? context.fetch(makeNodeFetchRequest())) ?? []
 		replaceDisplayedNodesIfNeeded(with: displayNodes(from: allNodes, activeNodeNum: accessoryManager.activeDeviceNum))
 		router.updateNodeIndex(from: allNodes)
 	}
@@ -584,7 +586,7 @@ private struct NodeListFilterLookup {
 		nodes: [NodeInfoEntity],
 		needsEnvironment: Bool,
 		distanceBounds: NodeDistanceFilterBounds?,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		// Only materialize the node-num set (a scan over every node) when a filter actually
 		// needs it; the common no-filter case skips this work entirely.
@@ -621,32 +623,27 @@ private struct NodeListFilterLookup {
 		return distanceNodeNums.contains(node.num)
 	}
 
-	private static func fetchEnvironmentNodeNums(nodeNums: [Int64], context: ModelContext) -> Set<Int64> {
+	private static func fetchEnvironmentNodeNums(nodeNums: [Int64], context: NSManagedObjectContext) -> Set<Int64> {
 		guard !nodeNums.isEmpty else { return [] }
 		let metricsType: Int32 = 1
-		var descriptor = FetchDescriptor<TelemetryEntity>(
-			predicate: TelemetryEntity.predicate(forNodes: nodeNums, metricsType: metricsType)
-		)
+		let request = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+		request.predicate = TelemetryEntity.predicate(forNodes: nodeNums, metricsType: metricsType)
 		// Only the node number is read, and this matches every environment row of every node.
-		descriptor.propertiesToFetch = [\.nodeNum]
-		let metrics = (try? context.fetch(descriptor)) ?? []
+		request.propertiesToFetch = ["nodeNum"]
+		let metrics = (try? context.fetch(request)) ?? []
 		return Set(metrics.compactMap(\.ownerNodeNum))
 	}
 
 	private static func fetchDistanceNodeNums(
 		nodeNums: [Int64],
 		bounds: NodeDistanceFilterBounds,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) -> (withinBounds: Set<Int64>, withAnyPosition: Set<Int64>) {
 		guard !nodeNums.isEmpty else { return ([], []) }
-		let descriptor = FetchDescriptor<PositionEntity>(
-			predicate: #Predicate<PositionEntity> {
-				$0.latest == true
-				&& $0.nodePosition != nil
-				&& ($0.nodePosition.flatMap { nodeNums.contains($0.num) } ?? false)
-			}
-		)
-		let positions = (try? context.fetch(descriptor)) ?? []
+		let request = NSFetchRequest<PositionEntity>(entityName: "PositionEntity")
+		let nodeNumArray = nodeNums.map { NSNumber(value: $0) }
+		request.predicate = NSPredicate(format: "latest == YES AND nodePosition != nil AND nodePosition.num IN %@", nodeNumArray)
+		let positions = (try? context.fetch(request)) ?? []
 		var withinBounds = Set<Int64>()
 		var withAnyPosition = Set<Int64>()
 		for position in positions {

@@ -7,8 +7,8 @@
 
 import Foundation
 import SwiftUI
-@preconcurrency import SwiftData
 import OSLog
+import CoreData
 
 extension FirmwareViewModel {
 	enum FirmwareViewModelError: Error, LocalizedError {
@@ -73,10 +73,10 @@ class FirmwareViewModel: ObservableObject {
 		let hardwareArchitecture = hardware.architecture.flatMap { Architecture(rawValue: $0) }
 
 		// First, loop through all firmware entities and create an entry for those
-		let context = PersistenceController.shared.container.mainContext
-		let descriptor = FetchDescriptor<FirmwareReleaseEntity>()
+		let context = PersistenceController.shared.container.viewContext
+		let firmwareRequest = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
 		do {
-			let firmwareReleases = try context.fetch(descriptor)
+			let firmwareReleases = try context.fetch(firmwareRequest)
 			let localeTags = preferredRegion.prefersLocalizedFontFirmware ? preferredRegion.firmwareLocaleTagCandidates : []
 			for release in firmwareReleases {
 				// One release that fails to parse must not blank the whole list — catch per
@@ -159,18 +159,17 @@ class FirmwareViewModel: ObservableObject {
 	}
 
 	func mostRecentFirmwareVersion(forReleaseType releaseType: ReleaseType) -> String? {
-		let context = PersistenceController.shared.container.mainContext
+		let context = PersistenceController.shared.container.viewContext
 		let releaseTypeRaw = releaseType.rawValue
-		var descriptor = FetchDescriptor<FirmwareReleaseEntity>(
-			predicate: #Predicate { $0.releaseType == releaseTypeRaw },
-			sortBy: [
-				SortDescriptor(\.versionMajor, order: .reverse),
-				SortDescriptor(\.versionMinor, order: .reverse),
-				SortDescriptor(\.versionPatch, order: .reverse)
-			]
-		)
-		descriptor.fetchLimit = 1
-		return try? context.fetch(descriptor).first?.versionId
+		let request = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
+		request.predicate = NSPredicate(format: "releaseType == %d", releaseTypeRaw)
+		request.sortDescriptors = [
+			NSSortDescriptor(key: "versionMajor", ascending: false),
+			NSSortDescriptor(key: "versionMinor", ascending: false),
+			NSSortDescriptor(key: "versionPatch", ascending: false)
+		]
+		request.fetchLimit = 1
+		return try? context.fetch(request).first?.versionId
 	}
 	
 	func firmwareFiles(forVersionId versionId: String) -> [FirmwareFile] {

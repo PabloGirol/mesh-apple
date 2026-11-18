@@ -62,7 +62,7 @@ struct MeshMapPositionSnapshot: Identifiable {
 /// picker without holding SwiftData entities in map state. The backing `WaypointEntity` is resolved
 /// from `id` only when a marker is actually tapped.
 struct MeshMapWaypointSnapshot: Identifiable {
-	/// Stable identity (the waypoint's `persistentModelID` hash) — also the key the map uses to
+	/// Stable identity (the waypoint's `objectID` hash) — also the key the map uses to
 	/// resolve the backing `WaypointEntity` when the marker is tapped.
 	let id: Int64
 	let coordinate: CLLocationCoordinate2D

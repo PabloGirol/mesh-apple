@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import OSLog
 
 /// Full-screen gate shown while the connected radio's firmware is below the minimum the app
@@ -14,7 +14,7 @@ import OSLog
 /// app is blocked. The only ways out are a successful update or disconnecting.
 struct FirmwareUpdateGate: View {
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
 	@State private var node: NodeInfoEntity?
 
@@ -51,15 +51,17 @@ struct FirmwareUpdateGate: View {
 	}
 
 	private func resolveNode() {
-		// Bound to a local first: a #Predicate that reaches through self throws at fetch time
+		// Bound to a local first: an NSPredicate that reaches through self throws at fetch time
 		// and the failure is silent.
 		guard let num = accessoryManager.activeDeviceNum else {
 			node = nil
 			return
 		}
-		let descriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == num })
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", num)
+		request.fetchLimit = 1
 		do {
-			node = try context.fetch(descriptor).first
+			node = try context.fetch(request).first
 		} catch {
 			Logger.data.error("Could not load the connected node for the firmware update gate: \(error.localizedDescription, privacy: .public)")
 			node = nil

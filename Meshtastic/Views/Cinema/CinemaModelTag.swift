@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 10/26/26.
 //
 #if os(visionOS)
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// The card beside a model on the cinema's stand: the device, and when the model is of a node,
@@ -20,8 +20,9 @@ struct CinemaModelTag: View {
 	var onZoom: (Float) -> Void = { _ in }
 	var onInput: (DisplayInputEvent) -> Void = { _ in }
 	let onClose: () -> Void
-	@Environment(\.modelContext) private var context
+	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@State private var reading: CinemaNodeReading?
+	private var context: NSManagedObjectContext { accessoryManager.context }
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 10) {

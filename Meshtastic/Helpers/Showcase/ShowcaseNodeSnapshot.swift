@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 10/14/26.
 //
 import Foundation
-@preconcurrency import SwiftData
+import CoreData
 
 /// What the showcase needs to know about one node, copied out of SwiftData so the scene never
 /// holds a model object. Unlike the spatial map, nodes without a position are included.
@@ -60,8 +60,16 @@ enum ShowcaseNodeOrdering {
 
 /// Reads the showcase's nodes on its own context, off the main actor. One fetch of every node that
 /// isn't ignored; only the nodes that make the cut have their user and position read.
-@ModelActor
 actor ShowcaseSnapshotReader {
+	let modelContext: NSManagedObjectContext
+
+	init(modelContainer: NSPersistentContainer) {
+		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+		context.persistentStoreCoordinator = modelContainer.persistentStoreCoordinator
+		context.automaticallyMergesChangesFromParent = true
+		self.modelContext = context
+	}
+
 	struct Result: Equatable, Sendable {
 		let nodes: [ShowcaseNodeSnapshot]
 		/// Every node that isn't ignored, including those past the limit.
@@ -69,8 +77,9 @@ actor ShowcaseSnapshotReader {
 	}
 
 	func read(connectedNodeNum: Int64?, limit: Int = ShowcaseNodeOrdering.limit, now: Date = Date()) -> Result {
-		let descriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.ignored == false })
-		let fetched = ((try? modelContext.fetch(descriptor)) ?? []).filter { $0.modelContext != nil && !$0.isDeleted }
+		let descriptor = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		descriptor.predicate = NSPredicate(format: "ignored == NO")
+		let fetched = ((try? modelContext.fetch(descriptor)) ?? []).filter { $0.managedObjectContext != nil && !$0.isDeleted }
 		let keys = fetched.map { ShowcaseNodeOrdering.Key(num: $0.num, isFavorite: $0.favorite, lastHeard: $0.lastHeard) }
 		let order = ShowcaseNodeOrdering.order(keys, connectedNodeNum: connectedNodeNum, limit: limit)
 		let onlineSince = now.addingTimeInterval(-ShowcaseLayout.onlineWindow)

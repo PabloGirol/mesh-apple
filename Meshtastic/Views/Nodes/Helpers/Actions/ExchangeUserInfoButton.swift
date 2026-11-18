@@ -1,6 +1,6 @@
-import SwiftData
-import SwiftUI
+import CoreData
 import OSLog
+import SwiftUI
 
 struct ExchangeUserInfoButton: View {
 	var node: NodeInfoEntity

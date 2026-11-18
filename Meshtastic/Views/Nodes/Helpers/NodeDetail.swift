@@ -9,7 +9,7 @@ import WeatherKit
 import MapKit
 import CoreLocation
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 import MeshtasticProtobufs
 
 extension NSNotification.Name {
@@ -50,15 +50,20 @@ struct NodeDetail: View {
 	var modemPreset: ModemPresets = ModemPresets(
 		rawValue: UserDefaults.modemPreset
 	) ?? ModemPresets.longFast
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@EnvironmentObject var router: Router
 	@State private var showingShutdownConfirm: Bool = false
 	@State private var showingRebootConfirm: Bool = false
 	@State private var dateFormatRelative: Bool = true
-	@Bindable	var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	private let nodeNum: Int64
-	@Query private var users: [UserEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \UserEntity.num, ascending: true)],
+		predicate: nil,
+		animation: .default
+	)
+	private var users: FetchedResults<UserEntity>
 	private let showMapLink: Bool
 	@State private var latestPosition: PositionEntity?
 	@State private var latestDeviceMetrics: TelemetryEntity?
@@ -74,7 +79,11 @@ struct NodeDetail: View {
 		self.node = node
 		self.nodeNum = nodeNum
 		self.showMapLink = showMapLink
-		_users = Query(filter: #Predicate<UserEntity> { $0.num == nodeNum })
+		_users = FetchRequest(
+			sortDescriptors: [NSSortDescriptor(keyPath: \UserEntity.num, ascending: true)],
+			predicate: NSPredicate(format: "num == %lld", nodeNum),
+			animation: .default
+		)
 	}
 
 	/// The currently BLE-connected (or remotely administered) node, derived reactively
@@ -88,16 +97,18 @@ struct NodeDetail: View {
 	/// data even though the user query has already removed the deleted row.
 	private var currentUser: UserEntity? {
 		guard let user = users.first,
-			user.modelContext != nil,
+			user.managedObjectContext != nil,
 			!user.isDeleted
 		else { return nil }
 		return user
 	}
 	private var connectedUser: UserEntity? {
 		guard let num = accessoryManager.activeDeviceNum else { return nil }
-		let descriptor = FetchDescriptor<UserEntity>(predicate: #Predicate { $0.num == num })
-		guard let user = try? context.fetch(descriptor).first,
-			user.modelContext != nil,
+		let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+		request.predicate = NSPredicate(format: "num == %lld", num)
+		request.fetchLimit = 1
+		guard let user = try? context.fetch(request).first,
+			user.managedObjectContext != nil,
 			!user.isDeleted
 		else { return nil }
 		return user
@@ -135,7 +146,7 @@ struct NodeDetail: View {
 	@State private var displayNameRefresh = 0
 
 	var body: some View {
-		if node.modelContext != nil, !node.isDeleted {
+		if !node.isDeleted {
 			ScrollViewReader { scrollView in
 				Color.clear
 					.frame(height: 0) // Ensure it has no height
@@ -908,7 +919,7 @@ struct NodeDetail: View {
 					// Liveness screen: `latestPosition` is a @State handle refreshed on a cadence;
 					// if ingestion deleted the row since the last refresh, reading a persisted
 					// property on it traps in SwiftData. Skip rendering until the next refresh.
-					if let latestPosition, latestPosition.modelContext != nil, !latestPosition.isDeleted {
+					if let latestPosition, !latestPosition.isDeleted {
 					// No heading on visionOS, so the compass would never turn.
 					#if !targetEnvironment(macCatalyst) && !os(visionOS)
 						if latestPosition.isPreciseLocation {

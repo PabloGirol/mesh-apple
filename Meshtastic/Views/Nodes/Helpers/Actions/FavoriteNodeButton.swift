@@ -1,13 +1,13 @@
-import SwiftData
+import CoreData
 import OSLog
 import SwiftUI
 
 struct FavoriteNodeButton: View {
 
 	@EnvironmentObject var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	@State var isShowingClientBaseConfirmation = false
 
 	var body: some View {

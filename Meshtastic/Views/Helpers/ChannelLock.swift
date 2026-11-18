@@ -8,7 +8,7 @@ import SwiftUI
 
 struct ChannelLock: View {
 
-	@Bindable var channel: ChannelEntity
+	var channel: ChannelEntity
 	var body: some View {
 		/// Unencrypted - using no key at all or a known 1 byte key
 		if channel.psk?.hexDescription.count ?? 0 < 3 {

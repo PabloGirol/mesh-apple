@@ -42,7 +42,7 @@ extension Config.LoRaConfig: ConfigFormMessage {
 }
 
 struct LoRaConfig: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	let node: NodeInfoEntity?
 

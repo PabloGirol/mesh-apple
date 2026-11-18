@@ -9,9 +9,9 @@ import SwiftUI
 import MapKit
 
 struct PositionPopover: View {
-	
+
 	@ObservedObject var locationsHandler = LocationsHandler.shared
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var appState: AppState
 	private var idiom: UIUserInterfaceIdiom { UIDevice.current.userInterfaceIdiom }
 	@Environment(\.openURL) var openURL

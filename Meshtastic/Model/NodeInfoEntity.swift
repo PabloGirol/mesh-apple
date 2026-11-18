@@ -3,159 +3,128 @@
 //  Meshtastic
 //
 //  SwiftData model for the central node information entity.
+//  Converted to Core Data NSManagedObject subclass for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class NodeInfoEntity {
-	var bleName: String?
-	var channel: Int32 = 0
-	var favorite: Bool = false
-	var firstHeard: Date?
-	/// True once an admin response carrying a session passkey has been received from this node,
-	/// correlated to a request this app sent (response variant, requestID set, addressed to the
-	/// connected node) — proof that an admin request we sent succeeded at least once. Set on
-	/// ingest (`MeshPackets.adminAppPacket`), carried through backup restore, never cleared.
-	var hasBeenAdministered: Bool = false
-	/// True when this node signs its broadcast packets via XEdDSA and the radio has verified at least one
-	/// (NodeInfo.has_xeddsa_signed, field 14). Observed automatic trust — not a configurable setting.
-	var hasXeddsaSigned: Bool = false
-	/// True when the user verified this node's key in person — an in-person contact QR exchange
-	/// (SharedContact.manually_verified) or the radio's own verification flow. Reported by the
-	/// connected radio's node DB (NodeInfo.is_key_manually_verified); the radio owns the flag.
-	var isKeyManuallyVerified: Bool = false
-	/// Whether the connected radio has heard this node over RF on the LoRa settings it is using now
-	/// (NodeInfo.heard_on_current_lora, firmware 2.8.1+, meshtastic/design#146). Nil when unknown:
-	/// older firmware never sends it and a proto3 bool reads false when absent, so it is only stored
-	/// from a radio known to send it.
-	var heardOnCurrentLora: Bool?
-	var hopsAway: Int32 = 0
-	var id: Int64 = 0
-	var ignored: Bool = false
-	var lastHeard: Date?
-	/// Live status message broadcast by the node over NODE_STATUS_APP (nil when empty).
-	/// Distinct from `statusMessageConfig`, which is the configured value retrieved via admin.
-	var nodeStatus: String?
-	@Attribute(.unique) var num: Int64 = 0
-	var peripheralId: String?
-	/// User-editable per-channel power labels (e.g. "Solar", "Battery", "Load"), indexed 0-2.
-	/// A missing/empty entry falls back to the generic "Channel N" in the UI. Per meshtastic/design#53.
-	var powerChannelLabels: [String] = []
-	var rssi: Int32 = 0
-	var sessionExpiration: Date?
-	var sessionPasskey: Data?
-	var snr: Float = 0.0
-	var viaMqtt: Bool = false
+@objc(NodeInfoEntity)
+public class NodeInfoEntity: NSManagedObject {
+
+	@NSManaged public var bleName: String?
+	@NSManaged public var channel: Int32
+	@NSManaged public var favorite: Bool
+	@NSManaged public var firstHeard: Date?
+	@NSManaged public var hasBeenAdministered: Bool
+	@NSManaged public var hasXeddsaSigned: Bool
+	@NSManaged public var isKeyManuallyVerified: Bool
+	@NSManaged public var heardOnCurrentLora: Bool?
+	@NSManaged public var hopsAway: Int32
+	@NSManaged public var id: Int64
+	@NSManaged public var ignored: Bool
+	@NSManaged public var lastHeard: Date?
+	@NSManaged public var nodeStatus: String?
+	@NSManaged public var num: Int64
+	@NSManaged public var peripheralId: String?
+	@NSManaged public var powerChannelLabels: [String]
+	@NSManaged public var rssi: Int32
+	@NSManaged public var sessionExpiration: Date?
+	@NSManaged public var sessionPasskey: Data?
+	@NSManaged public var snr: Float
+	@NSManaged public var viaMqtt: Bool
 
 	// Config relationships (to-one, cascade)
-	@Relationship(deleteRule: .cascade, inverse: \AmbientLightingConfigEntity.ambientLightingConfigNode)
-	var ambientLightingConfig: AmbientLightingConfigEntity?
+	@NSManaged public var ambientLightingConfig: AmbientLightingConfigEntity?
+	@NSManaged public var audioConfig: AudioConfigEntity?
+	@NSManaged public var bluetoothConfig: BluetoothConfigEntity?
+	@NSManaged public var cannedMessageConfig: CannedMessageConfigEntity?
+	@NSManaged public var detectionSensorConfig: DetectionSensorConfigEntity?
+	@NSManaged public var deviceConfig: DeviceConfigEntity?
+	@NSManaged public var displayConfig: DisplayConfigEntity?
+	@NSManaged public var externalNotificationConfig: ExternalNotificationConfigEntity?
+	@NSManaged public var loRaConfig: LoRaConfigEntity?
+	@NSManaged public var meshBeaconConfig: MeshBeaconConfigEntity?
+	@NSManaged public var metadata: DeviceMetadataEntity?
+	@NSManaged public var mqttConfig: MQTTConfigEntity?
+	@NSManaged public var neighborInfoConfig: NeighborInfoConfigEntity?
+	@NSManaged public var myInfo: MyInfoEntity?
+	@NSManaged public var networkConfig: NetworkConfigEntity?
+	@NSManaged public var pax: [PaxCounterEntity]
+	@NSManaged public var paxCounterConfig: PaxCounterConfigEntity?
+	@NSManaged public var positionConfig: PositionConfigEntity?
+	@NSManaged public var positions: [PositionEntity]
+	@NSManaged public var latestPositionCache: PositionEntity?
+	@NSManaged public var powerConfig: PowerConfigEntity?
+	@NSManaged public var rangeTestConfig: RangeTestConfigEntity?
+	@NSManaged public var rtttlConfig: RTTTLConfigEntity?
+	@NSManaged public var securityConfig: SecurityConfigEntity?
+	@NSManaged public var serialConfig: SerialConfigEntity?
+	@NSManaged public var statusMessageConfig: StatusMessageConfigEntity?
+	@NSManaged public var storeForwardConfig: StoreForwardConfigEntity?
+	@NSManaged public var takConfig: TAKConfigEntity?
+	@NSManaged public var telemetries: [TelemetryEntity]
+	@NSManaged public var telemetryConfig: TelemetryConfigEntity?
+	@NSManaged public var traceRoutes: [TraceRouteEntity]
+	@NSManaged public var user: UserEntity?
 
-	@Relationship(deleteRule: .cascade, inverse: \AudioConfigEntity.audioConfigNode)
-	var audioConfig: AudioConfigEntity?
-
-	@Relationship(deleteRule: .cascade, inverse: \BluetoothConfigEntity.bluetoothConfigNode)
-	var bluetoothConfig: BluetoothConfigEntity?
-
-	@Relationship(deleteRule: .cascade, inverse: \CannedMessageConfigEntity.cannedMessagesConfigNode)
-	var cannedMessageConfig: CannedMessageConfigEntity?
-
-	@Relationship(deleteRule: .cascade, inverse: \DetectionSensorConfigEntity.detectionSensorConfigNode)
-	var detectionSensorConfig: DetectionSensorConfigEntity?
-
-	@Relationship(deleteRule: .cascade, inverse: \DeviceConfigEntity.deviceConfigNode)
-	var deviceConfig: DeviceConfigEntity?
-
-	@Relationship(deleteRule: .cascade, inverse: \DisplayConfigEntity.displayConfigNode)
-	var displayConfig: DisplayConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \ExternalNotificationConfigEntity.externalNotificationConfigNode)
-	var externalNotificationConfig: ExternalNotificationConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \LoRaConfigEntity.loRaConfigNode)
-	var loRaConfig: LoRaConfigEntity?
-
-	@Relationship(deleteRule: .cascade, inverse: \MeshBeaconConfigEntity.meshBeaconConfigNode)
-	var meshBeaconConfig: MeshBeaconConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \DeviceMetadataEntity.metadataNode)
-	var metadata: DeviceMetadataEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \MQTTConfigEntity.mqttConfigNode)
-	var mqttConfig: MQTTConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \NeighborInfoConfigEntity.neighborInfoConfigNode)
-	var neighborInfoConfig: NeighborInfoConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \MyInfoEntity.myInfoNode)
-	var myInfo: MyInfoEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \NetworkConfigEntity.networkConfigNode)
-	var networkConfig: NetworkConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \PaxCounterEntity.paxNode)
-	var pax: [PaxCounterEntity] = []
-
-	@Relationship(deleteRule: .nullify, inverse: \PaxCounterConfigEntity.paxCounterConfigNode)
-	var paxCounterConfig: PaxCounterConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \PositionConfigEntity.positionConfigNode)
-	var positionConfig: PositionConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \PositionEntity.nodePosition)
-	var positions: [PositionEntity] = []
-
-	/// Cache of this node's current "latest" position, maintained on insert so the hot
-	/// position-ingest path never has to scan the (large, unindexed) PositionEntity table to
-	/// find/clear the previous latest. Read via the `latestPosition` accessor, which checks that
-	/// the row still exists (not that it is still this node's latest: a node fetched before a
-	/// later move keeps pointing at the older row until it is refetched) and falls back to a
-	/// sorted query when this is nil (migrated/restored data) or the row is gone. Unidirectional
-	/// to-one with no inverse: the context that deletes the position repairs this link at save,
-	/// but every other context keeps a handle that traps on its first persisted-property read, so
-	/// never follow it directly.
-	@Relationship(deleteRule: .nullify)
-	var latestPositionCache: PositionEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \PowerConfigEntity.powerConfigNode)
-	var powerConfig: PowerConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \RangeTestConfigEntity.rangeTestConfigNode)
-	var rangeTestConfig: RangeTestConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \RTTTLConfigEntity.rtttlConfigNode)
-	var rtttlConfig: RTTTLConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \SecurityConfigEntity.securityConfigNode)
-	var securityConfig: SecurityConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \SerialConfigEntity.serialConfigNode)
-	var serialConfig: SerialConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \StatusMessageConfigEntity.statusMessageConfigNode)
-	var statusMessageConfig: StatusMessageConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \StoreForwardConfigEntity.storeForwardConfigNode)
-	var storeForwardConfig: StoreForwardConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \TAKConfigEntity.takConfigNode)
-	var takConfig: TAKConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \TelemetryEntity.nodeTelemetry)
-	var telemetries: [TelemetryEntity] = []
-
-	@Relationship(deleteRule: .nullify, inverse: \TelemetryConfigEntity.telemetryConfigNode)
-	var telemetryConfig: TelemetryConfigEntity?
-
-	@Relationship(deleteRule: .nullify, inverse: \TraceRouteEntity.node)
-	var traceRoutes: [TraceRouteEntity] = []
-
-	@Relationship(deleteRule: .nullify, inverse: \UserEntity.userNode)
-	var user: UserEntity?
-
-	init() {}
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "NodeInfoEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.bleName = nil
+		self.channel = 0
+		self.favorite = false
+		self.firstHeard = nil
+		self.hasBeenAdministered = false
+		self.hasXeddsaSigned = false
+		self.isKeyManuallyVerified = false
+		self.heardOnCurrentLora = nil
+		self.hopsAway = 0
+		self.id = 0
+		self.ignored = false
+		self.lastHeard = nil
+		self.nodeStatus = nil
+		self.num = 0
+		self.peripheralId = nil
+		self.powerChannelLabels = []
+		self.rssi = 0
+		self.sessionExpiration = nil
+		self.sessionPasskey = nil
+		self.snr = 0.0
+		self.viaMqtt = false
+		self.ambientLightingConfig = nil
+		self.audioConfig = nil
+		self.bluetoothConfig = nil
+		self.cannedMessageConfig = nil
+		self.detectionSensorConfig = nil
+		self.deviceConfig = nil
+		self.displayConfig = nil
+		self.externalNotificationConfig = nil
+		self.loRaConfig = nil
+		self.meshBeaconConfig = nil
+		self.metadata = nil
+		self.mqttConfig = nil
+		self.neighborInfoConfig = nil
+		self.myInfo = nil
+		self.networkConfig = nil
+		self.pax = []
+		self.paxCounterConfig = nil
+		self.positionConfig = nil
+		self.positions = []
+		self.latestPositionCache = nil
+		self.powerConfig = nil
+		self.rangeTestConfig = nil
+		self.rtttlConfig = nil
+		self.securityConfig = nil
+		self.serialConfig = nil
+		self.statusMessageConfig = nil
+		self.storeForwardConfig = nil
+		self.takConfig = nil
+		self.telemetries = []
+		self.telemetryConfig = nil
+		self.traceRoutes = []
+		self.user = nil
+	}
 }
 
 extension NodeInfoEntity {
@@ -178,7 +147,7 @@ extension NodeInfoEntity {
 	/// it is cheap to call per render, and deterministic across re-renders as long as
 	/// the input order is stable.
 	static func adminPickerOrder(_ nodes: [NodeInfoEntity]) -> [NodeInfoEntity] {
-		let liveNodes = nodes.filter { $0.modelContext != nil && !$0.isDeleted }
+		let liveNodes = nodes.filter { $0.managedObjectContext != nil && !$0.isDeleted }
 		return liveNodes.filter(\.favorite) + liveNodes.filter { !$0.favorite }
 	}
 

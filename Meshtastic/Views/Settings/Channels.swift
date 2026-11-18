@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 4/8/22.
 //
 
-@preconcurrency import SwiftData
+import CoreData
 import MapKit
 import MeshtasticProtobufs
 import OSLog
@@ -32,12 +32,13 @@ func projectedDisplayChannels(from channels: [ChannelEntity]) -> [ChannelEntity]
 /// every offer stays visible, which is the pre-suppression behavior and the safe
 /// direction — hiding an offer on bad data would be the harmful failure.
 @MainActor
-func configuredChannelOfferKeys(context: ModelContext) -> Set<String> {
+func configuredChannelOfferKeys(context: NSManagedObjectContext) -> Set<String> {
 	let num = Int64(UserDefaults.preferredPeripheralNum)
 	guard num > 0 else { return [] }
-	var descriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == num })
-	descriptor.fetchLimit = 1
-	guard let node = (try? context.fetch(descriptor))?.first else { return [] }
+	let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+	request.predicate = NSPredicate(format: "num == %d", num)
+	request.fetchLimit = 1
+	guard let node = (try? context.fetch(request))?.first else { return [] }
 	return Set(canonicalValidUniqueChannels(from: node.myInfo?.channels ?? []).map {
 		"\($0.name ?? "")|\(($0.psk ?? Data()).base64EncodedString())"
 	})
@@ -85,12 +86,12 @@ func channelSettingsForSharing(
 
 struct Channels: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.sizeCategory) var sizeCategory
 	@Environment(\.colorScheme) private var colorScheme
 
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 
 	@State var hasChanges = false
 	@State var hasValidKey = true
@@ -384,7 +385,7 @@ struct Channels: View {
 		myInfo.channels = uniqueChannels.values.sorted { $0.index < $1.index }
 
 		if channel.role != Channel.Role.disabled {
-			if selectedChannel.modelContext == nil {
+			if selectedChannel.managedObjectContext == nil {
 				context.insert(selectedChannel)
 			}
 			do {
@@ -399,9 +400,8 @@ struct Channels: View {
 				context.delete(object)
 			}
 			let channelIdx = channel.index
-			var nodeDescriptor = FetchDescriptor<NodeInfoEntity>(
-				predicate: #Predicate { $0.channel == channelIdx }
-			)
+			let nodeDescriptor = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+				nodeDescriptor.predicate = NSPredicate(format: "channel == %d", channelIdx)
 			nodeDescriptor.fetchLimit = 100
 			if let matchingNodes = try? context.fetch(nodeDescriptor) {
 				TelemetryEntity.deleteAll(forNodes: matchingNodes.map(\.num), in: context)

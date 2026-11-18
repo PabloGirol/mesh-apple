@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 10/25/26.
 //
 #if os(visionOS)
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// The latest trace route on the framed print by the tent's door in the cinema, drawn as the
@@ -13,7 +13,7 @@ import SwiftUI
 /// Tapping it shows the route on the front screen's map and flies it on the 3D map.
 struct TraceRouteBoard: View {
 	@EnvironmentObject private var appState: AppState
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.openWindow) private var openWindow
 	@State private var card: Card?
 	/// False until the store has been read once, so the empty state doesn't flash first.

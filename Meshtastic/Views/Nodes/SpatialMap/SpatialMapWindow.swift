@@ -7,7 +7,7 @@
 #if os(visionOS)
 import CoreLocation
 import OSLog
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// Root of the spatial map volume. Owns the model and the scene, refreshes the node list every
@@ -15,7 +15,7 @@ import SwiftUI
 struct SpatialMapWindow: View {
 	@EnvironmentObject private var appState: AppState
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.dismissWindow) private var dismissWindow
 	@Environment(\.openWindow) private var openWindow
 	@Environment(\.scenePhase) private var scenePhase

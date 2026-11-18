@@ -1,12 +1,13 @@
 import MeshtasticProtobufs
 import OSLog
 import SwiftUI
+import CoreData
 #if !targetEnvironment(macCatalyst) && !os(visionOS)
 import Translation
 #endif
 
 struct MessageText: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@EnvironmentObject private var router: Router
 

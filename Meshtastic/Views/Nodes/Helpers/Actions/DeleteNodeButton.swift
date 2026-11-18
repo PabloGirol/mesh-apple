@@ -1,10 +1,10 @@
-import SwiftData
+import CoreData
 import OSLog
 import SwiftUI
 
 struct DeleteNodeButton: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 
 	var connectedNode: NodeInfoEntity

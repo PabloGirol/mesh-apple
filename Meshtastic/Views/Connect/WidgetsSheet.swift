@@ -6,7 +6,7 @@
 //
 
 #if os(iOS) && !targetEnvironment(macCatalyst)
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// The Live Activity, the Home Screen and Lock Screen widgets, and the
@@ -15,7 +15,7 @@ import SwiftUI
 /// no way to place them — so their sections show what's added and how.
 struct WidgetsSheet: View {
 	@Environment(\.dismiss) private var dismiss
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.scenePhase) private var scenePhase
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@ObservedObject var liveActivities: MeshLiveActivityManager
@@ -198,16 +198,16 @@ struct WidgetsSheet: View {
 	/// user, ignored nodes and the connected radio are filtered in Swift.
 	private func loadNodes() {
 		let radioNum = accessoryManager.activeDeviceNum
-		let favoritesDescriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.favorite == true },
-			sortBy: [SortDescriptor(\.lastHeard, order: .reverse)]
-		)
-		var recentDescriptor = FetchDescriptor<NodeInfoEntity>(
-			sortBy: [SortDescriptor(\.lastHeard, order: .reverse)]
-		)
-		recentDescriptor.fetchLimit = 100
-		let favorites = (try? context.fetch(favoritesDescriptor)) ?? []
-		let recent = ((try? context.fetch(recentDescriptor)) ?? []).filter { !$0.favorite }
+		let favoritesRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		favoritesRequest.predicate = NSPredicate(format: "favorite == YES")
+		favoritesRequest.sortDescriptors = [NSSortDescriptor(key: "lastHeard", ascending: false)]
+
+		let recentRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		recentRequest.sortDescriptors = [NSSortDescriptor(key: "lastHeard", ascending: false)]
+		recentRequest.fetchLimit = 100
+
+		let favorites = (try? context.fetch(favoritesRequest)) ?? []
+		let recent = ((try? context.fetch(recentRequest)) ?? []).filter { !$0.favorite }
 		nodes = (favorites + recent).compactMap { node -> NodePickerRow? in
 			guard node.num != radioNum, !node.ignored, let user = node.user else { return nil }
 			return NodePickerRow(

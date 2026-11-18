@@ -9,7 +9,7 @@ import SwiftUI
 import UIKit
 import Charts
 import OSLog
-import SwiftData
+import CoreData
 
 struct LocalStatsLog: View {
 
@@ -26,8 +26,8 @@ struct LocalStatsLog: View {
 	@State var exportString = ""
 	@State private var isPresentingNoiseFloorInfo = false
 
-	@Bindable var node: NodeInfoEntity
-	@Environment(\.modelContext) private var context
+	var node: NodeInfoEntity
+	@Environment(\.managedObjectContext) private var context
 	@State private var sortOrder = [KeyPathComparator(\LocalStatsRow.time, order: .reverse)]
 	@State private var selection: LocalStatsRow.ID?
 	/// Set when a table row is picked so the chart scrolls to that reading.
@@ -668,7 +668,7 @@ private struct LocalStatsChart: View {
 /// Value snapshot of one local-stats telemetry row. The fetch runs on a background
 /// ModelActor, and value types are what may cross back to the main actor.
 struct LocalStatsRow: Identifiable, Sendable {
-	let id: PersistentIdentifier
+	let id: NSManagedObjectID
 	let time: Date?
 	let noiseFloor: Int32?
 	let uptimeSeconds: Int32?
@@ -684,18 +684,25 @@ struct LocalStatsRow: Identifiable, Sendable {
 
 /// Fetches the node's local-stats telemetry on a background context so the main actor
 /// never blocks on the (unindexed) predicate scan — same pattern as MessageSearchActor.
-@ModelActor
 actor LocalStatsFetchActor {
+	let modelContext: NSManagedObjectContext
+
+	init(modelContainer: NSPersistentContainer) {
+		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+		context.persistentStoreCoordinator = modelContainer.persistentStoreCoordinator
+		context.automaticallyMergesChangesFromParent = true
+		self.modelContext = context
+	}
+
 	func rows(nodeNum: Int64) -> [LocalStatsRow] {
-		var descriptor = FetchDescriptor<TelemetryEntity>(
-			predicate: TelemetryEntity.predicate(forNode: nodeNum, metricsType: 4),
-			sortBy: [SortDescriptor(\TelemetryEntity.time, order: .reverse)]
-		)
+		var descriptor = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+		descriptor.predicate = TelemetryEntity.predicate(forNode: nodeNum, metricsType: 4)
+		descriptor.sortDescriptors = [NSSortDescriptor(key: "time", ascending: false)]
 		descriptor.fetchLimit = 500
 		let entities = (try? modelContext.fetch(descriptor)) ?? []
 		return entities.map { telemetry in
 			LocalStatsRow(
-				id: telemetry.persistentModelID,
+				id: telemetry.objectID,
 				time: telemetry.time,
 				noiseFloor: telemetry.noiseFloor,
 				uptimeSeconds: telemetry.uptimeSeconds,

@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 struct ConfigHeader<T>: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager

@@ -19,7 +19,7 @@ import MeshtasticProtobufs
 /// what was loaded, so reverting an edit makes the Save button disappear again; and a
 /// failed save shows an alert instead of only logging.
 struct MetadataConfigForm<M: ConfigFormMessage, Leading: View, Trailing: View>: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@Environment(\.dismiss) private var goBack
 

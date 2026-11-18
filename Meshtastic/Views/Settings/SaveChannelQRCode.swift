@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 7/13/22.
 //
 import SwiftUI
-@preconcurrency import SwiftData
+import CoreData
 import OSLog
 import MeshtasticProtobufs
 
@@ -17,7 +17,7 @@ struct SaveChannelLinkData: Identifiable {
 
 struct SaveChannelQRCode: View {
 	@Environment(\.dismiss) private var dismiss
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
 	let channelSetLink: String
 	@State var addChannels: Bool = false
@@ -284,12 +284,11 @@ struct SaveChannelQRCode: View {
 		}
 		let activeNum = Int64(activeDeviceNum)
 
-		let descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate { $0.num == activeNum }
-		)
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", activeNum)
 
 		do {
-			guard let node = try context.fetch(descriptor).first else {
+			guard let node = try context.fetch(request).first else {
 				return ([], 0, nil)
 			}
 			let channels = node.myInfo?.channels ?? []

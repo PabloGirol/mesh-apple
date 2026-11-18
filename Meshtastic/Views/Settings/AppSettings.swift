@@ -5,7 +5,7 @@ import SwiftProtobuf
 import MapKit
 import DatadogCore
 import OSLog
-import SwiftData
+import CoreData
 
 struct AppSettings: View {
 	private var idiom: UIUserInterfaceIdiom { UIDevice.current.userInterfaceIdiom }
@@ -246,10 +246,10 @@ struct AppSettings: View {
 }
 
 struct BuildTestNode: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Binding var nodeListDensity: NodeListDensity
 	@State private var previewNode: BuildTestNodeSnapshot?
-	
+
 	init(nodeListDensity: Binding<NodeListDensity>) {
 		self._nodeListDensity = nodeListDensity
 	}
@@ -272,11 +272,10 @@ struct BuildTestNode: View {
 
 	@MainActor
 	private func loadPreviewNode() {
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			sortBy: [SortDescriptor(\NodeInfoEntity.lastHeard, order: .reverse)]
-		)
-		descriptor.fetchLimit = 1
-		guard let exampleNode = try? context.fetch(descriptor).first else {
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.sortDescriptors = [NSSortDescriptor(keyPath: \NodeInfoEntity.lastHeard, ascending: false)]
+		request.fetchLimit = 1
+		guard let exampleNode = try? context.fetch(request).first else {
 			previewNode = nil
 			return
 		}

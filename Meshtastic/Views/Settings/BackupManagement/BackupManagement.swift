@@ -7,7 +7,6 @@
 
 import SwiftUI
 import OSLog
-import SwiftData
 
 /// Settings screen showing all node backups with total storage usage and swipe-to-delete.
 struct BackupManagement: View {

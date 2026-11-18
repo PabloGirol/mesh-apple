@@ -7,7 +7,7 @@
 #if os(visionOS)
 import CoreLocation
 import RealityKit
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// Root of the cinema immersive space: an environment around the viewer and a small panel to
@@ -19,7 +19,7 @@ import SwiftUI
 /// the space is open and the 3D map opens in front of the viewer instead.
 struct CinemaSpace: View {
 	/// The store, for the boards. Nil when the app runs without one (demo mode).
-	let container: ModelContainer?
+	let container: NSPersistentContainer?
 	@EnvironmentObject private var appState: AppState
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@EnvironmentObject private var lockdown: LockdownCoordinator
@@ -211,7 +211,7 @@ struct CinemaSpace: View {
 			}
 			while !Task.isCancelled {
 				if !appState.isDatabaseResetting {
-					radioCoordinate = getNodeInfo(id: radioNum, context: ModelContext(container))?.latestPosition?.nodeCoordinate
+					radioCoordinate = getNodeInfo(id: radioNum, context: container?.viewContext ?? PersistenceController.shared.context)?.latestPosition?.nodeCoordinate
 				}
 				try? await Task.sleep(for: .seconds(60))
 			}
@@ -232,7 +232,7 @@ struct CinemaSpace: View {
 		.task(id: modelRequest) {
 			modelHasDisplay = false
 			if let container, !appState.isDatabaseResetting, let nodeNum = modelRequest?.nodeNum {
-				modelHasDisplay = getNodeInfo(id: nodeNum, context: ModelContext(container))?.metadata?.hasDisplay == true
+				modelHasDisplay = getNodeInfo(id: nodeNum, context: container?.viewContext ?? PersistenceController.shared.context)?.metadata?.hasDisplay == true
 			}
 			await modelStand.show(modelRequest, environment: environment)
 		}

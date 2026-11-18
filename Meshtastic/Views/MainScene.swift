@@ -1,12 +1,12 @@
+import CoreData
 import OSLog
-import SwiftData
 import SwiftUI
 import TipKit
 
 /// One main window. Owns that window's navigation. The database, the radio,
 /// and the badge stay on `AppState` and are shared with every other window.
 struct MainScene: View {
-	let persistenceController: PersistenceController
+	let coreDataStack: CoreDataStackImpl
 	@StateObject private var router = Router()
 	@StateObject private var nodeFilters = NodeFilterParameters()
 	@EnvironmentObject private var appState: AppState
@@ -122,7 +122,7 @@ struct MainScene: View {
 	@ViewBuilder
 	private var sceneContent: some View {
 		if appState.isDatabaseResetting {
-			// Unmount the SwiftData-bound tree — including `.modelContainer` —
+			// Unmount the Core Data-bound tree — including `.modelContainer` —
 			// while a node switch clears the store. The modifier's bridge
 			// observes save notifications process-wide and never rebinds; a
 			// stale bridge traps on the next save (Datadog 324bff02). The
@@ -172,10 +172,10 @@ struct MainScene: View {
 				NotificationCenter.default.publisher(for: .meshMessagesDidChange)
 					.debounce(for: .seconds(1), scheduler: DispatchQueue.main)
 			) { _ in
-				appState.refreshBadgeCount(context: persistenceController.container.mainContext)
+				appState.refreshBadgeCount(context: coreDataStack.container.viewContext)
 			}
 		}
-		.modelContainer(persistenceController.container)
+		.environment(\.managedObjectContext, coreDataStack.container.viewContext)
 		.environmentObject(appState)
 		.environmentObject(accessoryManager)
 		.environmentObject(router)

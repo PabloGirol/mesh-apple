@@ -7,19 +7,19 @@
 
 import Foundation
 import SwiftUI
-import SwiftData
+import CoreData
 import OSLog
 
 struct TraceRouteLog: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	@State private var traceRoutes: [TraceRouteEntity] = []
 	/// Chart points for the visible routes, rebuilt when the routes or the window change rather than on every redraw.
 	@State private var chartPoints: [TraceRouteChartPoint] = []
 	/// The route picked on the chart, highlighted in the list.
 	@State private var highlightedID: Int64?
-	@State private var openRouteID: PersistentIdentifier?
+	@State private var openRouteID: NSManagedObjectID?
 	@SceneStorage("traceRouteLogWindow") private var windowRawValue = TraceRouteTimeWindow.day.rawValue
 	@SceneStorage("traceRouteLogChartExpanded") private var chartExpanded = true
 
@@ -55,10 +55,10 @@ struct TraceRouteLog: View {
 				} else {
 					header
 					Section {
-						ForEach(visibleRoutes, id: \.persistentModelID) { route in
+						ForEach(visibleRoutes, id: \.objectID) { route in
 							TraceRouteStateTimeline(route: route) { now in
 								Button {
-									openRouteID = route.persistentModelID
+									openRouteID = route.objectID
 								} label: {
 									TraceRouteCard(model: TraceRouteCardModel(route: route, now: now))
 										.contentShape(Rectangle())
@@ -85,12 +85,12 @@ struct TraceRouteLog: View {
 			}
 		}
 		.task { refreshTraceRoutes() }
-		.onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { notification in
+		.onReceive(NotificationCenter.default.publisher(for: NSManagedObjectContext.didSaveNotification)) { notification in
 			if Self.touchesTraceRoutes(notification) { refreshTraceRoutes() }
 		}
 		.navigationTitle("Trace Route Log")
 		.navigationDestination(item: $openRouteID) { id in
-			if let route = traceRoutes.first(where: { $0.persistentModelID == id }) {
+			if let route = traceRoutes.first(where: { $0.objectID == id }) {
 				TraceRouteDetail(route: route)
 			}
 		}
@@ -136,7 +136,7 @@ struct TraceRouteLog: View {
 	/// not while the view draws, so a busy mesh saving packets doesn't re-run the fetch.
 	private func refreshTraceRoutes() {
 		traceRoutes = node.safeTraceRoutes()
-		if let openRouteID, !traceRoutes.contains(where: { $0.persistentModelID == openRouteID }) {
+		if let openRouteID, !traceRoutes.contains(where: { $0.objectID == openRouteID }) {
 			self.openRouteID = nil
 		}
 		rebuildChartPoints()
@@ -148,7 +148,7 @@ struct TraceRouteLog: View {
 
 	private static func touchesTraceRoutes(_ notification: Foundation.Notification) -> Bool {
 		(notification.userInfo ?? [:]).values.contains { value in
-			(value as? Set<PersistentIdentifier>)?.contains { $0.entityName == "TraceRouteEntity" } ?? false
+			(value as? Set<NSManagedObjectID>)?.contains { $0.entity?.name == "TraceRouteEntity" } ?? false
 		}
 	}
 
@@ -156,7 +156,7 @@ struct TraceRouteLog: View {
 		if highlightedID == route.id {
 			highlightedID = nil
 		}
-		if openRouteID == route.persistentModelID {
+		if openRouteID == route.objectID {
 			openRouteID = nil
 		}
 		context.delete(route)

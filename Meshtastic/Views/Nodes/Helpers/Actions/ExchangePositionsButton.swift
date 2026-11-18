@@ -1,4 +1,4 @@
-import SwiftData
+import CoreData
 import SwiftUI
 
 struct ExchangePositionsButton: View {

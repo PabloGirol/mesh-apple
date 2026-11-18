@@ -12,7 +12,7 @@ import OSLog
 @available(iOS 18, *)
 struct Tools: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
 	#if !targetEnvironment(macCatalyst) && !os(visionOS)
 	@StateObject private var nfcReader = NFCReader()

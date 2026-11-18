@@ -5,14 +5,14 @@
 //  Copyright(c) Garth Vander Houwen 8/29/23.
 //
 
-import SwiftUI
-@preconcurrency import SwiftData
+import CoreData
 import OSLog
+import SwiftUI
 import TipKit
 
 struct UserList: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@State private var editingFilters = false
 	@State private var showingHelp = false
@@ -87,11 +87,16 @@ struct UserList: View {
 private struct FilteredUserList: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@EnvironmentObject var appState: AppState
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
-	@Query(sort: [SortDescriptor(\UserEntity.lastMessage, order: .reverse),
-				  SortDescriptor(\UserEntity.longName)])
-	private var allUsers: [UserEntity]
+	@FetchRequest(
+		sortDescriptors: [
+			NSSortDescriptor(keyPath: \UserEntity.lastMessage, ascending: false),
+			NSSortDescriptor(keyPath: \UserEntity.longName, ascending: true)
+		],
+		animation: .default
+	)
+	private var allUsers: FetchedResults<UserEntity>
 	@Binding var userSelection: UserEntity?
 	@Binding var node: NodeInfoEntity?
 
@@ -225,10 +230,10 @@ private struct FilteredUserList: View {
 }
 
 private struct DirectMessageUserRow: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 
-	@Bindable var user: UserEntity
+	var user: UserEntity
 	let node: NodeInfoEntity?
 	let summary: DirectMessageSummary?
 	let dateFormatString: String
@@ -371,7 +376,7 @@ private struct DirectMessageUserRow: View {
 private struct UserListFilterLookup {
 	private let distanceNodeNums: Set<Int64>?
 
-	init(users: [UserEntity], distanceBounds: NodeDistanceFilterBounds?, context: ModelContext) {
+	init(users: [UserEntity], distanceBounds: NodeDistanceFilterBounds?, context: NSManagedObjectContext) {
 		guard let distanceBounds else {
 			self.distanceNodeNums = nil
 			return
@@ -387,17 +392,13 @@ private struct UserListFilterLookup {
 	private static func fetchDistanceNodeNums(
 		nodeNums: [Int64],
 		bounds: NodeDistanceFilterBounds,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) -> Set<Int64> {
 		guard !nodeNums.isEmpty else { return [] }
-		let descriptor = FetchDescriptor<PositionEntity>(
-			predicate: #Predicate<PositionEntity> {
-				$0.latest == true
-				&& $0.nodePosition != nil
-				&& ($0.nodePosition.flatMap { nodeNums.contains($0.num) } ?? false)
-			}
-		)
-		let positions = (try? context.fetch(descriptor)) ?? []
+		let request = NSFetchRequest<PositionEntity>(entityName: "PositionEntity")
+		let nodeNumsPredicate = nodeNums.map { "num == \($0)" }.joined(separator: " OR ")
+		request.predicate = NSPredicate(format: "latest == true AND nodePosition != nil AND (%@)", nodeNumsPredicate)
+		let positions = (try? context.fetch(request)) ?? []
 		return Set(positions.compactMap { position in
 			guard bounds.contains(position) else { return nil }
 			return position.nodePosition?.num

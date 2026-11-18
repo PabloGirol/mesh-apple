@@ -5,17 +5,18 @@
 //  Copyright(c) Meshtastic 2025.
 //
 
-import SwiftData
+import CoreData
 
 extension NodeBackupManager {
 
 	// MARK: - Import Helpers
 
-	nonisolated static func importNodes(from backupContext: ModelContext, into liveContext: ModelContext) throws -> [Int64: NodeInfoEntity] {
-		let backupNodes = try backupContext.fetch(FetchDescriptor<NodeInfoEntity>())
+	nonisolated static func importNodes(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext) throws -> [Int64: NodeInfoEntity] {
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		let backupNodes = try backupContext.fetch(request)
 		var nodesByNum: [Int64: NodeInfoEntity] = [:]
 		for src in backupNodes {
-			let dst = NodeInfoEntity()
+			let dst = NodeInfoEntity(context: liveContext)
 			dst.bleName = src.bleName
 			dst.channel = src.channel
 			dst.favorite = src.favorite
@@ -37,14 +38,14 @@ extension NodeBackupManager {
 			dst.sessionPasskey = src.sessionPasskey
 			dst.snr = src.snr
 			dst.viaMqtt = src.viaMqtt
-			liveContext.insert(dst)
 			nodesByNum[dst.num] = dst
 		}
 		return nodesByNum
 	}
 
-	nonisolated static func importUsers(from backupContext: ModelContext, into liveContext: ModelContext, nodesByNum: [Int64: NodeInfoEntity]) throws -> [Int64: UserEntity] {
-		let backupUsers = try backupContext.fetch(FetchDescriptor<UserEntity>())
+	nonisolated static func importUsers(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext, nodesByNum: [Int64: NodeInfoEntity]) throws -> [Int64: UserEntity] {
+		let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+		let backupUsers = try backupContext.fetch(request)
 		var usersByNum: [Int64: UserEntity] = [:]
 		for src in backupUsers {
 			// Each `dst` is a freshly-created entity that we insert into the live context — this copy never
@@ -52,7 +53,7 @@ extension NodeBackupManager {
 			// first-wins key protection (UpdateSwiftData / MeshPackets) doesn't apply here. This is a
 			// user-initiated restore of the user's own trusted backup, carrying `keyMatch`/`newPublicKey`
 			// forward verbatim.
-			let dst = UserEntity()
+			let dst = UserEntity(context: liveContext)
 			dst.hwDisplayName = src.hwDisplayName
 			dst.hwModel = src.hwModel
 			dst.hwModelId = src.hwModelId
@@ -73,17 +74,17 @@ extension NodeBackupManager {
 			if let srcNode = src.userNode, let liveNode = nodesByNum[srcNode.num] {
 				dst.userNode = liveNode
 			}
-			liveContext.insert(dst)
 			usersByNum[dst.num] = dst
 		}
 		return usersByNum
 	}
 
-	nonisolated static func importMyInfo(from backupContext: ModelContext, into liveContext: ModelContext, nodesByNum: [Int64: NodeInfoEntity]) throws -> [Int64: MyInfoEntity] {
-		let backupMyInfos = try backupContext.fetch(FetchDescriptor<MyInfoEntity>())
+	nonisolated static func importMyInfo(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext, nodesByNum: [Int64: NodeInfoEntity]) throws -> [Int64: MyInfoEntity] {
+		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		let backupMyInfos = try backupContext.fetch(request)
 		var myInfosByNodeNum: [Int64: MyInfoEntity] = [:]
 		for src in backupMyInfos {
-			let dst = MyInfoEntity()
+			let dst = MyInfoEntity(context: liveContext)
 			dst.bleName = src.bleName
 			dst.deviceId = src.deviceId
 			dst.minAppVersion = src.minAppVersion
@@ -96,15 +97,15 @@ extension NodeBackupManager {
 				dst.myInfoNode = liveNode
 				myInfosByNodeNum[srcNode.num] = dst
 			}
-			liveContext.insert(dst)
 		}
 		return myInfosByNodeNum
 	}
 
-	nonisolated static func importChannels(from backupContext: ModelContext, into liveContext: ModelContext, myInfosByNodeNum: [Int64: MyInfoEntity]) throws {
-		let backupChannels = try backupContext.fetch(FetchDescriptor<ChannelEntity>())
+	nonisolated static func importChannels(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext, myInfosByNodeNum: [Int64: MyInfoEntity]) throws {
+		let request = NSFetchRequest<ChannelEntity>(entityName: "ChannelEntity")
+		let backupChannels = try backupContext.fetch(request)
 		for src in backupChannels {
-			let dst = ChannelEntity()
+			let dst = ChannelEntity(context: liveContext)
 			dst.downlinkEnabled = src.downlinkEnabled
 			dst.id = src.id
 			dst.index = src.index
@@ -119,14 +120,14 @@ extension NodeBackupManager {
 			   let liveMyInfo = myInfosByNodeNum[srcNode.num] {
 				dst.myInfoChannel = liveMyInfo
 			}
-			liveContext.insert(dst)
 		}
 	}
 
-	nonisolated static func importMetadata(from backupContext: ModelContext, into liveContext: ModelContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
-		let backupMetadata = try backupContext.fetch(FetchDescriptor<DeviceMetadataEntity>())
+	nonisolated static func importMetadata(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
+		let request = NSFetchRequest<DeviceMetadataEntity>(entityName: "DeviceMetadataEntity")
+		let backupMetadata = try backupContext.fetch(request)
 		for src in backupMetadata {
-			let dst = DeviceMetadataEntity()
+			let dst = DeviceMetadataEntity(context: liveContext)
 			dst.canShutdown = src.canShutdown
 			dst.deviceStateVersion = src.deviceStateVersion
 			dst.excludedModules = src.excludedModules
@@ -147,14 +148,14 @@ extension NodeBackupManager {
 			if let srcNode = src.metadataNode, let liveNode = nodesByNum[srcNode.num] {
 				dst.metadataNode = liveNode
 			}
-			liveContext.insert(dst)
 		}
 	}
 
-	nonisolated static func importPositions(from backupContext: ModelContext, into liveContext: ModelContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
-		let backupPositions = try backupContext.fetch(FetchDescriptor<PositionEntity>())
+	nonisolated static func importPositions(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
+		let request = NSFetchRequest<PositionEntity>(entityName: "PositionEntity")
+		let backupPositions = try backupContext.fetch(request)
 		for src in backupPositions {
-			let dst = PositionEntity()
+			let dst = PositionEntity(context: liveContext)
 			dst.altitude = src.altitude
 			dst.heading = src.heading
 			dst.latest = src.latest
@@ -171,17 +172,17 @@ extension NodeBackupManager {
 				dst.nodePosition = liveNode
 				if dst.latest { liveNode.latestPositionCache = dst }
 			}
-			liveContext.insert(dst)
 		}
 	}
 
-	nonisolated static func importTelemetry(from backupContext: ModelContext, into liveContext: ModelContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
-		let backupTelemetry = try backupContext.fetch(FetchDescriptor<TelemetryEntity>())
+	nonisolated static func importTelemetry(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
+		let request = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+		let backupTelemetry = try backupContext.fetch(request)
 		for src in backupTelemetry {
 			// Backups made before `nodeNum` existed only link the row to its node, so fall back
 			// to that. Rows whose node is not in the backup were never shown, so they stay out.
 			guard let nodeNum = src.ownerNodeNum, nodesByNum[nodeNum] != nil else { continue }
-			let dst = TelemetryEntity()
+			let dst = TelemetryEntity(context: liveContext)
 			dst.metricsType = src.metricsType
 			dst.time = src.time
 			dst.airUtilTx = src.airUtilTx
@@ -234,14 +235,14 @@ extension NodeBackupManager {
 			dst.windLull = src.windLull
 			dst.windSpeed = src.windSpeed
 			dst.nodeNum = nodeNum
-			liveContext.insert(dst)
 		}
 	}
 
-	nonisolated static func importMessages(from backupContext: ModelContext, into liveContext: ModelContext, usersByNum: [Int64: UserEntity]) throws {
-		let backupMessages = try backupContext.fetch(FetchDescriptor<MessageEntity>())
+	nonisolated static func importMessages(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext, usersByNum: [Int64: UserEntity]) throws {
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		let backupMessages = try backupContext.fetch(request)
 		for src in backupMessages {
-			let dst = MessageEntity()
+			let dst = MessageEntity(context: liveContext)
 			dst.ackError = src.ackError
 			dst.ackSNR = src.ackSNR
 			dst.ackTimestamp = src.ackTimestamp
@@ -274,14 +275,14 @@ extension NodeBackupManager {
 			if let toNum = src.toUser?.num, let liveUser = usersByNum[toNum] {
 				dst.toUser = liveUser
 			}
-			liveContext.insert(dst)
 		}
 	}
 
-	nonisolated static func importWaypoints(from backupContext: ModelContext, into liveContext: ModelContext) throws {
-		let backupWaypoints = try backupContext.fetch(FetchDescriptor<WaypointEntity>())
+	nonisolated static func importWaypoints(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext) throws {
+		let request = NSFetchRequest<WaypointEntity>(entityName: "WaypointEntity")
+		let backupWaypoints = try backupContext.fetch(request)
 		for src in backupWaypoints {
-			let dst = WaypointEntity()
+			let dst = WaypointEntity(context: liveContext)
 			dst.created = src.created
 			dst.createdBy = src.createdBy
 			dst.expire = src.expire
@@ -304,14 +305,14 @@ extension NodeBackupManager {
 			dst.notifyOnEnter = src.notifyOnEnter
 			dst.notifyOnExit = src.notifyOnExit
 			dst.notifyFavoritesOnly = src.notifyFavoritesOnly
-			liveContext.insert(dst)
 		}
 	}
 
-	nonisolated static func importTraceRoutes(from backupContext: ModelContext, into liveContext: ModelContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
-		let backupTraceRoutes = try backupContext.fetch(FetchDescriptor<TraceRouteEntity>())
+	nonisolated static func importTraceRoutes(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
+		let request = NSFetchRequest<TraceRouteEntity>(entityName: "TraceRouteEntity")
+		let backupTraceRoutes = try backupContext.fetch(request)
 		for src in backupTraceRoutes {
-			let dst = TraceRouteEntity()
+			let dst = TraceRouteEntity(context: liveContext)
 			dst.id = src.id
 			dst.hasPositions = src.hasPositions
 			dst.hopsBack = src.hopsBack
@@ -329,9 +330,8 @@ extension NodeBackupManager {
 			if let srcNode = src.node, let liveNode = nodesByNum[srcNode.num] {
 				dst.node = liveNode
 			}
-			liveContext.insert(dst)
 			for srcHop in src.hops {
-				let dstHop = TraceRouteHopEntity()
+				let dstHop = TraceRouteHopEntity(context: liveContext)
 				dstHop.back = srcHop.back
 				dstHop.index = srcHop.index
 				dstHop.name = srcHop.name
@@ -339,10 +339,9 @@ extension NodeBackupManager {
 				dstHop.snr = srcHop.snr
 				dstHop.time = srcHop.time
 				dstHop.traceRoute = dst
-				liveContext.insert(dstHop)
 			}
 			for srcPosition in src.nodePositions {
-				let dstPosition = TraceRouteNodePositionEntity()
+				let dstPosition = TraceRouteNodePositionEntity(context: liveContext)
 				dstPosition.num = srcPosition.num
 				dstPosition.altitude = srcPosition.altitude
 				dstPosition.heading = srcPosition.heading
@@ -355,15 +354,15 @@ extension NodeBackupManager {
 				dstPosition.speed = srcPosition.speed
 				dstPosition.time = srcPosition.time
 				dstPosition.traceRoute = dst
-				liveContext.insert(dstPosition)
 			}
 		}
 	}
 
-	nonisolated static func importPaxCounters(from backupContext: ModelContext, into liveContext: ModelContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
-		let backupPax = try backupContext.fetch(FetchDescriptor<PaxCounterEntity>())
+	nonisolated static func importPaxCounters(from backupContext: NSManagedObjectContext, into liveContext: NSManagedObjectContext, nodesByNum: [Int64: NodeInfoEntity]) throws {
+		let request = NSFetchRequest<PaxCounterEntity>(entityName: "PaxCounterEntity")
+		let backupPax = try backupContext.fetch(request)
 		for src in backupPax {
-			let dst = PaxCounterEntity()
+			let dst = PaxCounterEntity(context: liveContext)
 			dst.ble = src.ble
 			dst.time = src.time
 			dst.uptime = src.uptime
@@ -371,7 +370,6 @@ extension NodeBackupManager {
 			if let srcNode = src.paxNode, let liveNode = nodesByNum[srcNode.num] {
 				dst.paxNode = liveNode
 			}
-			liveContext.insert(dst)
 		}
 	}
 }

@@ -1,9 +1,9 @@
-import SwiftUI
-import SwiftData
+import CoreData
 import OSLog
+import SwiftUI
 
 struct MessageContextMenuItems: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 
 	let message: MessageEntity

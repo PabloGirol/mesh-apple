@@ -10,7 +10,7 @@ import Charts
 
 struct BatteryGauge: View {
 
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	private let minValue = 0.0
 	private let maxValue = 100.00
 

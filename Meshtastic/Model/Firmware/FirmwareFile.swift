@@ -8,7 +8,7 @@
 import Foundation
 import OSLog
 import SwiftUI
-@preconcurrency import SwiftData
+import CoreData
 
 extension FirmwareFile {
 	enum FirmwareFileError: Error, LocalizedError {
@@ -232,14 +232,13 @@ class FirmwareFile: ObservableObject, Hashable, Equatable {
 		}
 		
 		// Look up the architecture for this file
-		let context = PersistenceController.shared.container.mainContext
-		var hardwareDescriptor = FetchDescriptor<DeviceHardwareEntity>(
-			predicate: #Predicate { $0.platformioTarget == target }
-		)
-		hardwareDescriptor.fetchLimit = 1
+		let context = PersistenceController.shared.container.viewContext
+		let hardwareRequest = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
+		hardwareRequest.predicate = NSPredicate(format: "platformioTarget == %@", target)
+		hardwareRequest.fetchLimit = 1
 		let hardwareResult: DeviceHardwareEntity?
 		do {
-			hardwareResult = try context.fetch(hardwareDescriptor).first
+			hardwareResult = try context.fetch(hardwareRequest).first
 		} catch {
 			Logger.data.error("Failed to fetch DeviceHardwareEntity for target \(target): \(error.localizedDescription)")
 			throw FirmwareFileError.unknownArchitecture
@@ -249,16 +248,15 @@ class FirmwareFile: ObservableObject, Hashable, Equatable {
 
 		guard let architecture else { throw FirmwareFileError.unknownArchitecture }
 		self.architecture = architecture
-		
+
 		// Determine release type
 		var releaseType: ReleaseType = .unlisted
 		var releaseNotes: String?
-		var firmwareDescriptor = FetchDescriptor<FirmwareReleaseEntity>(
-			predicate: #Predicate { $0.versionId == version }
-		)
-		firmwareDescriptor.fetchLimit = 1
+		let firmwareRequest = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
+		firmwareRequest.predicate = NSPredicate(format: "versionId == %@", version)
+		firmwareRequest.fetchLimit = 1
 		do {
-			if let firmware = try context.fetch(firmwareDescriptor).first {
+			if let firmware = try context.fetch(firmwareRequest).first {
 				releaseType = firmware.releaseType.flatMap { ReleaseType(rawValue: $0) } ?? .unlisted
 				releaseNotes = firmware.releaseNotes
 			}

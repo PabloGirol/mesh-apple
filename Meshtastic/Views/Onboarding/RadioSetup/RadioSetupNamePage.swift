@@ -12,7 +12,7 @@ import SwiftUI
 struct RadioSetupNamePage: View {
 	let model: RadioSetupModel
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@ScaledMetric(relativeTo: .largeTitle) private var previewSize: CGFloat = 96
 
 	// Limited through the bindings rather than onChange, so the stored names are never

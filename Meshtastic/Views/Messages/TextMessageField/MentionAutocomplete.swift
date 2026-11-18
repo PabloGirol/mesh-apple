@@ -1,7 +1,7 @@
 // MentionAutocomplete.swift
 // Meshtastic
 
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// A compact autocomplete panel shown when the user types `@` in the compose field.
@@ -11,7 +11,11 @@ import SwiftUI
 /// which the caller inserts as `@!<hex-id>` into the message text.
 struct MentionAutocomplete: View {
 
-	@Query(sort: \NodeInfoEntity.num) private var nodes: [NodeInfoEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \NodeInfoEntity.num, ascending: true)],
+		animation: .default
+	)
+	private var nodes: FetchedResults<NodeInfoEntity>
 
 	let query: String
 	let onSelect: (UserEntity) -> Void

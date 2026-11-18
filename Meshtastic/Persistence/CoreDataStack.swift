@@ -3,7 +3,6 @@
 //  Meshtastic
 //
 //  Core Data replacement for SwiftData PersistenceController (iOS 15+ compatible).
-//  Generated from MeshtasticSchemaV1 + CoreDataMigrationService entity definitions.
 //
 
 import CoreData
@@ -82,10 +81,8 @@ final class CoreDataStackImpl {
         let isTestEnvironment = NSClassFromString("XCTestCase") != nil
             || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
 
-        // Guard Core Data store from being clobbered by SwiftData (if both builds exist)
-        if !inMemory && !isTestEnvironment {
-            CoreDataMigrationService.prepareForMigration()
-        }
+        // Legacy CoreDataMigrationService.prepareForMigration() removed — we now use
+        // Core Data's built-in automatic migration (shouldMigrateStoreAutomatically).
 
         var loadError: Error?
         container.loadPersistentStores { [weak self] _, error in
@@ -345,7 +342,7 @@ final class CoreDataStackImpl {
             fatalError("💾 Meshtastic.momd not found in bundle")
         }
 
-        // Load V58 model explicitly (same as CoreDataMigrationService)
+        // Load V58 model explicitly
         let v58URL = momdURL.appendingPathComponent("MeshtasticDataModelV 58.mom")
         let modelURL: URL
         if FileManager.default.fileExists(atPath: v58URL.path) {

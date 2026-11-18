@@ -7,7 +7,7 @@
 #if os(visionOS)
 import OSLog
 import RealityKit
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// Root of the hardware showcase immersive space: the room with the viewer's seat at the origin,
@@ -17,7 +17,7 @@ import SwiftUI
 struct ShowcaseSpace: View {
 	@EnvironmentObject private var appState: AppState
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.scenePhase) private var scenePhase
 	@Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
 	@Environment(\.openWindow) private var openWindow
@@ -27,7 +27,10 @@ struct ShowcaseSpace: View {
 	@State private var scene = ShowcaseSceneController()
 	/// The grab bar under the control panel; the panel rides on it.
 	@State private var controlsGrabber = Self.makeControlsGrabber()
-	@Query(sort: [SortDescriptor(\DeviceLinkEntity.shortCode)]) private var deviceLinks: [DeviceLinkEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(key: "shortCode", ascending: true)],
+		animation: .default
+	) private var deviceLinks: FetchedResults<DeviceLinkEntity>
 
 	static let refreshInterval: Duration = .seconds(5)
 	static let showsCardOnGrab = false
@@ -103,7 +106,7 @@ struct ShowcaseSpace: View {
 		.gesture(tap)
 		.task {
 			// The context is read here, not in the RealityView's make, where SwiftData traps.
-			let hardware = await ShowcaseCatalog.hardware(in: context.container)
+			let hardware = await ShowcaseCatalog.hardware(in: PersistenceController.shared.container)
 			await scene.setDisplayHardware(hardware)
 			#if DEBUG
 			// `--meshtastic-showcase-card <model>` opens a model's card once the tables are set.
@@ -118,7 +121,7 @@ struct ShowcaseSpace: View {
 		}
 		.task(id: accessoryManager.activeDeviceNum) {
 			// Made off the main thread: a model actor made on it runs its fetches there too.
-			let container = context.container
+			let container = PersistenceController.shared.container
 			let reader = await Task.detached { ShowcaseSnapshotReader(modelContainer: container) }.value
 			while !Task.isCancelled {
 				let result = await reader.read(connectedNodeNum: accessoryManager.activeDeviceNum)

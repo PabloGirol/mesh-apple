@@ -7,11 +7,11 @@
 //
 
 import Combine
+import CoreData
 import Foundation
 import MapKit
 import MeshtasticProtobufs
 import OSLog
-@preconcurrency import SwiftData
 import SwiftUI
 
 // MARK: - Scan State
@@ -167,7 +167,7 @@ final class DiscoveryScanEngine: ObservableObject {
 	private var reconnectTimeoutTask: Task<Void, Never>?
 	private var connectionObserver: AnyCancellable?
 	private var configCompleteObserver: AnyCancellable?
-	private var modelContext: ModelContext?
+	private var managedObjectContext: NSManagedObjectContext?
 	private weak var accessoryManager: AccessoryManager?
 
 	/// Tracks whether we're waiting for a disconnect after sending a config change.
@@ -218,9 +218,9 @@ final class DiscoveryScanEngine: ObservableObject {
 
 	// MARK: - Init
 
-	func configure(accessoryManager: AccessoryManager, modelContext: ModelContext) {
+	func configure(accessoryManager: AccessoryManager, managedObjectContext: NSManagedObjectContext) {
 		self.accessoryManager = accessoryManager
-		self.modelContext = modelContext
+		self.managedObjectContext = managedObjectContext
 		Logger.discovery.info("📡 [Discovery] Engine configured")
 	}
 
@@ -245,7 +245,7 @@ final class DiscoveryScanEngine: ObservableObject {
 			Logger.discovery.warning("📡 [Discovery] Cannot start scan — radio not connected")
 			return
 		}
-		guard let context = modelContext else {
+		guard let context = managedObjectContext else {
 			Logger.discovery.error("📡 [Discovery] Cannot start scan — no model context")
 			return
 		}
@@ -344,7 +344,7 @@ final class DiscoveryScanEngine: ObservableObject {
 		presetResult.session = session
 		session?.presetResults.append(presetResult)
 		currentPresetResult = presetResult
-		modelContext?.insert(presetResult)
+		managedObjectContext?.insert(presetResult)
 
 		// Start the local-stats window for this preset. The radio is offline during the config
 		// change/reboot, so no stale samples land before the new frequency is active.
@@ -381,7 +381,7 @@ final class DiscoveryScanEngine: ObservableObject {
 		// same region (when the target names one) and the slot this target needs. Custom-channel
 		// targets always re-send. The slot check catches a pinned-slot target and a radio left on a
 		// previous target's pinned slot (or the user's own custom slot).
-		if !target.isCustomChannel, accessoryManager != nil, let context = modelContext {
+		if !target.isCustomChannel, accessoryManager != nil, let context = managedObjectContext {
 			let connectedNodeNum = Int64(UserDefaults.preferredPeripheralNum)
 			let node = getNodeInfo(id: connectedNodeNum, context: context)
 			if let loRaConfig = node?.loRaConfig,
@@ -439,7 +439,7 @@ final class DiscoveryScanEngine: ObservableObject {
 
 	private func sendPresetChange(for target: ScanTarget) async {
 		let preset = target.preset
-		guard let accessoryManager, let context = modelContext else { return }
+		guard let accessoryManager, let context = managedObjectContext else { return }
 
 		let connectedNodeNum = Int64(UserDefaults.preferredPeripheralNum)
 		guard let connectedNode = getNodeInfo(id: connectedNodeNum, context: context),
@@ -691,7 +691,7 @@ final class DiscoveryScanEngine: ObservableObject {
 	// MARK: - Packet Ingestion (T017)
 
 	func handleNeighborInfo(_ neighborInfo: NeighborInfo, packet: MeshPacket) {
-		guard currentState == .dwell, let context = modelContext else { return }
+		guard currentState == .dwell, let context = managedObjectContext else { return }
 
 		Logger.discovery.info("📡 [Discovery] NeighborInfo from node \(neighborInfo.nodeID): \(neighborInfo.neighbors.count) neighbors")
 
@@ -733,7 +733,7 @@ final class DiscoveryScanEngine: ObservableObject {
 	/// carrying the offered channel (name + PSK) so the scan tunes to that mesh's frequency and can
 	/// decode it — scanning the bare preset on the public channel would be the wrong frequency.
 	func handleBeacon(_ beacon: MeshBeacon, packet: MeshPacket) {
-		guard currentState == .dwell, let context = modelContext else { return }
+		guard currentState == .dwell, let context = managedObjectContext else { return }
 
 		let fromNodeNum = Int64(packet.from)
 		// Skip beacons from the scanning node itself.
@@ -787,7 +787,7 @@ final class DiscoveryScanEngine: ObservableObject {
 			offeredPreset = nil
 		}
 		let hasCustomChannel = beacon.hasOfferChannel && !beacon.offerChannel.name.isEmpty
-		let radioRegion = modelContext.flatMap {
+		let radioRegion = managedObjectContext.flatMap {
 			getNodeInfo(id: Int64(UserDefaults.preferredPeripheralNum), context: $0)?.loRaConfig?.regionCode
 		}
 		guard let target = ScanTarget.beacon(
@@ -815,7 +815,7 @@ final class DiscoveryScanEngine: ObservableObject {
 	}
 
 	func handleMeshPacket(_ packet: MeshPacket, portNum: PortNum) {
-		guard currentState == .dwell, let context = modelContext else { return }
+		guard currentState == .dwell, let context = managedObjectContext else { return }
 
 		let fromNodeNum = Int64(packet.from)
 
@@ -969,7 +969,7 @@ extension DiscoveryScanEngine {
 		// Restore the full config snapshot captured at scan start — preset, frequency slot,
 		// overrides and all — rather than rebuilding a partial config that would drop the
 		// user's frequency slot and other settings (#1952).
-		guard let homeLoRaConfig, let accessoryManager, let context = modelContext else {
+		guard let homeLoRaConfig, let accessoryManager, let context = managedObjectContext else {
 			Logger.discovery.info("📡 [Discovery] No home config to restore")
 			cleanupAfterScan()
 			return
@@ -1057,7 +1057,7 @@ extension DiscoveryScanEngine {
 
 		session.completionStatus = "complete"
 
-		try? modelContext?.save()
+		try? managedObjectContext?.save()
 
 		Logger.discovery.info("📡 [Discovery] Session finalized: \(session.totalUniqueNodes) unique nodes across \(session.presetResults.count) presets")
 
@@ -1066,11 +1066,10 @@ extension DiscoveryScanEngine {
 
 	// MARK: - App Termination Edge Case (T020)
 
-	func checkForInterruptedSessions(context: ModelContext) {
-		let descriptor = FetchDescriptor<DiscoverySessionEntity>(
-			predicate: #Predicate { $0.completionStatus == "inProgress" }
-		)
-		if let interrupted = try? context.fetch(descriptor) {
+	func checkForInterruptedSessions(context: NSManagedObjectContext) {
+		let request = NSFetchRequest<DiscoverySessionEntity>(entityName: "DiscoverySessionEntity")
+		request.predicate = NSPredicate(format: "completionStatus == %@", "inProgress")
+		if let interrupted = try? context.fetch(request) {
 			for session in interrupted {
 				session.completionStatus = "interrupted"
 				Logger.discovery.warning("📡 [Discovery] Marked interrupted session from \(session.timestamp)")
@@ -1128,7 +1127,7 @@ extension DiscoveryScanEngine {
 	// MARK: - Read Local Stats from SwiftData
 
 	private func captureLocalStats() {
-		guard let context = modelContext, let result = currentPresetResult else { return }
+		guard let context = managedObjectContext, let result = currentPresetResult else { return }
 
 		let connectedNodeNum = Int64(UserDefaults.preferredPeripheralNum)
 		guard let connectedNode = getNodeInfo(id: connectedNodeNum, context: context) else {
@@ -1137,11 +1136,10 @@ extension DiscoveryScanEngine {
 		}
 
 		// All local stats (metricsType == 4) persisted by MeshPackets, oldest → newest.
-		let localStatsDescriptor = FetchDescriptor<TelemetryEntity>(
-			predicate: TelemetryEntity.predicate(forNode: connectedNode.num, metricsType: 4),
-			sortBy: [SortDescriptor(\TelemetryEntity.time, order: .forward)]
-		)
-		let allLocalStats = (try? context.fetch(localStatsDescriptor)) ?? []
+		let localStatsRequest = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+		localStatsRequest.predicate = NSPredicate(format: "ownerNodeNum == %d AND metricsType == %d", connectedNode.num, 4)
+		localStatsRequest.sortDescriptors = [NSSortDescriptor(key: "time", ascending: true)]
+		let allLocalStats = (try? context.fetch(localStatsRequest)) ?? []
 
 		// Prefer the samples that arrived during THIS preset's dwell — they reflect the preset's
 		// frequency. Fall back to the single most recent sample if none landed in the window.
@@ -1221,7 +1219,7 @@ extension DiscoveryScanEngine {
 			Logger.discovery.warning("📡 [Discovery] Cannot start current-preset scan — not idle")
 			return
 		}
-		guard let context = modelContext else {
+		guard let context = managedObjectContext else {
 			Logger.discovery.error("📡 [Discovery] Cannot start current-preset scan — no model context")
 			return
 		}
@@ -1249,13 +1247,14 @@ extension DiscoveryScanEngine {
 	/// counts are filled in; nodes a live packet already added this dwell are skipped. Used by
 	/// `startCurrentPresetScan()`.
 	func revealSeededNodesFromDatabase() async {
-		guard let context = modelContext, let session, let result = currentPresetResult else { return }
+		guard let context = managedObjectContext, let session, let result = currentPresetResult else { return }
 		let presetName = activePreset?.name ?? result.presetName
 		let connectedNodeNum = Int64(UserDefaults.preferredPeripheralNum)
 
 		// Per-node text-message counts (single fetch, grouped by sender).
 		var messageCounts: [Int64: Int] = [:]
-		if let messages = try? context.fetch(FetchDescriptor<MessageEntity>()) {
+		let messageRequest = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		if let messages = try? context.fetch(messageRequest) {
 			for msg in messages {
 				if let from = msg.fromUser?.num { messageCounts[from, default: 0] += 1 }
 			}
@@ -1264,17 +1263,17 @@ extension DiscoveryScanEngine {
 		// Per-node sensor telemetry counts (single fetch, grouped by node): environment (1) and
 		// air-quality (3), matching the live scan's sensorPacketCount.
 		var sensorCounts: [Int64: Int] = [:]
-		var sensorDescriptor = FetchDescriptor<TelemetryEntity>(
-			predicate: #Predicate<TelemetryEntity> { $0.metricsType == 1 || $0.metricsType == 3 }
-		)
-		sensorDescriptor.propertiesToFetch = [\.nodeNum]
-		if let sensorRows = try? context.fetch(sensorDescriptor) {
+		let sensorRequest = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+		sensorRequest.predicate = NSPredicate(format: "metricsType == %d OR metricsType == %d", 1, 3)
+		sensorRequest.propertiesToFetch = ["ownerNodeNum"]
+		if let sensorRows = try? context.fetch(sensorRequest) {
 			for row in sensorRows {
 				if let num = row.ownerNodeNum { sensorCounts[num, default: 0] += 1 }
 			}
 		}
 
-		let allNodes = (try? context.fetch(FetchDescriptor<NodeInfoEntity>())) ?? []
+		let nodeRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		let allNodes = (try? context.fetch(nodeRequest)) ?? []
 		// Skip the connected node and any node a live packet already added this dwell.
 		let candidates = allNodes.filter { node in
 			node.num != connectedNodeNum
@@ -1335,7 +1334,7 @@ extension DiscoveryScanEngine {
 			if Task.isCancelled { break }
 			// A device switch can reset the container mid-scan; the session/result entities die
 			// with it. Stop revealing rather than trap on the next relationship write.
-			guard session.modelContext != nil, result.modelContext != nil else { break }
+			guard session.managedObjectContext != nil, result.managedObjectContext != nil else { break }
 			let end = min(index + batchSize, snapshots.count)
 			for snapshot in snapshots[index..<end] {
 				let dn = DiscoveredNodeEntity()
@@ -1440,7 +1439,7 @@ extension DiscoveryScanEngine {
 	/// while the link is up, ahead of the (rebooting) preset change. The user's real channel is
 	/// snapshotted the first time we tune away and restored verbatim in `restorePrimaryChannel()`.
 	private func applyChannel(for target: ScanTarget) async {
-		guard let accessoryManager, let context = modelContext else { return }
+		guard let accessoryManager, let context = managedObjectContext else { return }
 		let connectedNodeNum = Int64(UserDefaults.preferredPeripheralNum)
 		guard let connectedNode = getNodeInfo(id: connectedNodeNum, context: context),
 			  let fromUser = connectedNode.user,
@@ -1480,7 +1479,7 @@ extension DiscoveryScanEngine {
 	/// unless the scan switched the key. Called before the LoRa restore (which reboots) so it lands
 	/// while the link is up.
 	private func restorePrimaryChannel() async {
-		guard let homePrimaryChannel, let accessoryManager, let context = modelContext else { return }
+		guard let homePrimaryChannel, let accessoryManager, let context = managedObjectContext else { return }
 		let connectedNodeNum = Int64(UserDefaults.preferredPeripheralNum)
 		guard let connectedNode = getNodeInfo(id: connectedNodeNum, context: context),
 			  let fromUser = connectedNode.user else {

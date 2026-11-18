@@ -11,7 +11,7 @@ import Foundation
 import Observation
 import OSLog
 import RealityKit
-import SwiftData
+import CoreData
 
 /// Where things sit in the model: on the built terrain when it matches the current box, on a flat
 /// disk while the terrain is still building. The box is the square around the map's circle.
@@ -311,7 +311,7 @@ final class SpatialMapModel: ObservableObject {
 		return SpatialPlacement(circle: circle, geometry: nil, flat: SpatialModelTransform(frame: frame, baseElevation: 0, maxElevation: 0), revision: revision)
 	}
 
-	func refresh(context: ModelContext, filters: NodeFilterParameters, preciseOnly: Bool, layer: MapLayer, dark: Bool) {
+	func refresh(context: NSManagedObjectContext, filters: NodeFilterParameters, preciseOnly: Bool, layer: MapLayer, dark: Bool) {
 		refreshCount += 1
 		let all = SpatialMapNodeSource.snapshots(context: context, filters: filters, preciseOnly: preciseOnly, connectedNodeNum: connectedNodeNum)
 		let (fetched, outside) = SpatialMapArea.fit(all, pinned: pinnedNodeNums)
@@ -349,7 +349,7 @@ final class SpatialMapModel: ObservableObject {
 		applyArea()
 		autoDownloadIfNeeded()
 
-		if refreshCount % 10 == 1 { refreshRoutes(container: context.container) }
+		if refreshCount % 10 == 1 { refreshRoutes(container: context.persistentStoreCoordinator) }
 		let now = Date.now
 		if showLinks && now.timeIntervalSince(reportsReadAt) >= 15 {
 			reports = NodeLinks.reportRows(context: context, now: now)
@@ -367,7 +367,7 @@ final class SpatialMapModel: ObservableObject {
 
 	/// Reads the routes in the background and publishes them here. A read still running is left
 	/// to finish rather than starting another.
-	private func refreshRoutes(container: ModelContainer) {
+	private func refreshRoutes(container: NSPersistentStoreCoordinator?) {
 		guard routeTask == nil else { return }
 		routeTask = Task { [weak self] in
 			let fresh = await SpatialRouteReader.routes(container: container)
@@ -379,7 +379,7 @@ final class SpatialMapModel: ObservableObject {
 
 	/// Reads the routes now and waits for them, for a route asked for by id that may be newer than
 	/// the last read.
-	func reloadRoutes(container: ModelContainer) async {
+	func reloadRoutes(container: NSPersistentStoreCoordinator?) async {
 		let fresh = await SpatialRouteReader.routes(container: container)
 		if fresh != routes { routes = fresh }
 	}

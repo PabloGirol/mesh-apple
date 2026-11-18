@@ -6,11 +6,11 @@
 //
 import SwiftUI
 import MapKit
-import SwiftData
+import CoreData
 
 struct NodeMapContent: MapContent {
 
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	let positions: [PositionEntity]
 	/// Pixel scale for the prerendered history markers, from the view's environment: this is
 	/// evaluated during map content construction, where `UITraitCollection.current` is undefined.

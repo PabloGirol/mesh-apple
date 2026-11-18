@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import OSLog
 import TipKit
 import MeshtasticProtobufs
@@ -38,7 +38,7 @@ struct SettingsNodeSnapshot: Identifiable, Equatable {
 	var id: Int64 { num }
 
 	@MainActor init?(node: NodeInfoEntity) {
-		guard node.modelContext != nil, !node.isDeleted else { return nil }
+		guard node.managedObjectContext != nil, !node.isDeleted else { return nil }
 
 		num = node.num
 		favorite = node.favorite
@@ -55,18 +55,18 @@ struct SettingsNodeSnapshot: Identifiable, Equatable {
 		// send SecurityConfig falls back to the deprecated field.
 		var managed = false
 		if let securityConfig = node.securityConfig,
-			securityConfig.modelContext != nil,
+			securityConfig.managedObjectContext != nil,
 			!securityConfig.isDeleted {
 			managed = securityConfig.isManaged
 		} else if let deviceConfig = node.deviceConfig,
-			deviceConfig.modelContext != nil,
+			deviceConfig.managedObjectContext != nil,
 			!deviceConfig.isDeleted {
 			managed = deviceConfig.isManaged
 		}
 		isManaged = managed
 
 		if let user = node.user,
-			user.modelContext != nil,
+			user.managedObjectContext != nil,
 			!user.isDeleted {
 			userLongName = user.longName
 			hwModelId = user.hwModelId
@@ -74,7 +74,7 @@ struct SettingsNodeSnapshot: Identifiable, Equatable {
 			userIsPkiEncrypted = user.pkiEncrypted
 			let userRole = user.role
 			if let deviceConfig = node.deviceConfig,
-				deviceConfig.modelContext != nil,
+				deviceConfig.managedObjectContext != nil,
 				!deviceConfig.isDeleted {
 				role = deviceConfig.role
 			} else {
@@ -86,7 +86,7 @@ struct SettingsNodeSnapshot: Identifiable, Equatable {
 			userIsLicensed = false
 			userIsPkiEncrypted = false
 			if let deviceConfig = node.deviceConfig,
-				deviceConfig.modelContext != nil,
+				deviceConfig.managedObjectContext != nil,
 				!deviceConfig.isDeleted {
 				role = deviceConfig.role
 			} else {
@@ -95,7 +95,7 @@ struct SettingsNodeSnapshot: Identifiable, Equatable {
 		}
 
 		if let loRaConfig = node.loRaConfig,
-			loRaConfig.modelContext != nil,
+			loRaConfig.managedObjectContext != nil,
 			!loRaConfig.isDeleted {
 			regionCode = Int(loRaConfig.regionCode)
 		} else {
@@ -103,7 +103,7 @@ struct SettingsNodeSnapshot: Identifiable, Equatable {
 		}
 
 		if let metadata = node.metadata,
-			metadata.modelContext != nil,
+			metadata.managedObjectContext != nil,
 			!metadata.isDeleted {
 			excludedModules = Int(metadata.excludedModules)
 			firmwareVersion = metadata.firmwareVersion
@@ -113,7 +113,7 @@ struct SettingsNodeSnapshot: Identifiable, Equatable {
 		}
 
 		if let takConfig = node.takConfig,
-			takConfig.modelContext != nil,
+			takConfig.managedObjectContext != nil,
 			!takConfig.isDeleted {
 			hasTAKConfig = true
 		} else {
@@ -123,7 +123,7 @@ struct SettingsNodeSnapshot: Identifiable, Equatable {
 }
 
 struct Settings: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.colorScheme) private var colorScheme
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.openRadioSetup) private var openRadioSetup
@@ -134,8 +134,9 @@ struct Settings: View {
 	@State private var nodes: [SettingsNodeSnapshot] = []
 
 	private func refreshNodes() {
-		let descriptor = FetchDescriptor<NodeInfoEntity>(sortBy: [SortDescriptor(\NodeInfoEntity.lastHeard, order: .reverse)])
-		nodes = ((try? context.fetch(descriptor)) ?? []).compactMap(SettingsNodeSnapshot.init)
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.sortDescriptors = [NSSortDescriptor(keyPath: \NodeInfoEntity.lastHeard, ascending: false)]
+		nodes = ((try? context.fetch(request)) ?? []).compactMap(SettingsNodeSnapshot.init)
 	}
 
 	/// Nodes for the admin / configuration picker, ordered favorites-first while
@@ -154,7 +155,7 @@ struct Settings: View {
 	private func liveNode(for nodeNum: Int) -> NodeInfoEntity? {
 		guard nodeNum > 0,
 			let node = getNodeInfo(id: Int64(nodeNum), context: context),
-			node.modelContext != nil,
+			node.managedObjectContext != nil,
 			!node.isDeleted
 		else { return nil }
 		return node

@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-@preconcurrency import SwiftData
+import CoreData
 import StoreKit
 import OSLog
 import SwiftDraw
@@ -14,13 +14,17 @@ import UniformTypeIdentifiers
 import WebKit
 
 // 1. THE WRAPPER
-// Caches the resolved hardware so SwiftData re-evaluations don't flash the
+// Caches the resolved hardware so Core Data re-evaluations don't flash the
 // "reconnect" screen when relationships momentarily fault to nil.
 struct Firmware: View {
 	let node: NodeInfoEntity?
 
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Query private var hardwareResults: [DeviceHardwareEntity]
+	@FetchRequest(
+		entity: DeviceHardwareEntity.entity(),
+		sortDescriptors: []
+	)
+	private var hardwareResults: FetchedResults<DeviceHardwareEntity>
 	@State private var cachedHardware: DeviceHardwareEntity?
 	@State private var cachedNode: NodeInfoEntity?
 	@State private var hardwareState = FirmwareHardwareViewState()

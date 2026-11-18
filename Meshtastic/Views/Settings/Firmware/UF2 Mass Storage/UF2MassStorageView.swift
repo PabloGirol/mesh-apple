@@ -11,7 +11,7 @@ import OSLog
 struct UF2MassStorageView: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.dismiss) var dismiss
-	@Environment(\.modelContext) var context
+	@Environment(\.managedObjectContext) var context
 	
 	@State private var isExporting = false
 	@State private var document: FirmwareDocument?

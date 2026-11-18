@@ -3,27 +3,45 @@
 //  Meshtastic
 //
 //  SwiftData model for node positions.
+//  Converted to Core Data NSManagedObject subclass for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class PositionEntity {
-	var altitude: Int32 = 0
-	var heading: Int32 = 0
-	var latest: Bool = false
-	var latitudeI: Int32 = 0
-	var longitudeI: Int32 = 0
-	var precisionBits: Int32 = 32
-	var rssi: Int32 = 0
-	var satsInView: Int32 = 0
-	var seqNo: Int32 = 0
-	var snr: Float = 0.0
-	var speed: Int32 = 0
-	var time: Date?
+@objc(PositionEntity)
+public class PositionEntity: NSManagedObject {
 
-	var nodePosition: NodeInfoEntity?
+	@NSManaged public var altitude: Int32
+	@NSManaged public var heading: Int32
+	@NSManaged public var latest: Bool
+	@NSManaged public var latitudeI: Int32
+	@NSManaged public var longitudeI: Int32
+	@NSManaged public var precisionBits: Int32
+	@NSManaged public var rssi: Int32
+	@NSManaged public var satsInView: Int32
+	@NSManaged public var seqNo: Int32
+	@NSManaged public var snr: Float
+	@NSManaged public var speed: Int32
+	@NSManaged public var time: Date?
 
-	init() {}
+	@NSManaged public var nodePosition: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "PositionEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.altitude = 0
+		self.heading = 0
+		self.latest = false
+		self.latitudeI = 0
+		self.longitudeI = 0
+		self.precisionBits = 32
+		self.rssi = 0
+		self.satsInView = 0
+		self.seqNo = 0
+		self.snr = 0.0
+		self.speed = 0
+		self.time = nil
+		self.nodePosition = nil
+	}
 }

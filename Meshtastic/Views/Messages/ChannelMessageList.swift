@@ -5,7 +5,7 @@
 //  Created by Garth Vander Houwen on 12/24/21.
 //
 
-@preconcurrency import SwiftData
+import CoreData
 import MeshtasticProtobufs
 import OSLog
 import SwiftUI
@@ -16,11 +16,11 @@ struct ChannelMessageList: View {
 	@EnvironmentObject var appState: AppState
 	@EnvironmentObject private var router: Router
 	@Environment(\.scenePhase) var scenePhase
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@FocusState var messageFieldFocused: Bool
-	@Bindable var myInfo: MyInfoEntity
-	@Bindable var channel: ChannelEntity
+	var myInfo: MyInfoEntity
+	var channel: ChannelEntity
 	@State private var replyMessageId: Int64 = 0
 	@AppStorage("preferredPeripheralNum") private var preferredPeripheralNum = -1
 	@State private var messageToHighlight: Int64 = 0
@@ -48,12 +48,9 @@ struct ChannelMessageList: View {
 	func markMessagesAsRead() {
 		do {
 			let channelIndex = channel.index
-			let descriptor = FetchDescriptor<MessageEntity>(
-				predicate: #Predicate<MessageEntity> {
-					$0.channel == channelIndex && $0.toUser == nil && $0.isEmoji == false && $0.read == false
-				}
-			)
-			let unreadMessages = try context.fetch(descriptor)
+			let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+			request.predicate = NSPredicate(format: "channel == %d AND toUser == nil AND isEmoji == false AND read == false", channelIndex)
+			let unreadMessages = try context.fetch(request)
 			let notificationManager = LocalNotificationManager()
 			var readMessageIDs = [Int64]()
 			for unreadMessage in unreadMessages {
@@ -123,17 +120,14 @@ struct ChannelMessageList: View {
 
 	private func fetchMessages(limit: Int) throws -> [MessageEntity] {
 		let channelIndex = channel.index
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> {
-				$0.channel == channelIndex && $0.toUser == nil && $0.isEmoji == false
-			},
-			sortBy: [
-				SortDescriptor(\MessageEntity.messageTimestamp, order: .reverse),
-				SortDescriptor(\MessageEntity.messageId, order: .reverse)
-			]
-		)
-		descriptor.fetchLimit = limit
-		return try context.fetch(descriptor)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "channel == %d AND toUser == nil AND isEmoji == false", channelIndex)
+		request.sortDescriptors = [
+			NSSortDescriptor(key: "messageTimestamp", ascending: false),
+			NSSortDescriptor(key: "messageId", ascending: false)
+		]
+		request.fetchLimit = limit
+		return try context.fetch(request)
 	}
 
 
@@ -160,12 +154,9 @@ struct ChannelMessageList: View {
 			return result
 		}
 
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { message in
-				missingReplyIDs.contains(message.messageId)
-			}
-		)
-		for reply in try context.fetch(descriptor) {
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "messageId IN %@", missingReplyIDs)
+		for reply in try context.fetch(request) {
 			result[reply.messageId] = reply
 		}
 		return result
@@ -178,15 +169,10 @@ struct ChannelMessageList: View {
 		}
 
 		let channelIndex = channel.index
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { message in
-				message.channel == channelIndex
-				&& message.isEmoji == true
-				&& visibleMessageIDs.contains(message.replyID)
-			},
-			sortBy: [SortDescriptor(\MessageEntity.messageTimestamp, order: .forward)]
-		)
-		return try context.fetch(descriptor)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "channel == %d AND isEmoji == true AND replyID IN %@", channelIndex, visibleMessageIDs)
+		request.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: true)]
+		return try context.fetch(request)
 	}
 
 

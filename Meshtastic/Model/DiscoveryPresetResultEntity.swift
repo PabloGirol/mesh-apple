@@ -1,56 +1,83 @@
-// MARK: DiscoveryPresetResultEntity
 //
 //  DiscoveryPresetResultEntity.swift
 //  Meshtastic
 //
-//  Copyright(c) Garth Vander Houwen 2026.
+//  Core Data NSManagedObject subclass for discovery preset results.
+//  Converted from SwiftData for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class DiscoveryPresetResultEntity {
-	var presetName: String = ""
-	var dwellDurationSeconds: Int = 0
-	var uniqueNodesFound: Int = 0
-	var directNeighborCount: Int = 0
-	var meshNeighborCount: Int = 0
-	var infrastructureNodeCount: Int = 0
-	var messageCount: Int = 0
-	var sensorPacketCount: Int = 0
-	var averageChannelUtilization: Double = 0.0
-	var averageAirtimeRate: Double = 0.0
-	var packetSuccessRate: Double = 0.0
-	var packetFailureRate: Double = 0.0
-	var aiSummaryText: String = ""
+@objc(DiscoveryPresetResultEntity)
+public class DiscoveryPresetResultEntity: NSManagedObject {
+
+	@NSManaged public var presetName: String
+	@NSManaged public var dwellDurationSeconds: Int32
+	@NSManaged public var uniqueNodesFound: Int32
+	@NSManaged public var directNeighborCount: Int32
+	@NSManaged public var meshNeighborCount: Int32
+	@NSManaged public var infrastructureNodeCount: Int32
+	@NSManaged public var messageCount: Int32
+	@NSManaged public var sensorPacketCount: Int32
+	@NSManaged public var averageChannelUtilization: Double
+	@NSManaged public var averageAirtimeRate: Double
+	@NSManaged public var packetSuccessRate: Double
+	@NSManaged public var packetFailureRate: Double
+	@NSManaged public var aiSummaryText: String
 
 	// Raw local stats (mirrors live activity data)
-	var numPacketsTx: Int = 0
-	var numPacketsRx: Int = 0
-	var numPacketsRxBad: Int = 0
-	var numRxDupe: Int = 0
-	var numTxRelay: Int = 0
-	var numTxRelayCanceled: Int = 0
-	var numOnlineNodes: Int = 0
-	var numTotalNodes: Int = 0
-	var uptimeSeconds: Int = 0
+	@NSManaged public var numPacketsTx: Int32
+	@NSManaged public var numPacketsRx: Int32
+	@NSManaged public var numPacketsRxBad: Int32
+	@NSManaged public var numRxDupe: Int32
+	@NSManaged public var numTxRelay: Int32
+	@NSManaged public var numTxRelayCanceled: Int32
+	@NSManaged public var numOnlineNodes: Int32
+	@NSManaged public var numTotalNodes: Int32
+	@NSManaged public var uptimeSeconds: Int32
 
 	/// Average RF noise floor (dBm) from the connected node's local-stats telemetry collected
 	/// during this preset's dwell. Noise floor is frequency-specific, so this characterizes how
 	/// quiet the channel was on the preset's frequency — lower (more negative) is quieter/better.
 	/// 0.0 means no noise-floor data was available (noise floor readings are always negative).
-	var averageNoiseFloor: Double = 0.0
+	@NSManaged public var averageNoiseFloor: Double
 	/// Number of local-stats samples that contributed to `averageNoiseFloor`.
-	var noiseFloorSampleCount: Int = 0
+	@NSManaged public var noiseFloorSampleCount: Int32
 
-	var session: DiscoverySessionEntity?
+	@NSManaged public var session: DiscoverySessionEntity?
+	@NSManaged public var nodes: [DiscoveredNodeEntity]
+	@NSManaged public var beacons: [DiscoveredBeaconEntity]
 
-	@Relationship(deleteRule: .nullify, inverse: \DiscoveredNodeEntity.presetResult)
-	var nodes: [DiscoveredNodeEntity] = []
-
-	@Relationship(deleteRule: .nullify, inverse: \DiscoveredBeaconEntity.presetResult)
-	var beacons: [DiscoveredBeaconEntity] = []
-
-	init() {}
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "DiscoveryPresetResultEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.presetName = ""
+		self.dwellDurationSeconds = 0
+		self.uniqueNodesFound = 0
+		self.directNeighborCount = 0
+		self.meshNeighborCount = 0
+		self.infrastructureNodeCount = 0
+		self.messageCount = 0
+		self.sensorPacketCount = 0
+		self.averageChannelUtilization = 0.0
+		self.averageAirtimeRate = 0.0
+		self.packetSuccessRate = 0.0
+		self.packetFailureRate = 0.0
+		self.aiSummaryText = ""
+		self.numPacketsTx = 0
+		self.numPacketsRx = 0
+		self.numPacketsRxBad = 0
+		self.numRxDupe = 0
+		self.numTxRelay = 0
+		self.numTxRelayCanceled = 0
+		self.numOnlineNodes = 0
+		self.numTotalNodes = 0
+		self.uptimeSeconds = 0
+		self.averageNoiseFloor = 0.0
+		self.noiseFloorSampleCount = 0
+		self.session = nil
+		self.nodes = []
+		self.beacons = []
+	}
 }

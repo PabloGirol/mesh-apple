@@ -6,9 +6,9 @@
 //
 import CoreLocation
 import Foundation
-import SwiftData
+import CoreData
 
-/// What the spatial map needs to know about one node, copied out of SwiftData so the scene never
+/// What the spatial map needs to know about one node, copied out of Core Data so the scene never
 /// holds a model object.
 struct SpatialNodeSnapshot: Identifiable, Equatable, Sendable {
 	let id: Int64
@@ -53,7 +53,7 @@ enum SpatialMapNodeSource {
 
 	@MainActor
 	static func snapshots(
-		context: ModelContext,
+		context: NSManagedObjectContext,
 		filters: NodeFilterParameters,
 		preciseOnly: Bool,
 		connectedNodeNum: Int64?
@@ -72,12 +72,15 @@ enum SpatialMapNodeSource {
 	/// The same list with no map filters, or with `include` deciding which nodes stay. Works on
 	/// any context, so a background reader can use it. Throws when the positions can't be read.
 	static func snapshots(
-		context: ModelContext,
+		context: NSManagedObjectContext,
 		preciseOnly: Bool,
 		connectedNodeNum: Int64?,
 		include: (NodeInfoEntity, PositionEntity) -> Bool = { _, _ in true }
 	) throws -> [SpatialNodeSnapshot] {
-		let positions = try context.fetch(PositionEntity.allPositionsFetchDescriptor())
+		var descriptor = NSFetchRequest<PositionEntity>(entityName: "PositionEntity")
+		// Replicate PositionEntity.allPositionsFetchDescriptor()
+		descriptor.sortDescriptors = [NSSortDescriptor(key: "time", ascending: false)]
+		let positions = try context.fetch(descriptor)
 		var pinned: [SpatialNodeSnapshot] = []
 		var online: [SpatialNodeSnapshot] = []
 		var rest: [SpatialNodeSnapshot] = []

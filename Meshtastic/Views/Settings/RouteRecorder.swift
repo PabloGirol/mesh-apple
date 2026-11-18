@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import MapKit
 import CoreLocation
 import CoreMotion
@@ -15,7 +15,7 @@ import OSLog
 struct RouteRecorder: View {
 
 	@ObservedObject var locationsHandler: LocationsHandler = LocationsHandler.shared
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.dismiss) private var dismiss
 	@State private var position: MapCameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
 	@State var mapStyle: MapStyle = MapStyle.standard(elevation: .realistic)

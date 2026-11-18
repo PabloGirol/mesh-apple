@@ -2,7 +2,7 @@
 
 import Foundation
 import OSLog
-import SwiftData
+import CoreData
 
 struct FirmwareUpdateNotificationCandidate {
 	let nodeNum: Int64
@@ -237,10 +237,11 @@ enum FirmwareUpdateNotifier {
 	private static func hardware(
 		platformioTarget: String,
 		hwModel: Int64?,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) -> DeviceHardwareEntity? {
 		do {
-			let hardware = try context.fetch(FetchDescriptor<DeviceHardwareEntity>())
+			let request = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
+			let hardware = try context.fetch(request)
 			let records = hardware.map(HardwareCatalogRecord.init)
 			guard let resolution = FirmwareHardwareResolver.resolve(
 				pioEnv: platformioTarget,
@@ -255,19 +256,18 @@ enum FirmwareUpdateNotifier {
 	}
 
 	@MainActor
-	private static func latestStableFirmwareVersion(context: ModelContext) -> String? {
+	private static func latestStableFirmwareVersion(context: NSManagedObjectContext) -> String? {
 		let stableRawValue = ReleaseType.stable.rawValue
-		var descriptor = FetchDescriptor<FirmwareReleaseEntity>(
-			predicate: #Predicate { $0.releaseType == stableRawValue },
-			sortBy: [
-				SortDescriptor(\.versionMajor, order: .reverse),
-				SortDescriptor(\.versionMinor, order: .reverse),
-				SortDescriptor(\.versionPatch, order: .reverse)
-			]
-		)
-		descriptor.fetchLimit = 1
+		let request = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
+		request.predicate = NSPredicate(format: "releaseType == %d", stableRawValue)
+		request.sortDescriptors = [
+			NSSortDescriptor(key: "versionMajor", ascending: false),
+			NSSortDescriptor(key: "versionMinor", ascending: false),
+			NSSortDescriptor(key: "versionPatch", ascending: false)
+		]
+		request.fetchLimit = 1
 		do {
-			return try context.fetch(descriptor).first?.versionId
+			return try context.fetch(request).first?.versionId
 		} catch {
 			Logger.services.warning("Failed to fetch latest stable firmware release for update notification: \(error.localizedDescription, privacy: .public)")
 			return nil

@@ -6,11 +6,11 @@
 //  meshtastic.org/v/# URL (QR code, shared link, or NFC tag).
 //
 
-import SwiftUI
-import SwiftData
-import UIKit
+import CoreData
 import MeshtasticProtobufs
 import OSLog
+import SwiftUI
+import UIKit
 
 struct AddContactConfirmationView: View {
 	let pendingContact: PendingContact
@@ -26,13 +26,22 @@ struct AddContactConfirmationView: View {
 	/// The node db row for the contact being imported, if we hold one. A query rather than a
 	/// lookup in `onAppear` so the key warning is part of the sheet's first layout rather than
 	/// something that appears a beat after it has already been sized and shown.
-	@Query private var storedNodes: [NodeInfoEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \NodeInfoEntity.num, ascending: true)],
+		predicate: nil,
+		animation: .default
+	)
+	private var storedNodes: FetchedResults<NodeInfoEntity>
 
 	init(pendingContact: PendingContact, accessoryManager: AccessoryManager) {
 		self.pendingContact = pendingContact
 		self.accessoryManager = accessoryManager
 		let num = Int64(pendingContact.contact.nodeNum)
-		_storedNodes = Query(filter: #Predicate<NodeInfoEntity> { $0.num == num })
+		_storedNodes = FetchRequest(
+			sortDescriptors: [NSSortDescriptor(keyPath: \NodeInfoEntity.num, ascending: true)],
+			predicate: NSPredicate(format: "num == %lld", num),
+			animation: .default
+		)
 	}
 
 	private var shortName: String {

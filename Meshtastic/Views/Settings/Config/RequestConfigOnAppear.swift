@@ -4,7 +4,7 @@
 //
 
 import OSLog
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// Requests a radio configuration section from a remote node using PKI admin
@@ -15,7 +15,7 @@ import SwiftUI
 @MainActor
 func requestRemoteConfig(
 	node: NodeInfoEntity?,
-	context: ModelContext,
+	context: NSManagedObjectContext,
 	accessoryManager: AccessoryManager,
 	configIsNil: @escaping (NodeInfoEntity) -> Bool,
 	request: @escaping (_ fromUser: UserEntity, _ toUser: UserEntity) async throws -> Void,

@@ -23,7 +23,7 @@ import UniformTypeIdentifiers
 struct BootloaderUpgradeView: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.dismiss) var dismiss
-	@Environment(\.modelContext) var context
+	@Environment(\.managedObjectContext) var context
 
 	enum Phase: Equatable {
 		case idle

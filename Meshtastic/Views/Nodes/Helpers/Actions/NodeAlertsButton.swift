@@ -1,14 +1,12 @@
-import SwiftData
+import CoreData
 import OSLog
 import SwiftUI
 
 struct NodeAlertsButton: View {
-	var context: ModelContext
+	var context: NSManagedObjectContext
 
-	@Bindable
 	var node: NodeInfoEntity
 
-	@Bindable
 	var user: UserEntity
 
 	var body: some View {

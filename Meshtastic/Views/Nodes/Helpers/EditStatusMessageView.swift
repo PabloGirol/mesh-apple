@@ -9,7 +9,7 @@
 
 import MeshtasticProtobufs
 import OSLog
-import SwiftData
+import CoreData
 import SwiftUI
 
 extension View {
@@ -24,7 +24,7 @@ extension View {
 }
 
 private struct StatusMessageAlertModifier: ViewModifier {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Binding var node: NodeInfoEntity?
 	@State private var status = ""

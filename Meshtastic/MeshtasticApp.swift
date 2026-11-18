@@ -1,7 +1,7 @@
 // Copyright (C) 2022 Garth Vander Houwen
 
 import SwiftUI
-import SwiftData
+import CoreData
 import OSLog
 import TipKit
 import MeshtasticProtobufs
@@ -20,7 +20,7 @@ struct MeshtasticAppleApp: App {
 #endif
 	@StateObject var appState: AppState
 	@StateObject private var lockdownCoordinator: LockdownCoordinator
-	private let persistenceController: PersistenceController?
+	private let coreDataStack: CoreDataStackImpl?
 	private let accessoryManager: AccessoryManager
 	@Environment(\.scenePhase) var scenePhase
 	#if os(visionOS)
@@ -43,7 +43,7 @@ struct MeshtasticAppleApp: App {
 	}
 	init() {
 
-		let persistenceController: PersistenceController? = Self.shouldInitializeAppServices ? PersistenceController.shared : nil
+		let coreDataStack: CoreDataStackImpl? = Self.shouldInitializeAppServices ? CoreDataStackImpl.shared : nil
 #if DEBUG
 		let performanceSeedConfiguration = PerformanceSeedData.configuration
 		if let performanceSeedConfiguration {
@@ -120,7 +120,7 @@ struct MeshtasticAppleApp: App {
 
 		self._appState = StateObject(wrappedValue: appState)
 
-		self.persistenceController = persistenceController
+		self.coreDataStack = coreDataStack
 #if os(iOS)
 		self.appDelegate.appState = appState
 #endif
@@ -130,9 +130,9 @@ struct MeshtasticAppleApp: App {
 		}
 
 #if DEBUG
-		if let persistenceController, let performanceSeedConfiguration {
+		if let coreDataStack, let performanceSeedConfiguration {
 			PerformanceSeedData.seedIfNeeded(
-				using: persistenceController,
+				using: coreDataStack,
 				configuration: performanceSeedConfiguration,
 				appState: appState
 			)
@@ -140,15 +140,15 @@ struct MeshtasticAppleApp: App {
 		// Independent of the node performance seed: seeds a sample Discovery session with beacons
 		// when launched with --meshtastic-seed-beacons, without resetting the store or blocking a
 		// live radio connection.
-		if let persistenceController {
-			PerformanceSeedData.seedDiscoveryBeaconsIfRequested(using: persistenceController)
+		if let coreDataStack {
+			PerformanceSeedData.seedDiscoveryBeaconsIfRequested(using: coreDataStack)
 		}
 #endif
 
 		if Self.shouldInitializeAppServices {
 			// One-time copy of the node number onto telemetry saved by earlier versions.
-			if let persistenceController {
-				TelemetryNodeNumBackfill.startIfNeeded(persistence: persistenceController, appState: appState)
+			if let coreDataStack {
+				TelemetryNodeNumBackfill.startIfNeeded(persistence: coreDataStack, appState: appState)
 			}
 			// Initialize map data manager
 			MapDataManager.shared.initialize()
@@ -255,7 +255,7 @@ struct MeshtasticAppleApp: App {
 	/// entity-cap eviction — under one background task assertion.
 	///
 	/// `beginBackgroundTask` is what asks iOS for time to finish work after the app leaves
-	/// the screen. Both pieces need it: between them they are the app's heaviest SwiftData
+	/// the screen. Both pieces need it: between them they are the app's heaviest Core Data
 	/// work and they start at the moment iOS begins charging for background CPU. The
 	/// expiration handler fires shortly before the grant runs out and sets the flag the
 	/// chunked eviction checks, so the pass ends at a committed boundary and whatever is
@@ -267,7 +267,7 @@ struct MeshtasticAppleApp: App {
 	///
 	/// On Mac Catalyst the assertion is a no-op the system accepts, so the same path runs
 	/// everywhere without a platform branch here.
-	private func startBackgroundMaintenance(_ persistenceController: PersistenceController) {
+	private func startBackgroundMaintenance(_ coreDataStack: CoreDataStackImpl) {
 		// Numbered, because backgrounding twice in quick succession leaves two passes in
 		// flight and each has its own grant. The handler quotes its own number so an older
 		// pass expiring cannot stop a newer one.
@@ -279,8 +279,8 @@ struct MeshtasticAppleApp: App {
 		}
 		Task { @MainActor in
 			do {
-				try persistenceController.container.mainContext.save()
-				Logger.services.info("💾 [App] Saved SwiftData context when the app went to the background.")
+				try coreDataStack.container.viewContext.save()
+				Logger.services.info("💾 [App] Saved Core Data context when the app went to the background.")
 			} catch {
 				Logger.services.error("💥 [App] Failed to save context when the app goes to the background.")
 			}
@@ -310,10 +310,10 @@ struct MeshtasticAppleApp: App {
 				#if DEBUG
 				FirmwareUpdateGameDemoHost()
 				#endif
-			} else if let persistenceController {
+			} else if let coreDataStack {
 				// Stays mounted across a node switch so this window's router survives.
-				// The SwiftData tree unmounts inside MainScene.
-				MainScene(persistenceController: persistenceController)
+				// The Core Data tree unmounts inside MainScene.
+				MainScene(coreDataStack: coreDataStack)
 			}
 			}
 			.onChange(of: lockdownCoordinator.state) { _, newState in
@@ -326,14 +326,14 @@ struct MeshtasticAppleApp: App {
 			}
 		}
 		.onChange(of: scenePhase) { (_, newScenePhase) in
-			// Also skipped in Chirpy OTA demo mode, where persistenceController is nil —
-			// backgrounding the demo must not touch (or force-unwrap) SwiftData.
-			guard Self.shouldInitializeAppServices, let persistenceController else { return }
+			// Also skipped in Chirpy OTA demo mode, where coreDataStack is nil —
+			// backgrounding the demo must not touch (or force-unwrap) Core Data.
+			guard Self.shouldInitializeAppServices, let coreDataStack else { return }
 			accessoryManager.isInBackground = (newScenePhase == .background)
 			#if os(visionOS)
 			// Grows the Spatial Map's terrain with the mesh while the app is open.
 			SpatialTerrainKeeper.shared.setAppActive(newScenePhase == .active) { [appState] in
-				appState.isDatabaseResetting ? nil : persistenceController.container
+				appState.isDatabaseResetting ? nil : coreDataStack.container
 			}
 			#endif
 			switch newScenePhase {
@@ -344,20 +344,20 @@ struct MeshtasticAppleApp: App {
 				// doomed entities. Foregrounded, the packet actor defers them.
 				//
 				// Held under a background task assertion: this is the app's heaviest
-				// SwiftData work and it starts at the moment iOS begins charging for
+				// Core Data work and it starts at the moment iOS begins charging for
 				// background CPU. Without the assertion there is no time granted and no
 				// warning before the process is killed for the budget, which reads as a
 				// Background High CPU termination. The expiration handler stops the
 				// eviction on a committed chunk boundary instead.
 				MeshPackets.appIsActive = false
-				startBackgroundMaintenance(persistenceController)
+				startBackgroundMaintenance(coreDataStack)
 			case .inactive:
 				Logger.services.info("🎬 [App] Scene is inactive")
 			case .active:
 				Logger.services.info("🎬 [App] Scene is active")
 				MeshPackets.appIsActive = true
 				accessoryManager.appDidBecomeActive()
-				appState.refreshBadgeCount(context: persistenceController.container.mainContext)
+				appState.refreshBadgeCount(context: coreDataStack.container.viewContext)
 				#if os(visionOS)
 				// The cinema closed the main window and the app went to the background with the
 				// space up: if the reopen asked for on the way there was ignored, nothing else
@@ -375,15 +375,15 @@ struct MeshtasticAppleApp: App {
 
 			WindowGroup("Mesh Map", id: "meshmap-window") {
 				// Gated on shouldInitializeAppServices (not just tests): in Chirpy OTA demo mode
-				// persistenceController is nil, so building this scene would force-unwrap-crash.
+				// coreDataStack is nil, so building this scene would force-unwrap-crash.
 				// Also gated on the database reset, for the same stale-bridge reason as the main
-				// window: this scene's .modelContainer must unmount during a container swap.
-				if Self.shouldInitializeAppServices, let persistenceController, !appState.isDatabaseResetting {
+				// window: this scene's managedObjectContext must update during a container swap.
+				if Self.shouldInitializeAppServices, let coreDataStack, !appState.isDatabaseResetting {
 					EventFirmwareTintScope {
 						MapWindow()
 							.id(appState.databaseResetID)
 					}
-					.modelContainer(persistenceController.container)
+					.environment(\.managedObjectContext, coreDataStack.container.viewContext)
 					.environmentObject(appState)
 					.environmentObject(accessoryManager)
 					.environmentObject(lockdownCoordinator)
@@ -400,12 +400,12 @@ struct MeshtasticAppleApp: App {
 		// The mesh on a terrain model. Same gates as the Mesh Map window, and one constant key
 		// so every entry point brings the same volume forward.
 		WindowGroup("Spatial Map", id: SpatialMapScene.id, for: SpatialMapSceneKey.self) { _ in
-			if Self.shouldInitializeAppServices, let persistenceController, !appState.isDatabaseResetting {
+			if Self.shouldInitializeAppServices, let coreDataStack, !appState.isDatabaseResetting {
 				EventFirmwareTintScope {
 					SpatialMapWindow()
 						.id(appState.databaseResetID)
 				}
-				.modelContainer(persistenceController.container)
+				.environment(\.managedObjectContext, coreDataStack.container.viewContext)
 				.environmentObject(appState)
 				.environmentObject(accessoryManager)
 				.environmentObject(lockdownCoordinator)
@@ -421,12 +421,12 @@ struct MeshtasticAppleApp: App {
 
 		// The mesh as radios in a showcase. Same gates and environment as the spatial map volume.
 		ImmersiveSpace(id: ShowcaseScene.id) {
-			if Self.shouldInitializeAppServices, let persistenceController, !appState.isDatabaseResetting {
+			if Self.shouldInitializeAppServices, let coreDataStack, !appState.isDatabaseResetting {
 				EventFirmwareTintScope {
 					ShowcaseSpace()
 						.id(appState.databaseResetID)
 				}
-				.modelContainer(persistenceController.container)
+				.environment(\.managedObjectContext, coreDataStack.container.viewContext)
 				.environmentObject(appState)
 				.environmentObject(accessoryManager)
 				.environmentObject(lockdownCoordinator)
@@ -439,7 +439,7 @@ struct MeshtasticAppleApp: App {
 		// A 360° environment around the app's windows. Its whiteboard shows the team roster, from
 		// the store when there is one; CinemaSpace leaves the board out during a database reset.
 		ImmersiveSpace(id: CinemaScene.id) {
-			CinemaSpace(container: Self.shouldInitializeAppServices ? persistenceController?.container : nil)
+			CinemaSpace(container: Self.shouldInitializeAppServices ? coreDataStack?.container : nil)
 				.environmentObject(appState)
 				.environmentObject(accessoryManager)
 				.environmentObject(lockdownCoordinator)

@@ -2,36 +2,55 @@
 //  DeviceHardwareEntity.swift
 //  Meshtastic
 //
-//  Created by Jake Bordens on 12/10/25.
+//  SwiftData model for the device hardware catalog entity.
+//  Converted to Core Data NSManagedObject subclass for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class DeviceHardwareEntity {
-	var activelySupported: Bool = false
-	var architecture: String?
-	var displayName: String?
-	var hasInkHud: Bool = false
-	var hasMui: Bool = false
-	var hwModel: Int64 = 0
-	var hwModelSlug: String?
-	var key: String?
-	var partitionScheme: String?
-	var platformioTarget: String?
-	var requiresDfu: Bool = false
-	var supportLevel: Int = 0
-	var isMaker: Bool = false
-	var variant: String?
+@objc(DeviceHardwareEntity)
+public class DeviceHardwareEntity: NSManagedObject {
 
-	@Relationship(deleteRule: .nullify, inverse: \DeviceHardwareImageEntity.device)
-	var images: [DeviceHardwareImageEntity] = []
+	@NSManaged public var activelySupported: Bool
+	@NSManaged public var architecture: String?
+	@NSManaged public var displayName: String?
+	@NSManaged public var hasInkHud: Bool
+	@NSManaged public var hasMui: Bool
+	@NSManaged public var hwModel: Int64
+	@NSManaged public var hwModelSlug: String?
+	@NSManaged public var key: String?
+	@NSManaged public var partitionScheme: String?
+	@NSManaged public var platformioTarget: String?
+	@NSManaged public var requiresDfu: Bool
+	@NSManaged public var supportLevel: Int
+	@NSManaged public var isMaker: Bool
+	@NSManaged public var variant: String?
 
-	@Relationship(deleteRule: .nullify, inverse: \DeviceHardwareTagEntity.devices)
-	var tags: [DeviceHardwareTagEntity] = []
+	// Relationships
+	@NSManaged public var images: [DeviceHardwareImageEntity]
+	@NSManaged public var tags: [DeviceHardwareTagEntity]
 
-	init() {}
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "DeviceHardwareEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.activelySupported = false
+		self.architecture = nil
+		self.displayName = nil
+		self.hasInkHud = false
+		self.hasMui = false
+		self.hwModel = 0
+		self.hwModelSlug = nil
+		self.key = nil
+		self.partitionScheme = nil
+		self.platformioTarget = nil
+		self.requiresDfu = false
+		self.supportLevel = 0
+		self.isMaker = false
+		self.variant = nil
+		self.images = []
+		self.tags = []
+	}
 }
 
 /// A target-specific entry from the device-hardware catalog.

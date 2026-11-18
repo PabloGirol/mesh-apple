@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 11/1/26.
 //
 #if os(visionOS)
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// The card beside a marker out the lookout's windows, so a node can be looked at without turning
@@ -75,8 +75,9 @@ private struct LookoutNodeDetail: View {
 	let onShowOnMap: (Int64) -> Void
 	let onShowOnScreen: (Int64) -> Void
 	let onClose: () -> Void
-	@Environment(\.modelContext) private var context
+	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@State private var reading: CinemaNodeReading?
+	private var context: NSManagedObjectContext { accessoryManager.context }
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 12) {

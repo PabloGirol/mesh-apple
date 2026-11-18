@@ -7,7 +7,7 @@
 //
 
 import Intents
-@preconcurrency import SwiftData
+import CoreData
 
 enum IntentMessageConverters {
 	static let meshtasticDomain = "@meshtastic.local"
@@ -58,18 +58,16 @@ enum IntentMessageConverters {
 	}
 
 	/// Searches for `UserEntity` objects whose name matches the given search term.
-	static func findUsers(matching searchTerm: String, in context: ModelContext) -> [UserEntity] {
+	static func findUsers(matching searchTerm: String, in context: NSManagedObjectContext) -> [UserEntity] {
 		if let nodeNum = directMessageNodeNum(from: searchTerm) {
-			let descriptor = FetchDescriptor<UserEntity>(
-				predicate: #Predicate<UserEntity> { user in
-					user.num == nodeNum
-				}
-			)
-			return (try? context.fetch(descriptor)) ?? []
+			let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+			request.predicate = NSPredicate(format: "num == %lld", nodeNum)
+			return (try? context.fetch(request)) ?? []
 		}
 
 		let normalized = searchTerm.lowercased()
-		let users = (try? context.fetch(FetchDescriptor<UserEntity>())) ?? []
+		let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+		let users = (try? context.fetch(request)) ?? []
 		return users.filter { user in
 			(user.longName?.lowercased().contains(normalized) ?? false)
 				|| (user.shortName?.lowercased().contains(normalized) ?? false)
@@ -86,7 +84,7 @@ enum IntentMessageConverters {
 	/// with a disambiguation between indistinguishable options (or failed) —
 	/// breaking channel replies from CarPlay.
 	@MainActor
-	static func findChannels(matching name: String, in context: ModelContext) -> [ChannelEntity] {
+	static func findChannels(matching name: String, in context: NSManagedObjectContext) -> [ChannelEntity] {
 		let connectedNum = AccessoryManager.shared.activeDeviceNum
 
 		// Filter to the connected node's myInfo in Swift, not the predicate —
@@ -101,18 +99,16 @@ enum IntentMessageConverters {
 
 		if let explicitIndex = channelIndex(fromHandleOrName: name) {
 			let explicitIndex32 = Int32(explicitIndex)
-			let descriptor = FetchDescriptor<ChannelEntity>(
-				predicate: #Predicate<ChannelEntity> { channel in
-					channel.index == explicitIndex32
-				}
-			)
+			let request = NSFetchRequest<ChannelEntity>(entityName: "ChannelEntity")
+			request.predicate = NSPredicate(format: "index == %d", explicitIndex32)
 			// The duplicates are interchangeable for index-addressed lookups —
 			// return at most one so resolution never disambiguates identical rows.
-			return Array(scoped((try? context.fetch(descriptor)) ?? []).prefix(1))
+			return Array(scoped((try? context.fetch(request)) ?? []).prefix(1))
 		}
 
 		let normalized = name.lowercased()
-		let channels = (try? context.fetch(FetchDescriptor<ChannelEntity>())) ?? []
+		let request = NSFetchRequest<ChannelEntity>(entityName: "ChannelEntity")
+		let channels = (try? context.fetch(request)) ?? []
 		let matches = scoped(channels.filter { channel in
 			guard let channelName = channel.name, !channelName.isEmpty else { return false }
 			return channelName.lowercased().contains(normalized)
@@ -127,7 +123,7 @@ enum IntentMessageConverters {
 	/// default of 0 silently sent channel replies to Primary when Siri's
 	/// transcription didn't match any channel name.
 	@MainActor
-	static func channelIndex(for name: String, in context: ModelContext) -> Int? {
+	static func channelIndex(for name: String, in context: NSManagedObjectContext) -> Int? {
 		if let explicitIndex = channelIndex(fromHandleOrName: name) {
 			return explicitIndex
 		}

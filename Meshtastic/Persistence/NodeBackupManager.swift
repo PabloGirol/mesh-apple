@@ -9,7 +9,7 @@ import Foundation
 import CryptoKit
 import OSLog
 import SQLite3
-import SwiftData
+import CoreData
 
 /// Core backup/restore service for node database snapshots.
 ///
@@ -25,9 +25,9 @@ final class NodeBackupManager: NodeBackupManaging {
 	// MARK: - Constants
 
 	private static let indexFileName = "backup-index.json"
-	private static let storeFileName = "Meshtastic.store"
-	private static let walFileName = "Meshtastic.store-wal"
-	private static let shmFileName = "Meshtastic.store-shm"
+	private static let storeFileName = "Meshtastic.sqlite"
+	private static let walFileName = "Meshtastic.sqlite-wal"
+	private static let shmFileName = "Meshtastic.sqlite-shm"
 	private static let maximumBackupCount = 100
 	/// Minimum free disk space required for backup (50 MB)
 	private static let minimumFreeDiskSpace: Int64 = 50 * 1024 * 1024
@@ -300,7 +300,7 @@ final class NodeBackupManager: NodeBackupManaging {
 		let fileSize = try await Task.detached(priority: .userInitiated) { [fileManager] in
 			var totalSize: Int64 = 0
 
-			// Copy .store
+			// Copy .sqlite
 			let sqliteSrc = sourceURL
 			let sqliteDst = nodeBackupDir.appendingPathComponent(Self.storeFileName)
 			if fileManager.fileExists(atPath: sqliteSrc.path) {
@@ -493,15 +493,16 @@ final class NodeBackupManager: NodeBackupManaging {
 	/// removed while live).
 	nonisolated private static func backupBelongs(
 		to peripheralId: String,
-		storeURL: URL,
-		schema: Schema
+		storeURL: URL
 	) throws -> Int64? {
-		let backupContainer = try stagedBackupContainer(for: storeURL, schema: schema)
-		let backupContext = ModelContext(backupContainer)
-		backupContext.autosaveEnabled = false
+		let backupContainer = try stagedBackupContainer(for: storeURL)
+		let backupContext = backupContainer.viewContext
+		backupContext.automaticallyMergesChangesFromParent = false
 
-		let descriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.peripheralId == peripheralId })
-		return try backupContext.fetch(descriptor).first?.myNodeNum
+		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		request.predicate = NSPredicate(format: "peripheralId == %@", peripheralId)
+		request.fetchLimit = 1
+		return try backupContext.fetch(request).first?.myNodeNum
 	}
 
 	/// Index keys whose backup was taken from the given peripheral. Only searches entries still keyed
@@ -515,7 +516,6 @@ final class NodeBackupManager: NodeBackupManaging {
 		let baseURL = backupBaseURL
 		return await Task.detached(priority: .userInitiated) {
 			let fileManager = FileManager.default
-			let schema = Schema(versionedSchema: MeshtasticSchema.current)
 			var matches: [String] = []
 
 			for (key, backupPath) in candidates {
@@ -524,7 +524,7 @@ final class NodeBackupManager: NodeBackupManaging {
 					.appendingPathComponent(Self.storeFileName)
 				guard fileManager.fileExists(atPath: storeURL.path) else { continue }
 				do {
-					if try Self.backupBelongs(to: peripheralId, storeURL: storeURL, schema: schema) != nil {
+					if try Self.backupBelongs(to: peripheralId, storeURL: storeURL) != nil {
 						matches.append(key)
 					}
 				} catch {
@@ -544,7 +544,6 @@ final class NodeBackupManager: NodeBackupManaging {
 		let baseURL = backupBaseURL
 		return await Task.detached(priority: .userInitiated) {
 			let fileManager = FileManager.default
-			let schema = Schema(versionedSchema: MeshtasticSchema.current)
 
 			for entry in entries {
 				let storeURL = baseURL
@@ -552,7 +551,7 @@ final class NodeBackupManager: NodeBackupManaging {
 					.appendingPathComponent(Self.storeFileName)
 				guard fileManager.fileExists(atPath: storeURL.path) else { continue }
 				do {
-					if let nodeNum = try Self.backupBelongs(to: peripheralId, storeURL: storeURL, schema: schema) {
+					if let nodeNum = try Self.backupBelongs(to: peripheralId, storeURL: storeURL) {
 						return nodeNum
 					}
 				} catch {
@@ -652,7 +651,7 @@ final class NodeBackupManager: NodeBackupManaging {
 	private func activeDatabaseURL() -> URL {
 		if let activeStoreURLOverride { return activeStoreURLOverride }
 		let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-		return appSupport.appendingPathComponent("Meshtastic.store")
+		return appSupport.appendingPathComponent("Meshtastic.sqlite")
 	}
 
 	// MARK: - Full Database Restore via Import
@@ -660,7 +659,7 @@ final class NodeBackupManager: NodeBackupManaging {
 	/// Restores a full backup by importing all entities from the backup SQLite into the live container.
 	///
 	/// Call this AFTER `clearDatabase()` has emptied the live database. Opens the backup as a
-	/// read-only ModelContainer and copies all entities (nodes, users, messages, positions,
+	/// read-only NSPersistentContainer and copies all entities (nodes, users, messages, positions,
 	/// telemetry, waypoints, channels, etc.) into the live context with relationships intact.
 	///
 	/// This avoids SQLite file swaps and container recreation entirely — the live container
@@ -668,9 +667,9 @@ final class NodeBackupManager: NodeBackupManaging {
 	///
 	/// - Parameters:
 	///   - nodeNum: The node number whose backup to restore
-	///   - container: The live ModelContainer to import into
+	///   - container: The live NSPersistentContainer to import into
 	/// - Returns: Result indicating success, skip, or no backup found
-	func restoreFromBackup(forNode nodeNum: Int64, into container: ModelContainer) async -> NodeBackupResult {
+	func restoreFromBackup(forNode nodeNum: Int64, into container: NSPersistentContainer) async -> NodeBackupResult {
 		Logger.backup.info("💾 Restoring full backup for node \(nodeNum)")
 
 		// Looked up by node number rather than by key: a backup for this radio may still be keyed by
@@ -705,15 +704,15 @@ final class NodeBackupManager: NodeBackupManaging {
 			//    cannot run on a read-only store, and that failure used to abort the restore
 			//    and bounce the switch back to the previous device.
 			try await MainActor.run {
-				let schema = Schema(versionedSchema: MeshtasticSchema.current)
-				let backupContainer = try Self.stagedBackupContainer(for: backupStoreURL, schema: schema)
-				let backupContext = ModelContext(backupContainer)
-				backupContext.autosaveEnabled = false
+				
+				let backupContainer = try Self.stagedBackupContainer(for: backupStoreURL)
+				let backupContext = backupContainer.viewContext
+				backupContext.automaticallyMergesChangesFromParent = false
 
-				let liveContext = container.mainContext
-				let hadAutosave = liveContext.autosaveEnabled
-				liveContext.autosaveEnabled = false
-				defer { liveContext.autosaveEnabled = hadAutosave }
+				let liveContext = container.viewContext
+				let hadAutosave = liveContext.automaticallyMergesChangesFromParent
+				liveContext.automaticallyMergesChangesFromParent = false
+				defer { liveContext.automaticallyMergesChangesFromParent = hadAutosave }
 
 				// Import in dependency order
 				let nodesByNum = try Self.importNodes(from: backupContext, into: liveContext)
@@ -774,7 +773,7 @@ extension NodeBackupManager {
 
 	/// Opens a backup store for reading through a disposable staged copy.
 	///
-	/// Backups must never be mutated — but SwiftData cannot open a store read-only when a
+	/// Backups must never be mutated — but Core Data cannot open a store read-only when a
 	/// schema migration is pending ("Cannot migrate store in-place: … attempt to write a
 	/// readonly database"), which is exactly what aborted node-switch restores after a schema
 	/// advance and bounced the switch back to the previous device. Copying the store (plus
@@ -782,15 +781,12 @@ extension NodeBackupManager {
 	/// migration run against the disposable copy while the real backup stays byte-identical.
 	///
 	/// The staged directory is deliberately NOT removed when the caller finishes: the
-	/// `ModelContainer` object outlives the call (SwiftData keeps internal observers alive
+	/// `NSPersistentContainer` object outlives the call (Core Data keeps internal observers alive
 	/// until dealloc), and unlinking a live container's store trips SQLite's vnode watch —
 	/// it invalidates the open fds ("vnode unlinked while in use") and the broken container
 	/// can then trap on a later notification callout. Temp staging dirs are swept at next
 	/// launch (`sweepStagedBackupDirectories`), and the OS purges tmp/ anyway.
-	nonisolated static func stagedBackupContainer(
-		for backupStoreURL: URL,
-		schema: Schema
-	) throws -> ModelContainer {
+	nonisolated static func stagedBackupContainer(for backupStoreURL: URL) throws -> NSPersistentContainer {
 		let fm = FileManager.default
 		let stageDir = fm.temporaryDirectory
 			.appendingPathComponent("staged-backup-\(UUID().uuidString)", isDirectory: true)
@@ -803,8 +799,39 @@ extension NodeBackupManager {
 		}
 		do {
 			// Writable so a pending lightweight migration can run — against the copy only.
-			let config = ModelConfiguration(url: stagedStoreURL, allowsSave: true)
-			return try ModelContainer(for: schema, configurations: config)
+			let config = NSPersistentStoreDescription()
+			config.url = stagedStoreURL
+			config.shouldMigrateStoreAutomatically = true
+			config.shouldInferMappingModelAutomatically = true
+
+			// Load the Core Data model from the bundled .xcdatamodeld (V58)
+			guard let momdURL = Bundle.main.url(
+				forResource: "Meshtastic",
+				withExtension: "momd"
+			) else {
+				throw BackupError.fileNotFound
+			}
+
+			let v58URL = momdURL.appendingPathComponent("MeshtasticDataModelV 58.mom")
+			let modelURL: URL
+			if FileManager.default.fileExists(atPath: v58URL.path) {
+				modelURL = v58URL
+			} else {
+				modelURL = momdURL
+			}
+
+			guard let model = NSManagedObjectModel(contentsOf: modelURL) else {
+				throw BackupError.fileNotFound
+			}
+
+			let container = NSPersistentContainer(name: "Meshtastic", managedObjectModel: model)
+			container.persistentStoreDescriptions = [config]
+			var loadError: Error?
+			container.loadPersistentStores { _, error in
+				loadError = error
+			}
+			if let loadError { throw loadError }
+			return container
 		} catch {
 			// Nothing holds the copy open when the container failed to construct.
 			try? fm.removeItem(at: stageDir)

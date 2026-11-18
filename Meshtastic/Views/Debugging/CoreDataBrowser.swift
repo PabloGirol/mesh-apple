@@ -6,273 +6,270 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import SwiftDraw
 
 // MARK: - Fetch Helper
 
-/// Opens the existential `any PersistentModel.Type` to call a generic fetch.
-private func fetchAll(of modelType: any PersistentModel.Type, context: ModelContext, limit: Int = 100) -> [any PersistentModel] {
-	func _fetch<T: PersistentModel>(_ type: T.Type) -> [any PersistentModel] {
-		var descriptor = FetchDescriptor<T>()
-		descriptor.fetchLimit = limit
-		return (try? context.fetch(descriptor)) ?? []
-	}
-	return _fetch(modelType)
+/// Opens the existential `any NSManagedObject.Type` to call a generic fetch.
+private func fetchAll(of modelType: any NSManagedObject.Type, context: NSManagedObjectContext, limit: Int = 100) -> [any NSManagedObject] {
+    func _fetch<T: NSManagedObject>(_ type: T.Type) -> [any NSManagedObject] {
+        let request = NSFetchRequest<T>(entityName: String(describing: type))
+        request.fetchLimit = limit
+        return (try? context.fetch(request)) ?? []
+    }
+    return _fetch(modelType)
 }
 
 /// Returns the total count for a model type.
-private func fetchCount(of modelType: any PersistentModel.Type, context: ModelContext) -> Int {
-	func _count<T: PersistentModel>(_ type: T.Type) -> Int {
-		(try? context.fetchCount(FetchDescriptor<T>())) ?? 0
-	}
-	return _count(modelType)
+private func fetchCount(of modelType: any NSManagedObject.Type, context: NSManagedObjectContext) -> Int {
+    func _count<T: NSManagedObject>(_ type: T.Type) -> Int {
+        let request = NSFetchRequest<T>(entityName: String(describing: type))
+        return (try? context.count(for: request)) ?? 0
+    }
+    return _count(modelType)
 }
 
 // MARK: - 1. Root Browser (The Menu)
 
 struct CoreDataBrowser: View {
-	@Environment(\.modelContext) private var modelContext
+    @Environment(\.managedObjectContext) private var managedObjectContext
 
-	private var sortedModels: [(name: String, type: any PersistentModel.Type)] {
-		MeshtasticSchema.allModels.map { type in
-			(name: String(describing: type), type: type)
-		}.sorted { $0.name < $1.name }
-	}
+    private var sortedModels: [(name: String, type: any NSManagedObject.Type)] {
+        MeshtasticSchema.allModels.map { type in
+            (name: String(describing: type), type: type)
+        }.sorted { $0.name < $1.name }
+    }
 
-	var body: some View {
-		List {
-			Section(header: Text("Entities (\(sortedModels.count))")) {
-				ForEach(sortedModels, id: \.name) { model in
-					NavigationLink(destination: DynamicEntityListView(modelType: model.type, entityName: model.name).trackScreen(.dataBrowserEntities)) {
-						HStack {
-							Label(model.name, systemImage: "tablecells")
-								.font(.subheadline)
-							Spacer()
-							Text("\(fetchCount(of: model.type, context: modelContext))")
-								.foregroundColor(.secondary)
-								.font(.caption2)
-						}
-					}
-				}
-			}
-		}
-		.navigationTitle("Database Browser")
-	}
+    var body: some View {
+        List {
+            Section(header: Text("Entities (\(sortedModels.count))")) {
+                ForEach(sortedModels, id: \.name) { model in
+                    NavigationLink(destination: DynamicEntityListView(modelType: model.type, entityName: model.name).trackScreen(.dataBrowserEntities)) {
+                        HStack {
+                            Label(model.name, systemImage: "tablecells")
+                                .font(.subheadline)
+                            Spacer()
+                            Text("\(fetchCount(of: model.type, context: managedObjectContext))")
+                                .foregroundColor(.secondary)
+                                .font(.caption2)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Database Browser")
+    }
 }
 
 // MARK: - 2. Dynamic List View
 
 struct DynamicEntityListView: View {
-	let modelType: any PersistentModel.Type
-	let entityName: String
-	@Environment(\.modelContext) private var modelContext
-	@State private var objects: [any PersistentModel] = []
+    let modelType: any NSManagedObject.Type
+    let entityName: String
+    @Environment(\.managedObjectContext) private var managedObjectContext
+    @State private var objects: [any NSManagedObject] = []
 
-	var body: some View {
-		List(objects.indices, id: \.self) { index in
-			let object = objects[index]
-			NavigationLink(destination: EntityDetailView(object: object).trackScreen(.dataBrowserEntity)) {
-				VStack(alignment: .leading) {
-					Text(displayName(for: object))
-						.font(.subheadline)
-						.lineLimit(1)
-					Text(object.persistentModelID.hashValue.description)
-						.font(.caption2)
-						.foregroundColor(.secondary)
-				}
-			}
-		}
-		.navigationTitle("\(entityName) (\(objects.count))")
-		.overlay {
-			if objects.isEmpty {
-				ContentUnavailableView("Table Empty", systemImage: "tray", description: Text("No records found for \(entityName)"))
-			}
-		}
-		.onAppear {
-			objects = fetchAll(of: modelType, context: modelContext, limit: 500)
-		}
-	}
+    var body: some View {
+        List(objects.indices, id: \.self) { index in
+            let object = objects[index]
+            NavigationLink(destination: EntityDetailView(object: object).trackScreen(.dataBrowserEntity)) {
+                VStack(alignment: .leading) {
+                    Text(displayName(for: object))
+                        .font(.subheadline)
+                        .lineLimit(1)
+                    Text(object.objectID.hashValue.description)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .navigationTitle("\(entityName) (\(objects.count))")
+        .overlay {
+            if objects.isEmpty {
+                ContentUnavailableView("Table Empty", systemImage: "tray", description: Text("No records found for \(entityName)"))
+            }
+        }
+        .onAppear {
+            objects = fetchAll(of: modelType, context: managedObjectContext, limit: 500)
+        }
+    }
 }
 
 // MARK: - 3. Detail View
 
 struct EntityDetailView: View {
-	let object: any PersistentModel
+    let object: any NSManagedObject
 
-	var body: some View {
-		let properties = readSchemaProperties(of: object)
-			.sorted { $0.label < $1.label }
+    var body: some View {
+        let properties = readSchemaProperties(of: object)
+            .sorted { $0.label < $1.label }
 
-		Form {
-			Section(header: Text("Metadata")) {
-				LabeledContent("Type", value: String(describing: type(of: object)))
-				LabeledContent("ID", value: object.persistentModelID.hashValue.description)
-			}
+        Form {
+            Section(header: Text("Metadata")) {
+                LabeledContent("Type", value: String(describing: type(of: object)))
+                LabeledContent("ID", value: object.objectID.hashValue.description)
+            }
 
-			Section(header: Text("Properties (\(properties.count))")) {
-				ForEach(properties, id: \.label) { prop in
-					PropertyRow(key: prop.label, value: prop.value)
-				}
-			}
-		}
-		.navigationTitle("Details")
-		.navigationBarTitleDisplayMode(.inline)
-	}
+            Section(header: Text("Properties (\(properties.count))")) {
+                ForEach(properties, id: \.label) { prop in
+                    PropertyRow(key: prop.label, value: prop.value)
+                }
+            }
+        }
+        .navigationTitle("Details")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 }
 
 // MARK: - 4. Property Row
 
 struct PropertyRow: View {
-	let key: String
-	let value: Any
+    let key: String
+    let value: Any
 
-	var body: some View {
-		VStack(alignment: .leading) {
-			Text(key)
-				.font(.caption)
-				.foregroundColor(.secondary)
-			content
-		}
-		.padding(.vertical, 2)
-	}
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(key)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            content
+        }
+        .padding(.vertical, 2)
+    }
 
-	@ViewBuilder
-	var content: some View {
-		let unwrapped = unwrapOptional(value)
+    @ViewBuilder
+    var content: some View {
+        let unwrapped = unwrapOptional(value)
 
-		if unwrapped == nil {
-			Text("nil")
-				.foregroundColor(.secondary)
-				.italic()
-		} else if let boolVal = unwrapped as? Bool {
-			Label(boolVal ? "True" : "False", systemImage: boolVal ? "checkmark.circle.fill" : "xmark.circle")
-				.foregroundColor(boolVal ? .green : .red)
-		} else if let date = unwrapped as? Date {
-			Text(date.formatted(date: .abbreviated, time: .standard))
-		} else if let data = unwrapped as? Data {
-			if key == "svgData", let svg = SVG(data: data) {
-				SVGView(svg: svg)
-					.resizable()
-					.aspectRatio(contentMode: .fit)
-					.frame(maxWidth: 200, maxHeight: 200)
-			} else {
-				Text("Binary Data (\(data.count) bytes)")
-					.font(.system(.body, design: .monospaced))
-			}
-		} else if let intVal = unwrapped as? any FixedWidthInteger {
-			Text(String(describing: intVal))
-				.font(.system(.body, design: .monospaced))
-		} else if let floatVal = unwrapped as? Float {
-			Text(String(format: "%.4f", floatVal))
-				.font(.system(.body, design: .monospaced))
-		} else if let doubleVal = unwrapped as? Double {
-			Text(String(format: "%.6f", doubleVal))
-				.font(.system(.body, design: .monospaced))
-		} else if let array = unwrapped as? [any PersistentModel] {
-			NavigationLink {
-				RelationshipListView(title: key, objects: array)
-					.trackScreen(.dataBrowserRelationships)
-			} label: {
-				HStack {
-					Text("[\(array.count) items]")
-						.foregroundColor(.secondary)
-					Image(systemName: "folder")
-						.foregroundColor(.blue)
-				}
-			}
-			.disabled(array.isEmpty)
-		} else if let related = unwrapped as? any PersistentModel {
-			NavigationLink {
-				EntityDetailView(object: related)
-					.trackScreen(.dataBrowserEntity)
-			} label: {
-				Text(displayName(for: related))
-					.foregroundColor(.secondary)
-					.lineLimit(1)
-			}
-		} else {
-			Text(String(describing: unwrapped!))
-				.lineLimit(3)
-		}
-	}
+        if unwrapped == nil {
+            Text("nil")
+                .foregroundColor(.secondary)
+                .italic()
+        } else if let boolVal = unwrapped as? Bool {
+            Label(boolVal ? "True" : "False", systemImage: boolVal ? "checkmark.circle.fill" : "xmark.circle")
+                .foregroundColor(boolVal ? .green : .red)
+        } else if let date = unwrapped as? Date {
+            Text(date.formatted(date: .abbreviated, time: .standard))
+        } else if let data = unwrapped as? Data {
+            if key == "svgData", let svg = SVG(data: data) {
+                SVGView(svg: svg)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 200, maxHeight: 200)
+            } else {
+                Text("Binary Data (\(data.count) bytes)")
+                    .font(.system(.body, design: .monospaced))
+            }
+        } else if let intVal = unwrapped as? any FixedWidthInteger {
+            Text(String(describing: intVal))
+                .font(.system(.body, design: .monospaced))
+        } else if let floatVal = unwrapped as? Float {
+            Text(String(format: "%.4f", floatVal))
+                .font(.system(.body, design: .monospaced))
+        } else if let doubleVal = unwrapped as? Double {
+            Text(String(format: "%.6f", doubleVal))
+                .font(.system(.body, design: .monospaced))
+        } else if let array = unwrapped as? [any NSManagedObject] {
+            NavigationLink {
+                RelationshipListView(title: key, objects: array)
+                    .trackScreen(.dataBrowserRelationships)
+            } label: {
+                HStack {
+                    Text("[\(array.count) items]")
+                        .foregroundColor(.secondary)
+                    Image(systemName: "folder")
+                        .foregroundColor(.blue)
+                }
+            }
+            .disabled(array.isEmpty)
+        } else if let related = unwrapped as? any NSManagedObject {
+            NavigationLink {
+                EntityDetailView(object: related)
+                    .trackScreen(.dataBrowserEntity)
+            } label: {
+                Text(displayName(for: related))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+        } else {
+            Text(String(describing: unwrapped!))
+                .lineLimit(3)
+        }
+    }
 }
 
 // MARK: - 5. Relationship List
 
 struct RelationshipListView: View {
-	let title: String
-	let objects: [any PersistentModel]
+    let title: String
+    let objects: [any NSManagedObject]
 
-	var body: some View {
-		List(objects.indices, id: \.self) { index in
-			let object = objects[index]
-			NavigationLink(destination: EntityDetailView(object: object).trackScreen(.dataBrowserEntity)) {
-				VStack(alignment: .leading) {
-					Text(displayName(for: object))
-						.font(.headline)
-						.lineLimit(1)
-					Text(String(describing: type(of: object)))
-						.font(.caption)
-						.foregroundColor(.secondary)
-				}
-			}
-		}
-		.navigationTitle("\(title) (\(objects.count))")
-	}
+    var body: some View {
+        List(objects.indices, id: \.self) { index in
+            let object = objects[index]
+            NavigationLink(destination: EntityDetailView(object: object).trackScreen(.dataBrowserEntity)) {
+                VStack(alignment: .leading) {
+                    Text(displayName(for: object))
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text(String(describing: type(of: object)))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .navigationTitle("\(title) (\(objects.count))")
+    }
 }
 
 // MARK: - 6. Helpers
 
-/// Read properties from a SwiftData model using schema metadata and keypaths.
+/// Read properties from a Core Data model using schema metadata and keypaths.
 /// Mirror doesn't work for @Model classes (shows _SwiftDataNoType() sentinels).
 /// PropertyMetadata.keypath is internal, so we use Mirror on the metadata struct to extract it.
-private func readSchemaProperties(of object: any PersistentModel) -> [(label: String, value: Any)] {
-	func _read<T: PersistentModel>(_ obj: T) -> [(label: String, value: Any)] {
-		T.schemaMetadata.compactMap { metadata in
-			let metaMirror = Mirror(reflecting: metadata)
-			guard let name = metaMirror.children.first(where: { $0.label == "name" })?.value as? String else {
-				return nil
-			}
-			if let anyKP = metaMirror.children.first(where: { $0.label == "keypath" })?.value,
-			   let kp = anyKP as? PartialKeyPath<T> {
-				let value = obj[keyPath: kp]
-				return (label: name, value: value)
-			}
-			return (label: name, value: Optional<Any>.none as Any)
-		}
-	}
-	return _read(object)
+private func readSchemaProperties(of object: any NSManagedObject) -> [(label: String, value: Any)] {
+    func _read<T: NSManagedObject>(_ obj: T) -> [(label: String, value: Any)] {
+        // Core Data entities don't have schemaMetadata like SwiftData
+        // Use entity description and key-value coding instead
+        guard let entity = obj.entity as? NSEntityDescription else { return [] }
+        return entity.properties.compactMap { property in
+            let name = property.name
+            let value = obj.value(forKey: name)
+            return (label: name, value: value as Any)
+        }
+    }
+    return _read(object)
 }
 
 /// Unwrap an optional `Any` value.
 private func unwrapOptional(_ value: Any) -> Any? {
-	let mirror = Mirror(reflecting: value)
-	if mirror.displayStyle == .optional {
-		return mirror.children.first?.value
-	}
-	return value
+    let mirror = Mirror(reflecting: value)
+    if mirror.displayStyle == .optional {
+        return mirror.children.first?.value
+    }
+    return value
 }
 
 /// Find a displayable name from a model instance using heuristic key search.
-private func displayName(for object: any PersistentModel) -> String {
-	let properties = readSchemaProperties(of: object)
-	let preferredKeys = ["longName", "name", "title", "shortName", "userId", "messagePayload"]
+private func displayName(for object: any NSManagedObject) -> String {
+    let properties = readSchemaProperties(of: object)
+    let preferredKeys = ["longName", "name", "title", "shortName", "userId", "messagePayload"]
 
-	for key in preferredKeys {
-		if let prop = properties.first(where: { $0.label == key }),
-		   let str = unwrapOptional(prop.value) as? String,
-		   !str.isEmpty {
-			return str
-		}
-	}
+    for key in preferredKeys {
+        if let prop = properties.first(where: { $0.label == key }),
+           let str = unwrapOptional(prop.value) as? String,
+           !str.isEmpty {
+            return str
+        }
+    }
 
-	// Fallback: first non-empty string property
-	for prop in properties {
-		if let str = unwrapOptional(prop.value) as? String, !str.isEmpty {
-			return str
-		}
-	}
+    // Fallback: first non-empty string property
+    for prop in properties {
+        if let str = unwrapOptional(prop.value) as? String, !str.isEmpty {
+            return str
+        }
+    }
 
-	return String(describing: type(of: object))
+    return String(describing: type(of: object))
 }

@@ -120,7 +120,7 @@ final class LookoutScene: ObservableObject {
 		let eye = LookoutTerrain.eyeElevation(for: site)
 		var found: [LookoutLabel] = []
 		for node in nodes {
-			guard let position = positions[node.persistentModelID], let coordinate = position.nodeCoordinate else { continue }
+			guard let position = positions[node.objectID], let coordinate = position.nodeCoordinate else { continue }
 			let distance = site.coordinate.distance(from: coordinate)
 			guard distance > 30, distance < 150_000 else { continue }
 			found.append(LookoutLabel(

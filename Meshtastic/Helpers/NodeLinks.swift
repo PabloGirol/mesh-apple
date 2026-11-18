@@ -8,7 +8,7 @@
 import CoreLocation
 import Foundation
 import OSLog
-import SwiftData
+import CoreData
 
 /// One node hearing another: `observer` heard `heard` at `snr` dB, last at `heardAt`.
 /// One-way, so A hearing B says nothing about B hearing A.
@@ -194,13 +194,13 @@ enum NodeLinks {
 	/// The saved Neighbor Info entries young enough to draw, left out when they came over MQTT.
 	/// There are few rows: at most ten per reporting node.
 	@MainActor
-	static func reportRows(context: ModelContext, now: Date) -> [NodeLinkReportRow] {
+	static func reportRows(context: NSManagedObjectContext, now: Date) -> [NodeLinkReportRow] {
 		let cutoff = now.addingTimeInterval(-maxReportAge)
 		let rows: [NeighborLinkEntity]
 		do {
-			rows = try context.fetch(FetchDescriptor<NeighborLinkEntity>(
-				predicate: #Predicate<NeighborLinkEntity> { $0.viaMqtt == false && $0.receivedAt >= cutoff }
-			))
+			var descriptor = NSFetchRequest<NeighborLinkEntity>(entityName: "NeighborLinkEntity")
+			descriptor.predicate = NSPredicate(format: "viaMqtt == NO AND receivedAt >= %@", cutoff as NSDate)
+			rows = try context.fetch(descriptor)
 		} catch {
 			Logger.data.error("💥 [NodeLinks] Neighbor link fetch failed: \(error.localizedDescription, privacy: .public)")
 			rows = []

@@ -5,10 +5,10 @@
 //  Created by Benjamin Faershtein on 2/8/25.
 //
 
-import SwiftUI
+import CoreData
 import CoreLocation
-@preconcurrency import SwiftData
 import OSLog
+import SwiftUI
 
 struct NavigateToButton: View {
 	var node: NodeInfoEntity
@@ -21,13 +21,12 @@ struct NavigateToButton: View {
 			}
 			Logger.services.info("Fetching NodeInfoEntity for userNum: \(userNum, privacy: .public)")
 
-			var descriptor = FetchDescriptor<NodeInfoEntity>(
-				predicate: #Predicate<NodeInfoEntity> { $0.num == userNum }
-			)
-			descriptor.fetchLimit = 1
+			let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+			request.predicate = NSPredicate(format: "num == %lld", userNum)
+			request.fetchLimit = 1
 
 			do {
-				let fetchedNodes = try PersistenceController.shared.context.fetch(descriptor)
+				let fetchedNodes = try PersistenceController.shared.container.viewContext.fetch(request)
 				guard let nodeInfo = fetchedNodes.first else {
 					Logger.services.error("NavigateToAction: Node with userNum \(userNum, privacy: .public) not found in Core Data")
 					return

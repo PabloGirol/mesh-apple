@@ -6,7 +6,7 @@
 //
 
 #if DEBUG
-import SwiftData
+import CoreData
 import OSLog
 import Foundation
 
@@ -180,12 +180,16 @@ enum PerformanceSeedData {
 		}
 	}
 
-	private static func existingNodeCount(context: ModelContext) -> Int {
-		(try? context.fetchCount(FetchDescriptor<NodeInfoEntity>())) ?? 0
+	private static func existingNodeCount(context: NSManagedObjectContext) -> Int {
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.includesPendingChanges = false
+		return (try? context.count(for: request)) ?? 0
 	}
 
-	private static func existingMessageCount(context: ModelContext) -> Int {
-		(try? context.fetchCount(FetchDescriptor<MessageEntity>())) ?? 0
+	private static func existingMessageCount(context: NSManagedObjectContext) -> Int {
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.includesPendingChanges = false
+		return (try? context.count(for: request)) ?? 0
 	}
 
 	/// Node number for a seeded node at `index`.
@@ -210,7 +214,7 @@ enum PerformanceSeedData {
 		baseNodeNum: Int64,
 		now: Date,
 		configuration: PerformanceSeedConfiguration,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		let nodeNum = seededNodeNum(baseNodeNum: baseNodeNum, index: index)
 		let node = NodeInfoEntity()
@@ -289,7 +293,7 @@ enum PerformanceSeedData {
 		index: Int,
 		now: Date,
 		configuration: PerformanceSeedConfiguration,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		for sample in 0..<configuration.telemetryHistoryPerNode {
 			let timestamp = now.addingTimeInterval(TimeInterval(-(sample * 300 + index % 300)))
@@ -368,7 +372,7 @@ enum PerformanceSeedData {
 		index: Int,
 		now: Date,
 		configuration: PerformanceSeedConfiguration,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		let baseCoordinate: (latitude: Double, longitude: Double)
 		switch configuration.style {
@@ -432,7 +436,7 @@ enum PerformanceSeedData {
 		return Double(mixed >> 11) / Double(1 << 53)
 	}
 
-	private static func insertTraceRoute(for node: NodeInfoEntity, index: Int, now: Date, baseNodeNum: Int64, context: ModelContext) {
+	private static func insertTraceRoute(for node: NodeInfoEntity, index: Int, now: Date, baseNodeNum: Int64, context: NSManagedObjectContext) {
 		let traceRoute = TraceRouteEntity()
 		traceRoute.id = Int64(index)
 		traceRoute.response = true
@@ -520,7 +524,7 @@ enum PerformanceSeedData {
 		baseNodeNum: Int64,
 		now: Date,
 		configuration: PerformanceSeedConfiguration,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		guard configuration.directMessageCount > 0 || configuration.channelMessageCount > 0 else { return }
 		guard let localUser = fetchUser(num: baseNodeNum, context: context),
@@ -564,7 +568,7 @@ enum PerformanceSeedData {
 		localUser: UserEntity,
 		remoteUser: UserEntity,
 		now: Date,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		for index in 0..<count {
 			let message = perfMessage(
@@ -595,7 +599,7 @@ enum PerformanceSeedData {
 		localUser: UserEntity,
 		remoteUser: UserEntity,
 		now: Date,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		for index in 0..<count {
 			let message = perfMessage(
@@ -636,7 +640,7 @@ enum PerformanceSeedData {
 		index: Int,
 		from: UserEntity,
 		to: UserEntity?,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		guard index > 0 && index.isMultiple(of: 20) else { return }
 		let tapback = MessageEntity()
@@ -656,20 +660,18 @@ enum PerformanceSeedData {
 		index * 30
 	}
 
-	private static func fetchUser(num: Int64, context: ModelContext) -> UserEntity? {
-		var descriptor = FetchDescriptor<UserEntity>(
-			predicate: #Predicate<UserEntity> { $0.num == num }
-		)
-		descriptor.fetchLimit = 1
-		return try? context.fetch(descriptor).first
+	private static func fetchUser(num: Int64, context: NSManagedObjectContext) -> UserEntity? {
+		let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+		request.predicate = NSPredicate(format: "num == %lld", num)
+		request.fetchLimit = 1
+		return try? context.fetch(request).first
 	}
 
-	private static func fetchOrCreateChannel(index: Int32, myInfo: MyInfoEntity?, context: ModelContext, name: String = "Perf Channel") -> ChannelEntity {
-		var descriptor = FetchDescriptor<ChannelEntity>(
-			predicate: #Predicate<ChannelEntity> { $0.index == index }
-		)
-		descriptor.fetchLimit = 1
-		if let existing = try? context.fetch(descriptor).first {
+	private static func fetchOrCreateChannel(index: Int32, myInfo: MyInfoEntity?, context: NSManagedObjectContext, name: String = "Perf Channel") -> ChannelEntity {
+		let request = NSFetchRequest<ChannelEntity>(entityName: "ChannelEntity")
+		request.predicate = NSPredicate(format: "index == %d", index)
+		request.fetchLimit = 1
+		if let existing = try? context.fetch(request).first {
 			if existing.myInfoChannel == nil {
 				existing.myInfoChannel = myInfo
 			}
@@ -750,9 +752,9 @@ extension PerformanceSeedData {
 		// Idempotent: if any seeded beacon is already present, do nothing.
 		let base = beaconSeedBase
 		let ceiling = beaconSeedBase + 0x100
-		let existing = try? context.fetch(
-			FetchDescriptor<DiscoveredBeaconEntity>(predicate: #Predicate { $0.nodeNum >= base && $0.nodeNum < ceiling })
-		)
+		let request = NSFetchRequest<DiscoveredBeaconEntity>(entityName: "DiscoveredBeaconEntity")
+		request.predicate = NSPredicate(format: "nodeNum >= %lld AND nodeNum < %lld", base, ceiling)
+		let existing = try? context.fetch(request)
 		if let existing, !existing.isEmpty {
 			Logger.data.info("📡 [BeaconSeed] Seeded beacons already present; skipping")
 			return
@@ -858,7 +860,7 @@ extension PerformanceSeedData {
 	// swiftlint:disable:next function_parameter_count
 	private static func presetResult(
 		session: DiscoverySessionEntity,
-		context: ModelContext,
+		context: NSManagedObjectContext,
 		name: String,
 		dwell: Int,
 		unique: Int,
@@ -893,7 +895,7 @@ extension PerformanceSeedData {
 		presetName: String,
 		session: DiscoverySessionEntity,
 		presetResult: DiscoveryPresetResultEntity?,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		let node = DiscoveredNodeEntity()
 		node.nodeNum = 0x0D00_0000 + Int64(index)
@@ -926,7 +928,7 @@ extension PerformanceSeedData {
 		session: DiscoverySessionEntity,
 		presetResult: DiscoveryPresetResultEntity?,
 		now: Date,
-		context: ModelContext
+		context: NSManagedObjectContext
 	) {
 		let beacon = DiscoveredBeaconEntity()
 		beacon.nodeNum = beaconSeedBase + spec.idx
@@ -1169,7 +1171,7 @@ enum MarketingSeed {
 
 	/// Neighbor Info rows between anchor nodes: both directions for most pairs, one for every
 	/// third, with a spread of signal and age so the lines show each color and fade.
-	static func insertNeighborReports(now: Date, context: ModelContext) {
+	static func insertNeighborReports(now: Date, context: NSManagedObjectContext) {
 		func add(_ reporter: Int, _ neighbor: Int, snr: Float, ago: TimeInterval) {
 			let row = NeighborLinkEntity()
 			row.reporterNum = nodeNum(for: reporter)
@@ -1374,7 +1376,7 @@ enum MarketingSeed {
 		"Signing off — great day on the mesh, 73 all"
 	]
 
-	static func insertConversations(localUser: UserEntity, remoteUser: UserEntity, channel: ChannelEntity, now: Date, context: ModelContext) {
+	static func insertConversations(localUser: UserEntity, remoteUser: UserEntity, channel: ChannelEntity, now: Date, context: NSManagedObjectContext) {
 		// Direct-message thread between the connected node and one nearby node.
 		let dmStart = now.addingTimeInterval(-TimeInterval(directMessages.count) * 240 - 120)
 		for (i, text) in directMessages.enumerated() {
@@ -1401,9 +1403,9 @@ enum MarketingSeed {
 		remoteUser.lastMessage = now.addingTimeInterval(-240)
 
 		// Primary-channel chatter from a spread of nearby nodes (the last few unread → tab badge).
-		var descriptor = FetchDescriptor<UserEntity>()
-		descriptor.fetchLimit = 12
-		let chatters = ((try? context.fetch(descriptor)) ?? []).filter { $0.num != localUser.num }
+		let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+		request.fetchLimit = 12
+		let chatters = ((try? context.fetch(request)) ?? []).filter { $0.num != localUser.num }
 		let channelStart = now.addingTimeInterval(-TimeInterval(channelMessages.count) * 360 - 60)
 		for (i, text) in channelMessages.enumerated() {
 			let message = MessageEntity()

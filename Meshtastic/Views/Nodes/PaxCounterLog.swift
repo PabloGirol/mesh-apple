@@ -11,7 +11,7 @@ import OSLog
 
 struct PaxCounterLog: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
 	/// Table on iPhone shows only its first column, even in a regular size class.
@@ -27,7 +27,7 @@ struct PaxCounterLog: View {
 	@State private var bleChartColor: Color = .blue
 	@State private var wifiChartColor: Color = .orange
 	@State private var paxChartColor: Color = .green
-	@Bindable  var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	@State private var paxCounters: [PaxCounterEntity] = []
 	@State private var chartData: [PaxCounterEntity] = []
 	@State private var maxValue: Int32 = 5

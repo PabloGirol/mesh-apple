@@ -13,7 +13,7 @@ import CryptoKit
 struct ESP32BLEOTASheet: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.dismiss) var dismiss
-	@Environment(\.modelContext) var context
+	@Environment(\.managedObjectContext) var context
 	@StateObject var ota = ESP32BLEOTAViewModel()
 	
 	@State var rebootSuccessful = false

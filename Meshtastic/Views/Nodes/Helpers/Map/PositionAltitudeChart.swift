@@ -8,7 +8,7 @@
 import SwiftUI
 import Charts
 import MapKit
-@preconcurrency import SwiftData
+import CoreData
 
 struct PositionAltitude {
 	let time: Date
@@ -18,9 +18,9 @@ struct PositionAltitude {
 struct PositionAltitudeChart: View {
 	private let visiblePositionLimit = 1_000
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.dismiss) private var dismiss
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	@State private var lineWidth = 2.0
 	@State private var data: [PositionAltitude] = []
 

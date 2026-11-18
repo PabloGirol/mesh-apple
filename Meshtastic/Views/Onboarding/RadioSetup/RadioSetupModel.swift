@@ -11,7 +11,7 @@
 
 import Foundation
 import MeshtasticProtobufs
-import SwiftData
+import CoreData
 
 enum RadioSetupStep: Hashable, CaseIterable {
 	case intro, region, preset, name, done
@@ -97,7 +97,7 @@ final class RadioSetupModel: ObservableObject {
 	}
 
 	/// Copies what the flow needs from the node in the store. Nil when the node is not there.
-	convenience init?(nodeNum: Int64, context: ModelContext, accessoryManager: AccessoryManager) {
+	convenience init?(nodeNum: Int64, context: NSManagedObjectContext, accessoryManager: AccessoryManager) {
 		guard let node = getNodeInfo(id: nodeNum, context: context) else { return nil }
 		let supports2_8 = accessoryManager.checkIsVersionSupported(forVersion: "2.8.0")
 		var lora = node.loRaConfig.map { Config.LoRaConfig(entity: $0) } ?? Config.LoRaConfig()
@@ -253,7 +253,7 @@ final class RadioSetupModel: ObservableObject {
 
 	/// The connected radio's user record, fetched at save time so a reconnect in the middle
 	/// of the flow never leaves a stale object in hand.
-	private func connectedUser(_ accessoryManager: AccessoryManager, _ context: ModelContext) -> UserEntity? {
+	private func connectedUser(_ accessoryManager: AccessoryManager, _ context: NSManagedObjectContext) -> UserEntity? {
 		guard accessoryManager.isConnected, accessoryManager.activeDeviceNum == nodeNum,
 			  let node = getNodeInfo(id: nodeNum, context: context) else { return nil }
 		return node.user
@@ -261,7 +261,7 @@ final class RadioSetupModel: ObservableObject {
 
 	/// Writes the region and preset when they changed. Returns whether the flow may move on.
 	@discardableResult
-	func saveLoRa(using accessoryManager: AccessoryManager, context: ModelContext) async -> Bool {
+	func saveLoRa(using accessoryManager: AccessoryManager, context: NSManagedObjectContext) async -> Bool {
 		guard hasLoRaChanges else { return true }
 		guard let user = connectedUser(accessoryManager, context) else {
 			saveError = Self.notConnectedMessage
@@ -287,7 +287,7 @@ final class RadioSetupModel: ObservableObject {
 
 	/// Writes the names when they changed. Returns whether the flow may move on.
 	@discardableResult
-	func saveName(using accessoryManager: AccessoryManager, context: ModelContext) async -> Bool {
+	func saveName(using accessoryManager: AccessoryManager, context: NSManagedObjectContext) async -> Bool {
 		guard hasNameChanges else { return true }
 		guard let user = connectedUser(accessoryManager, context) else {
 			saveError = Self.notConnectedMessage

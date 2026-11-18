@@ -6,7 +6,7 @@
 //
 import Foundation
 import OSLog
-import SwiftData
+import CoreData
 
 /// When the app checks the mesh's area for its offline map on its own: once soon after launch,
 /// once after each new connection, then every few minutes while a radio is connected (the mesh
@@ -232,14 +232,22 @@ final class SpatialTerrainKeeper: ObservableObject {
 }
 
 /// Reads the spatial map's node list on a background context for the app's terrain check. Create
-/// it off the main thread: a model actor created on the main thread runs its work there.
-@ModelActor
+/// it off the main thread.
 actor SpatialMeshAreaReader {
+	let modelContext: NSManagedObjectContext
+
+	init(modelContainer: NSPersistentContainer) {
+		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+		context.persistentStoreCoordinator = modelContainer.persistentStoreCoordinator
+		context.automaticallyMergesChangesFromParent = true
+		self.modelContext = context
+	}
+
 	func nodes(preciseOnly: Bool, connectedNodeNum: Int64?) throws -> [SpatialNodeSnapshot] {
 		try SpatialMapNodeSource.snapshots(context: modelContext, preciseOnly: preciseOnly, connectedNodeNum: connectedNodeNum)
 	}
 
-	nonisolated static func nodes(container: ModelContainer, preciseOnly: Bool, connectedNodeNum: Int64?) async throws -> [SpatialNodeSnapshot] {
+	nonisolated static func nodes(container: NSPersistentContainer, preciseOnly: Bool, connectedNodeNum: Int64?) async throws -> [SpatialNodeSnapshot] {
 		try await Task.detached(priority: .utility) {
 			try await SpatialMeshAreaReader(modelContainer: container).nodes(preciseOnly: preciseOnly, connectedNodeNum: connectedNodeNum)
 		}.value

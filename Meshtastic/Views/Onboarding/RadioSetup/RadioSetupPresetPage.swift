@@ -11,7 +11,7 @@ import SwiftUI
 struct RadioSetupPresetPage: View {
 	let model: RadioSetupModel
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
 	private var regionInfo: RegionPresetInfo? {
 		guard model.supports2_8 else { return nil }

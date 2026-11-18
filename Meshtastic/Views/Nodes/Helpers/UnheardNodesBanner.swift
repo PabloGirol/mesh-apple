@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import OSLog
 
 /// Offered when most of the node list is nodes the radio has not heard on its current LoRa settings
@@ -51,7 +51,7 @@ enum UnheardNodesStrings {
 }
 
 struct UnheardNodesBanner: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.scenePhase) private var scenePhase
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 
@@ -218,15 +218,11 @@ struct UnheardNodesBanner: View {
 			unheardNodes = []
 			return
 		}
-		// Bound to a local first: a #Predicate that reaches through self for the node number throws
-		// at fetch time, and the failure is invisible — it just yields no nodes and no banner.
-		let excludedNum = connectedNodeNum
-		let descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate { $0.favorite == false && $0.num != excludedNum }
-		)
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "favorite == NO AND num != %lld", connectedNodeNum)
 		let candidates: [NodeInfoEntity]
 		do {
-			candidates = try context.fetch(descriptor)
+			candidates = try context.fetch(request)
 		} catch {
 			Logger.data.error("Could not read nodes not heard on the current LoRa settings: \(error.localizedDescription, privacy: .public)")
 			unheardNodes = []

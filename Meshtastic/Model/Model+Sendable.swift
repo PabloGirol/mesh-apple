@@ -2,28 +2,29 @@
 //  Model+Sendable.swift
 //  Meshtastic
 //
-//  SwiftData @Model classes are not Sendable by default, but their KeyPaths
-//  are used inside #Predicate macros that may cross isolation boundaries.
+//  Core Data NSManagedObject subclasses are not Sendable by default, but their KeyPaths
+//  are used inside NSPredicate format strings that may cross isolation boundaries.
 //  Marking them @unchecked Sendable silences the spurious KeyPath<Model, T>
 //  Sendable warnings in Swift 6 targeted concurrency mode.
 //
 
-import SwiftData
+import CoreData
 
 extension AmbientLightingConfigEntity: @unchecked Sendable {}
+extension AudioConfigEntity: @unchecked Sendable {}
 extension BluetoothConfigEntity: @unchecked Sendable {}
 extension BroadcastTargetEntity: @unchecked Sendable {}
 extension CannedMessageConfigEntity: @unchecked Sendable {}
 extension ChannelEntity: @unchecked Sendable {}
-extension DetectionSensorConfigEntity: @unchecked Sendable {}
 extension DeviceConfigEntity: @unchecked Sendable {}
 extension DeviceHardwareEntity: @unchecked Sendable {}
 extension DeviceHardwareImageEntity: @unchecked Sendable {}
 extension DeviceHardwareTagEntity: @unchecked Sendable {}
+extension DeviceLinkEntity: @unchecked Sendable {}
 extension DeviceMetadataEntity: @unchecked Sendable {}
+extension DetectionSensorConfigEntity: @unchecked Sendable {}
 extension DiscoveredNodeEntity: @unchecked Sendable {}
-extension DiscoveryPresetResultEntity: @unchecked Sendable {}
-extension DiscoverySessionEntity: @unchecked Sendable {}
+extension DiscoveredBeaconEntity: @unchecked Sendable {}
 extension DisplayConfigEntity: @unchecked Sendable {}
 extension ExternalNotificationConfigEntity: @unchecked Sendable {}
 extension FirmwareReleaseEntity: @unchecked Sendable {}
@@ -33,7 +34,8 @@ extension MQTTConfigEntity: @unchecked Sendable {}
 extension MeshBeaconConfigEntity: @unchecked Sendable {}
 extension MessageEntity: @unchecked Sendable {}
 extension MyInfoEntity: @unchecked Sendable {}
-extension NetworkConfigEntity: @unchecked Sendable {}
+extension NeighborInfoConfigEntity: @unchecked Sendable {}
+extension NeighborLinkEntity: @unchecked Sendable {}
 extension NodeInfoEntity: @unchecked Sendable {}
 extension PaxCounterConfigEntity: @unchecked Sendable {}
 extension PaxCounterEntity: @unchecked Sendable {}
@@ -45,13 +47,17 @@ extension RangeTestConfigEntity: @unchecked Sendable {}
 extension RouteEntity: @unchecked Sendable {}
 extension SecurityConfigEntity: @unchecked Sendable {}
 extension SerialConfigEntity: @unchecked Sendable {}
+extension StatusMessageConfigEntity: @unchecked Sendable {}
 extension StoreForwardConfigEntity: @unchecked Sendable {}
 extension TAKConfigEntity: @unchecked Sendable {}
 extension TelemetryConfigEntity: @unchecked Sendable {}
 extension TelemetryEntity: @unchecked Sendable {}
 extension TraceRouteEntity: @unchecked Sendable {}
 extension TraceRouteHopEntity: @unchecked Sendable {}
+extension TraceRouteNodePositionEntity: @unchecked Sendable {}
 extension UserEntity: @unchecked Sendable {}
 extension WaypointEntity: @unchecked Sendable {}
-
-
+extension DiscoverySessionEntity: @unchecked Sendable {}
+extension DiscoveryPresetResultEntity: @unchecked Sendable {}
+extension DeviceLinkEntity: @unchecked Sendable {}
+extension EventFirmwareEntity: @unchecked Sendable {}

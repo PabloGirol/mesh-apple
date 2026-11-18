@@ -25,7 +25,7 @@ import UniformTypeIdentifiers
 struct FactoryEraseView: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.dismiss) var dismiss
-	@Environment(\.modelContext) var context
+	@Environment(\.managedObjectContext) var context
 
 	/// Which erase the drive supports, and so which header check gates the write.
 	enum Method: Equatable {

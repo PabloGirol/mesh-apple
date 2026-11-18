@@ -16,7 +16,7 @@
 import Combine
 import Foundation
 import OSLog
-import SwiftData
+import CoreData
 import WidgetKit
 
 @MainActor
@@ -243,8 +243,10 @@ final class WidgetDataBroker {
 		var recentMessages: [MessageSnapshot] = []
 	}
 
-	nonisolated private static func readDatabase(container: ModelContainer, radioNum: Int64?, tracked: Set<Int64>, needsStoredStats: Bool) -> DatabaseRead {
-		let context = ModelContext(container)
+	nonisolated private static func readDatabase(container: NSPersistentContainer, radioNum: Int64?, tracked: Set<Int64>, needsStoredStats: Bool) -> DatabaseRead {
+		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+		context.persistentStoreCoordinator = container.persistentStoreCoordinator
+		context.automaticallyMergesChangesFromParent = true
 		var read = DatabaseRead()
 		let radioNode = radioNum.flatMap { getNodeInfo(id: $0, context: context) }
 		read.radioLongName = radioNode?.user?.longName
@@ -256,14 +258,13 @@ final class WidgetDataBroker {
 		// every row (#2485), and rows from pre-nodeNum builds are only reachable
 		// through the helper until the backfill completes.
 		if needsStoredStats, let radioNum {
-			var statsDescriptor = FetchDescriptor<TelemetryEntity>(
-				predicate: TelemetryEntity.predicate(forNode: radioNum, metricsType: 4),
-				sortBy: [SortDescriptor(\.time, order: .reverse)]
-			)
-			statsDescriptor.fetchLimit = 1
+			let statsRequest = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+			statsRequest.predicate = TelemetryEntity.predicate(forNode: radioNum, metricsType: 4)
+			statsRequest.sortDescriptors = [NSSortDescriptor(key: "time", ascending: false)]
+			statsRequest.fetchLimit = 1
 			// Rows with no timestamp (pre-dating current ingest) are skipped —
 			// a .distantPast statsAt renders as a multi-millennium age.
-			if let stored = try? context.fetch(statsDescriptor).first, let statsTime = stored.time {
+			if let stored = try? context.fetch(statsRequest).first, let statsTime = stored.time {
 				read.storedLocalStats = LocalStatsSnapshot(
 					statsAt: statsTime,
 					uptimeSeconds: stored.uptimeSeconds,
@@ -285,7 +286,8 @@ final class WidgetDataBroker {
 		read.nodes = fetchNodeSnapshots(context: context, preset: preset, radioNum: radioNum, tracked: tracked)
 		let present = Set(read.nodes.map(\.num))
 		read.missingTracked = tracked.subtracting(present).sorted()
-		read.totalNodeCount = (try? context.fetchCount(FetchDescriptor<NodeInfoEntity>())) ?? read.nodes.count
+		let countRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		read.totalNodeCount = (try? context.count(for: countRequest)) ?? read.nodes.count
 		(read.unreadChannels, read.unreadDMs) = fetchUnreadCounts(context: context)
 		read.recentMessages = fetchRecentMessages(context: context, radioNum: radioNum)
 		return read
@@ -312,23 +314,21 @@ final class WidgetDataBroker {
 		return .disconnected
 	}
 
-	nonisolated private static func fetchNodeSnapshots(context: ModelContext, preset: ModemPresets?, radioNum: Int64?, tracked: Set<Int64>) -> [NodeSnapshot] {
+	nonisolated private static func fetchNodeSnapshots(context: NSManagedObjectContext, preset: ModemPresets?, radioNum: Int64?, tracked: Set<Int64>) -> [NodeSnapshot] {
 		// Two fetches: favorites by the scalar flag (so an offline favorite is
 		// never lost to the recency window), then the most recently heard.
 		// No `user != nil` in either predicate — optional-relationship nil
 		// comparisons in #Predicate crash SwiftData on iOS 26; filter in Swift.
-		let favoritesDescriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.favorite == true },
-			sortBy: [SortDescriptor(\.lastHeard, order: .reverse)]
-		)
-		let favorites = ((try? context.fetch(favoritesDescriptor)) ?? [])
+		let favoritesRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		favoritesRequest.predicate = NSPredicate(format: "favorite == YES")
+		favoritesRequest.sortDescriptors = [NSSortDescriptor(key: "lastHeard", ascending: false)]
+		let favorites = ((try? context.fetch(favoritesRequest)) ?? [])
 			.filter { $0.user != nil }
 
-		var recentDescriptor = FetchDescriptor<NodeInfoEntity>(
-			sortBy: [SortDescriptor(\.lastHeard, order: .reverse)]
-		)
-		recentDescriptor.fetchLimit = 60
-		let recent = ((try? context.fetch(recentDescriptor)) ?? [])
+		let recentRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		recentRequest.sortDescriptors = [NSSortDescriptor(key: "lastHeard", ascending: false)]
+		recentRequest.fetchLimit = 60
+		let recent = ((try? context.fetch(recentRequest)) ?? [])
 			.filter { $0.user != nil && !$0.favorite }
 
 		let ordered = favorites + recent
@@ -336,19 +336,17 @@ final class WidgetDataBroker {
 		// The tracker measures distance from the radio's own node, so the radio
 		// must survive the cap even when favorites alone fill it.
 		if let radioNum, !selected.contains(where: { $0.num == radioNum }) {
-			let radioDescriptor = FetchDescriptor<NodeInfoEntity>(
-				predicate: #Predicate<NodeInfoEntity> { $0.num == radioNum }
-			)
-			if let radioNode = try? context.fetch(radioDescriptor).first, radioNode.user != nil {
+			let radioRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+			radioRequest.predicate = NSPredicate(format: "num == %lld", radioNum)
+			if let radioNode = try? context.fetch(radioRequest).first, radioNode.user != nil {
 				selected.append(radioNode)
 			}
 		}
 		// A node on a Node Tracker widget is always there, however long ago it was heard.
 		for num in tracked where !selected.contains(where: { $0.num == num }) {
-			let trackedDescriptor = FetchDescriptor<NodeInfoEntity>(
-				predicate: #Predicate<NodeInfoEntity> { $0.num == num }
-			)
-			if let trackedNode = try? context.fetch(trackedDescriptor).first {
+			let trackedRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+			trackedRequest.predicate = NSPredicate(format: "num == %lld", num)
+			if let trackedNode = try? context.fetch(trackedRequest).first {
 				selected.append(trackedNode)
 			}
 		}
@@ -382,13 +380,12 @@ final class WidgetDataBroker {
 
 	/// Same fetch-and-split approach as AppState.refreshBadgeCount — comparing an
 	/// optional relationship to nil inside a #Predicate crashes SwiftData on iOS 26.
-	nonisolated private static func fetchUnreadCounts(context: ModelContext) -> (channels: Int, dms: Int) {
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { $0.isEmoji == false && $0.read == false }
-		)
+	nonisolated private static func fetchUnreadCounts(context: NSManagedObjectContext) -> (channels: Int, dms: Int) {
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "isEmoji == NO AND read == NO")
 		// Loaded with the messages, rather than one at a time below.
-		descriptor.relationshipKeyPathsForPrefetching = [\.toUser]
-		let unread = (try? context.fetch(descriptor)) ?? []
+		request.relationshipKeyPathsForPrefetching = ["toUser"]
+		let unread = (try? context.fetch(request)) ?? []
 		let channels = unread.filter { $0.toUser == nil }.count
 		let dms = unread.filter { $0.toUser != nil && !$0.admin }.count
 		return (channels, dms)
@@ -398,12 +395,11 @@ final class WidgetDataBroker {
 	/// `myInfo.channels`: a channel refresh on the main context deletes and replaces every
 	/// channel, and this context never learns of those deletes, so following the relationship
 	/// could read a deleted channel and trap. A fetch returns only channels that still exist.
-	nonisolated static func fetchChannelNames(context: ModelContext, radioNum: Int64) -> [Int32: String] {
-		let descriptor = FetchDescriptor<ChannelEntity>(
-			predicate: #Predicate<ChannelEntity> { $0.myInfoChannel?.myNodeNum == radioNum && $0.role > 0 }
-		)
+	nonisolated static func fetchChannelNames(context: NSManagedObjectContext, radioNum: Int64) -> [Int32: String] {
+		let request = NSFetchRequest<ChannelEntity>(entityName: "ChannelEntity")
+		request.predicate = NSPredicate(format: "myInfoChannel.myNodeNum == %lld AND role > 0", radioNum)
 		var names: [Int32: String] = [:]
-		for channel in (try? context.fetch(descriptor)) ?? [] {
+		for channel in (try? context.fetch(request)) ?? [] {
 			let fallback = channel.index == 0 ? String(localized: "Primary", comment: "ChannelRoles.description") : channelLabel(channel.index)
 			names[channel.index] = (channel.name?.isEmpty ?? true) ? fallback : channel.name!
 		}
@@ -414,15 +410,14 @@ final class WidgetDataBroker {
 		String(localized: "Channel \(index)", comment: "A label for a channel index. The argument is the channel index.")
 	}
 
-	nonisolated private static func fetchRecentMessages(context: ModelContext, radioNum: Int64?) -> [MessageSnapshot] {
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { $0.isEmoji == false && $0.admin == false },
-			sortBy: [SortDescriptor(\.messageTimestamp, order: .reverse)]
-		)
+	nonisolated private static func fetchRecentMessages(context: NSManagedObjectContext, radioNum: Int64?) -> [MessageSnapshot] {
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "isEmoji == NO AND admin == NO")
+		request.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: false)]
 		// messageId uniqueness is only enforced per save, so a sent message and
 		// its mesh echo can coexist briefly; fetch extra and dedupe below.
-		descriptor.fetchLimit = 16
-		let fetched = (try? context.fetch(descriptor)) ?? []
+		request.fetchLimit = 16
+		let fetched = (try? context.fetch(request)) ?? []
 
 		let channelNames = radioNum.map { fetchChannelNames(context: context, radioNum: $0) } ?? [:]
 

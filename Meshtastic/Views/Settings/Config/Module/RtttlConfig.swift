@@ -9,7 +9,7 @@ import SwiftUI
 import OSLog
 
 struct RtttlConfig: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.dismiss) private var goBack
 	

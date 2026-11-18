@@ -3,421 +3,514 @@
 //  Meshtastic
 //
 //  SwiftData models for all device and module configuration entities.
+//  Converted to Core Data NSManagedObject subclasses for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class AmbientLightingConfigEntity {
-	var blue: Int32 = 0
-	var current: Int32 = 0
-	var green: Int32 = 0
-	var ledState: Bool = false
-	var red: Int32 = 0
-	var ambientLightingConfigNode: NodeInfoEntity?
 
-	init() {}
-}
+@objc(DetectionSensorConfigEntity)
+public class DetectionSensorConfigEntity: NSManagedObject {
 
-@Model
-final class AudioConfigEntity {
-	var codec2Enabled: Bool = false
-	var pttPin: Int32 = 0
-	var bitrate: Int32 = 0
-	var i2sWs: Int32 = 0
-	var i2sSd: Int32 = 0
-	var i2sDin: Int32 = 0
-	var i2sSck: Int32 = 0
-	var audioConfigNode: NodeInfoEntity?
+	@NSManaged public var enabled: Bool
+	@NSManaged public var minimumBroadcastSecs: Int32
+	@NSManaged public var monitorPin: Int32
+	@NSManaged public var name: String?
+	@NSManaged public var sendBell: Bool
+	@NSManaged public var stateBroadcastSecs: Int32
+	@NSManaged public var triggerType: Int32
+	@NSManaged public var usePullup: Bool
+	@NSManaged public var detectionSensorConfigNode: NodeInfoEntity?
 
-	init() {}
-}
-
-@Model
-final class BluetoothConfigEntity {
-	var deviceLoggingEnabled: Bool = false
-	var enabled: Bool = false
-	var fixedPin: Int32 = 123456
-	var mode: Int32 = 0
-	var bluetoothConfigNode: NodeInfoEntity?
-
-	init() {}
-}
-
-@Model
-final class CannedMessageConfigEntity {
-	/// Deprecated (no successor, removed from active use — #2021). Retained as a stored
-	/// SwiftData property to preserve the schema and keep existing persisted values readable;
-	/// it is no longer surfaced in the UI, read, or actively written by app code.
-	var enabled: Bool = false
-	var inputbrokerEventCcw: Int32 = 0
-	var inputbrokerEventCw: Int32 = 0
-	var inputbrokerEventPress: Int32 = 0
-	var inputbrokerPinA: Int32 = 0
-	var inputbrokerPinB: Int32 = 0
-	var inputbrokerPinPress: Int32 = 0
-	var messages: String?
-	var rotary1Enabled: Bool = false
-	var sendBell: Bool = false
-	var updown1Enabled: Bool = false
-	var cannedMessagesConfigNode: NodeInfoEntity?
-
-	init() {}
-}
-
-@Model
-final class DetectionSensorConfigEntity {
-	var enabled: Bool = false
-	var minimumBroadcastSecs: Int32 = 0
-	var monitorPin: Int32 = 0
-	var name: String?
-	var sendBell: Bool = false
-	var stateBroadcastSecs: Int32 = 0
-	var triggerType: Int32 = 0
-	var usePullup: Bool = false
-	var detectionSensorConfigNode: NodeInfoEntity?
-
-	init() {}
-}
-
-@Model
-final class MeshBeaconConfigEntity {
-	/// Bitwise-OR of `ModuleConfig.MeshBeaconConfig.Flags` (listen / broadcast / legacy-split).
-	var flags: Int32 = 0
-	/// Human-readable text broadcast in each beacon (firmware limit: 60 UTF-8 bytes).
-	var broadcastMessage: String = ""
-	/// Channel the beacon *advertises* to listeners (offer_channel). Empty name = no offer.
-	var broadcastOfferChannelName: String = ""
-	var broadcastOfferChannelPSK: Data = Data()
-	/// RegionCodes raw value advertised in offer_region; 0 = unset / not offered.
-	var broadcastOfferRegion: Int32 = 0
-	/// ModemPresets raw value advertised in offer_preset, or -1 when not offered (0 = LongFast).
-	var broadcastOfferPreset: Int32 = -1
-	/// Frequency slot advertised in offer_frequency_slot, 1-based; 0 = unset (derived).
-	var broadcastOfferFrequencySlot: Int32 = 0
-	// The broadcast-on fields and send-as-node were removed from the protobuf
-	// (TX destinations consolidated onto broadcast_targets). The columns below are
-	// retained only for schema compatibility; the editor reads them once to migrate
-	// a pre-consolidation destination into a target row, and nothing writes them.
-	var broadcastOnChannelName: String = ""
-	var broadcastOnChannelPSK: Data = Data()
-	var broadcastOnRegion: Int32 = 0
-	var broadcastOnPreset: Int32 = -1
-	/// How often to broadcast; firmware minimum & default is 3600 s.
-	var broadcastIntervalSecs: Int32 = 3600
-	/// Retained for schema compatibility; removed from the protobuf, never written.
-	var broadcastSendAsNode: Int64 = 0
-
-	@Relationship(deleteRule: .cascade, inverse: \BroadcastTargetEntity.meshBeaconConfig)
-	var broadcastTargets: [BroadcastTargetEntity] = []
-
-	var meshBeaconConfigNode: NodeInfoEntity?
-
-	init() {}
-}
-
-@Model
-final class BroadcastTargetEntity {
-	/// ModemPresets raw value for this target, or -1 when unset (falls back to running config).
-	var preset: Int32 = -1
-	/// RegionCodes raw value for this target; 0 = unset (running config).
-	var region: Int32 = 0
-	/// Index into the node's channel table to transmit this target on, or -1 when unset.
-	var channelIndex: Int32 = -1
-	/// Frequency slot to transmit this target on, 1-based; 0 = unset (derived).
-	var frequencySlot: Int32 = 0
-
-	var meshBeaconConfig: MeshBeaconConfigEntity?
-
-	init() {}
-
-	init(preset: Int32, region: Int32, channelIndex: Int32, frequencySlot: Int32 = 0) {
-		self.preset = preset
-		self.region = region
-		self.channelIndex = channelIndex
-		self.frequencySlot = frequencySlot
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "DetectionSensorConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.enabled = false
+		self.minimumBroadcastSecs = 0
+		self.monitorPin = 0
+		self.name = nil
+		self.sendBell = false
+		self.stateBroadcastSecs = 0
+		self.triggerType = 0
+		self.usePullup = false
+		self.detectionSensorConfigNode = nil
 	}
 }
 
-@Model
-final class DeviceConfigEntity {
-	var buttonGpio: Int32 = 0
-	var buzzerGpio: Int32 = 0
-	var debugLogEnabled: Bool = false
-	var disableTripleClick: Bool = false
-	var doubleTapAsButtonPress: Bool = false
-	var isManaged: Bool = false
-	var ledHeartbeatEnabled: Bool = true
-	var nodeInfoBroadcastSecs: Int32 = 0
-	var rebroadcastMode: Int32 = 0
-	var role: Int32 = 0
-	var serialEnabled: Bool = false
-	var tripleClickAsAdHocPing: Bool = true
-	var tzdef: String?
-	var deviceConfigNode: NodeInfoEntity?
 
-	init() {}
+@objc(MeshBeaconConfigEntity)
+public class MeshBeaconConfigEntity: NSManagedObject {
+
+	@NSManaged public var flags: Int32
+	@NSManaged public var broadcastMessage: String
+	@NSManaged public var broadcastOfferChannelName: String
+	@NSManaged public var broadcastOfferChannelPSK: Data
+	@NSManaged public var broadcastOfferRegion: Int32
+	@NSManaged public var broadcastOfferPreset: Int32
+	@NSManaged public var broadcastOfferFrequencySlot: Int32
+	@NSManaged public var broadcastOnChannelName: String
+	@NSManaged public var broadcastOnChannelPSK: Data
+	@NSManaged public var broadcastOnRegion: Int32
+	@NSManaged public var broadcastOnPreset: Int32
+	@NSManaged public var broadcastIntervalSecs: Int32
+	@NSManaged public var broadcastSendAsNode: Int64
+	@NSManaged public var broadcastTargets: NSSet?
+	@NSManaged public var meshBeaconConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "MeshBeaconConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.flags = 0
+		self.broadcastMessage = ""
+		self.broadcastOfferChannelName = ""
+		self.broadcastOfferChannelPSK = Data()
+		self.broadcastOfferRegion = 0
+		self.broadcastOfferPreset = -1
+		self.broadcastOfferFrequencySlot = 0
+		self.broadcastOnChannelName = ""
+		self.broadcastOnChannelPSK = Data()
+		self.broadcastOnRegion = 0
+		self.broadcastOnPreset = -1
+		self.broadcastIntervalSecs = 3600
+		self.broadcastSendAsNode = 0
+		self.meshBeaconConfigNode = nil
+	}
 }
 
-@Model
-final class DisplayConfigEntity {
-	var compassNorthTop: Bool = false
-	var compassOrientation: Int32 = 0
-	var displayMode: Int32 = 0
-	var flipScreen: Bool = false
-	var headingBold: Bool = true
-	var oledType: Int32 = 0
-	var screenCarouselInterval: Int32 = 0
-	var screenOnSeconds: Int32 = 0
-	var units: Int32 = 0
-	var use12HClock: Bool = false
-	var wakeOnTapOrMotion: Bool = false
-	var displayConfigNode: NodeInfoEntity?
+extension MeshBeaconConfigEntity {
+	@objc(addBroadcastTargetsObject:)
+	public func addToBroadcastTargets(_ value: BroadcastTargetEntity) {
+		mutableSetValue(forKey: "broadcastTargets").add(value)
+	}
 
-	init() {}
+	@objc(removeBroadcastTargetsObject:)
+	public func removeFromBroadcastTargets(_ value: BroadcastTargetEntity) {
+		mutableSetValue(forKey: "broadcastTargets").remove(value)
+	}
+
+	@objc(addBroadcastTargets:)
+	public func addToBroadcastTargets(_ values: NSSet) {
+		mutableSetValue(forKey: "broadcastTargets").union(values)
+	}
+
+	@objc(removeBroadcastTargets:)
+	public func removeFromBroadcastTargets(_ values: NSSet) {
+		mutableSetValue(forKey: "broadcastTargets").minus(values)
+	}
 }
 
-@Model
-final class ExternalNotificationConfigEntity {
-	var active: Bool = false
-	var alertBell: Bool = false
-	var alertBellBuzzer: Bool = false
-	var alertBellVibra: Bool = false
-	var alertMessage: Bool = false
-	var alertMessageBuzzer: Bool = false
-	var alertMessageVibra: Bool = false
-	var enabled: Bool = false
-	var nagTimeout: Int32 = 0
-	var output: Int32 = 0
-	var outputBuzzer: Int32 = 0
-	var outputMilliseconds: Int32 = 0
-	var outputVibra: Int32 = 0
-	var useI2SAsBuzzer: Bool = false
-	var usePWM: Bool = true
-	var externalNotificationConfigNode: NodeInfoEntity?
 
-	init() {}
+@objc(DeviceConfigEntity)
+public class DeviceConfigEntity: NSManagedObject {
+
+	@NSManaged public var buttonGpio: Int32
+	@NSManaged public var buzzerGpio: Int32
+	@NSManaged public var debugLogEnabled: Bool
+	@NSManaged public var disableTripleClick: Bool
+	@NSManaged public var doubleTapAsButtonPress: Bool
+	@NSManaged public var isManaged: Bool
+	@NSManaged public var ledHeartbeatEnabled: Bool
+	@NSManaged public var nodeInfoBroadcastSecs: Int32
+	@NSManaged public var rebroadcastMode: Int32
+	@NSManaged public var role: Int32
+	@NSManaged public var serialEnabled: Bool
+	@NSManaged public var tripleClickAsAdHocPing: Bool
+	@NSManaged public var tzdef: String?
+	@NSManaged public var deviceConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "DeviceConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.buttonGpio = 0
+		self.buzzerGpio = 0
+		self.debugLogEnabled = false
+		self.disableTripleClick = false
+		self.doubleTapAsButtonPress = false
+		self.isManaged = false
+		self.ledHeartbeatEnabled = true
+		self.nodeInfoBroadcastSecs = 0
+		self.rebroadcastMode = 0
+		self.role = 0
+		self.serialEnabled = false
+		self.tripleClickAsAdHocPing = true
+		self.tzdef = nil
+		self.deviceConfigNode = nil
+	}
 }
 
-@Model
-final class LoRaConfigEntity {
-	var bandwidth: Int32 = 0
-	var channelNum: Int32 = 0
-	var codingRate: Int32 = 0
-	var frequencyOffset: Float = 0
-	var hopLimit: Int32 = 0
-	var ignoreMqtt: Bool = false
-	var modemPreset: Int32 = 0
-	var okToMqtt: Bool = false
-	var overrideDutyCycle: Bool = false
-	var paFanDisabled: Bool = false
-	var overrideFrequency: Float = 0.0
-	var regionCode: Int32 = 0
-	var spreadFactor: Int32 = 0
-	var sx126xRxBoostedGain: Bool = false
-	var txEnabled: Bool = true
-	var txPower: Int32 = 0
-	var usePreset: Bool = true
-	var loRaConfigNode: NodeInfoEntity?
 
-	init() {}
+@objc(LoRaConfigEntity)
+public class LoRaConfigEntity: NSManagedObject {
+
+	@NSManaged public var bandwidth: Int32
+	@NSManaged public var channelNum: Int32
+	@NSManaged public var codingRate: Int32
+	@NSManaged public var frequencyOffset: Float
+	@NSManaged public var hopLimit: Int32
+	@NSManaged public var ignoreMqtt: Bool
+	@NSManaged public var modemPreset: Int32
+	@NSManaged public var okToMqtt: Bool
+	@NSManaged public var overrideDutyCycle: Bool
+	@NSManaged public var paFanDisabled: Bool
+	@NSManaged public var overrideFrequency: Float
+	@NSManaged public var regionCode: Int32
+	@NSManaged public var spreadFactor: Int32
+	@NSManaged public var sx126xRxBoostedGain: Bool
+	@NSManaged public var txEnabled: Bool
+	@NSManaged public var txPower: Int32
+	@NSManaged public var usePreset: Bool
+	@NSManaged public var loRaConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "LoRaConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.bandwidth = 0
+		self.channelNum = 0
+		self.codingRate = 0
+		self.frequencyOffset = 0
+		self.hopLimit = 0
+		self.ignoreMqtt = false
+		self.modemPreset = 0
+		self.okToMqtt = false
+		self.overrideDutyCycle = false
+		self.paFanDisabled = false
+		self.overrideFrequency = 0.0
+		self.regionCode = 0
+		self.spreadFactor = 0
+		self.sx126xRxBoostedGain = false
+		self.txEnabled = true
+		self.txPower = 0
+		self.usePreset = true
+		self.loRaConfigNode = nil
+	}
 }
 
-@Model
-final class MQTTConfigEntity {
-	var address: String?
-	var enabled: Bool = false
-	var encryptionEnabled: Bool = false
-	var jsonEnabled: Bool = false
-	var mapPositionPrecision: Int32 = 13
-	var mapPublishIntervalSecs: Int32 = 0
-	var mapReportingEnabled: Bool = false
-	var mapReportingShouldReportLocation: Bool = false
-	var password: String?
-	var proxyToClientEnabled: Bool = false
-	var root: String? = "msh"
-	var tlsEnabled: Bool = false
-	var username: String?
-	var mqttConfigNode: NodeInfoEntity?
+@objc(MQTTConfigEntity)
+public class MQTTConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var address: String?
+	@NSManaged public var enabled: Bool
+	@NSManaged public var encryptionEnabled: Bool
+	@NSManaged public var jsonEnabled: Bool
+	@NSManaged public var mapPositionPrecision: Int32
+	@NSManaged public var mapPublishIntervalSecs: Int32
+	@NSManaged public var mapReportingEnabled: Bool
+	@NSManaged public var mapReportingShouldReportLocation: Bool
+	@NSManaged public var password: String?
+	@NSManaged public var proxyToClientEnabled: Bool
+	@NSManaged public var root: String?
+	@NSManaged public var tlsEnabled: Bool
+	@NSManaged public var username: String?
+	@NSManaged public var mqttConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "MQTTConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.address = nil
+		self.enabled = false
+		self.encryptionEnabled = false
+		self.jsonEnabled = false
+		self.mapPositionPrecision = 13
+		self.mapPublishIntervalSecs = 0
+		self.mapReportingEnabled = false
+		self.mapReportingShouldReportLocation = false
+		self.password = nil
+		self.proxyToClientEnabled = false
+		self.root = "msh"
+		self.tlsEnabled = false
+		self.username = nil
+		self.mqttConfigNode = nil
+	}
 }
 
-@Model
-final class NetworkConfigEntity {
-	var addressMode: Int32 = 0
-	var dns: Int32 = 0
-	var enabledProtocols: Int32 = 0
-	var ethEnabled: Bool = false
-	var gateway: Int32 = 0
-	var ip: Int32 = 0
-	var ntpServer: String?
-	var rsyslogServer: String?
-	var subnet: Int32 = 0
-	var wifiEnabled: Bool = false
-	var wifiMode: Int32 = 0
-	var wifiPsk: String?
-	var wifiSsid: String?
-	var networkConfigNode: NodeInfoEntity?
 
-	init() {}
+@objc(NeighborInfoConfigEntity)
+public class NeighborInfoConfigEntity: NSManagedObject {
+
+	@NSManaged public var enabled: Bool
+	@NSManaged public var transmitOverLora: Bool
+	@NSManaged public var updateInterval: Int32
+	@NSManaged public var neighborInfoConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "NeighborInfoConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.enabled = false
+		self.transmitOverLora = false
+		self.updateInterval = 0
+		self.neighborInfoConfigNode = nil
+	}
 }
 
-@Model
-final class NeighborInfoConfigEntity {
-	var enabled: Bool = false
-	var transmitOverLora: Bool = false
-	var updateInterval: Int32 = 0
-	var neighborInfoConfigNode: NodeInfoEntity?
+@objc(PaxCounterConfigEntity)
+public class PaxCounterConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var bleThreshold: Int32
+	@NSManaged public var enabled: Bool
+	@NSManaged public var updateInterval: Int32
+	@NSManaged public var wifiThreshold: Int32
+	@NSManaged public var paxCounterConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "PaxCounterConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.bleThreshold = 0
+		self.enabled = false
+		self.updateInterval = 0
+		self.wifiThreshold = -80
+		self.paxCounterConfigNode = nil
+	}
 }
 
-@Model
-final class PaxCounterConfigEntity {
-	var bleThreshold: Int32 = 0
-	var enabled: Bool = false
-	var updateInterval: Int32 = 0
-	var wifiThreshold: Int32 = -80
-	var paxCounterConfigNode: NodeInfoEntity?
+@objc(PositionConfigEntity)
+public class PositionConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var broadcastSmartMinimumDistance: Int32
+	@NSManaged public var broadcastSmartMinimumIntervalSecs: Int32
+	@NSManaged public var deviceGpsEnabled: Bool
+	@NSManaged public var fixedPosition: Bool
+	@NSManaged public var gpsAttemptTime: Int32
+	@NSManaged public var gpsEnGpio: Int32
+	@NSManaged public var gpsMode: Int32
+	@NSManaged public var gpsUpdateInterval: Int32
+	@NSManaged public var positionBroadcastSeconds: Int32
+	@NSManaged public var positionFlags: Int32
+	@NSManaged public var rxGpio: Int32
+	@NSManaged public var smartPositionEnabled: Bool
+	@NSManaged public var txGpio: Int32
+	@NSManaged public var positionConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "PositionConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.broadcastSmartMinimumDistance = 0
+		self.broadcastSmartMinimumIntervalSecs = 0
+		self.deviceGpsEnabled = false
+		self.fixedPosition = false
+		self.gpsAttemptTime = 0
+		self.gpsEnGpio = 0
+		self.gpsMode = 0
+		self.gpsUpdateInterval = 0
+		self.positionBroadcastSeconds = 0
+		self.positionFlags = 0
+		self.rxGpio = 0
+		self.smartPositionEnabled = false
+		self.txGpio = 0
+		self.positionConfigNode = nil
+	}
 }
 
-@Model
-final class PositionConfigEntity {
-	var broadcastSmartMinimumDistance: Int32 = 0
-	var broadcastSmartMinimumIntervalSecs: Int32 = 0
-	var deviceGpsEnabled: Bool = false
-	var fixedPosition: Bool = false
-	var gpsAttemptTime: Int32 = 0
-	var gpsEnGpio: Int32 = 0
-	var gpsMode: Int32 = 0
-	var gpsUpdateInterval: Int32 = 0
-	var positionBroadcastSeconds: Int32 = 0
-	var positionFlags: Int32 = 0
-	var rxGpio: Int32 = 0
-	var smartPositionEnabled: Bool = false
-	var txGpio: Int32 = 0
-	var positionConfigNode: NodeInfoEntity?
+@objc(PowerConfigEntity)
+public class PowerConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var adcMultiplierOverride: Float
+	@NSManaged public var deviceBatteryInaAddress: Int32
+	@NSManaged public var isPowerSaving: Bool
+	@NSManaged public var lsSecs: Int32
+	@NSManaged public var minWakeSecs: Int32
+	@NSManaged public var onBatteryShutdownAfterSecs: Int32
+	@NSManaged public var waitBluetoothSecs: Int32
+	@NSManaged public var powerConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "PowerConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.adcMultiplierOverride = 0
+		self.deviceBatteryInaAddress = 0
+		self.isPowerSaving = false
+		self.lsSecs = 0
+		self.minWakeSecs = 0
+		self.onBatteryShutdownAfterSecs = 0
+		self.waitBluetoothSecs = 0
+		self.powerConfigNode = nil
+	}
 }
 
-@Model
-final class PowerConfigEntity {
-	var adcMultiplierOverride: Float = 0
-	var deviceBatteryInaAddress: Int32 = 0
-	var isPowerSaving: Bool = false
-	var lsSecs: Int32 = 0
-	var minWakeSecs: Int32 = 0
-	var onBatteryShutdownAfterSecs: Int32 = 0
-	var waitBluetoothSecs: Int32 = 0
-	var powerConfigNode: NodeInfoEntity?
+@objc(RangeTestConfigEntity)
+public class RangeTestConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var enabled: Bool
+	@NSManaged public var save: Bool
+	@NSManaged public var sender: Int32
+	@NSManaged public var rangeTestConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "RangeTestConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.enabled = false
+		self.save = false
+		self.sender = 0
+		self.rangeTestConfigNode = nil
+	}
 }
 
-@Model
-final class RangeTestConfigEntity {
-	var enabled: Bool = false
-	var save: Bool = false
-	var sender: Int32 = 0
-	var rangeTestConfigNode: NodeInfoEntity?
+@objc(RTTTLConfigEntity)
+public class RTTTLConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var ringtone: String?
+	@NSManaged public var rtttlConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "RTTTLConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.ringtone = nil
+		self.rtttlConfigNode = nil
+	}
 }
 
-@Model
-final class RTTTLConfigEntity {
-	var ringtone: String?
-	var rtttlConfigNode: NodeInfoEntity?
+@objc(SecurityConfigEntity)
+public class SecurityConfigEntity: NSManagedObject {
 
-	init() {}
-}
-
-@Model
-final class SecurityConfigEntity {
-	var adminChannelEnabled: Bool = false
-	var adminKey: Data?
-	var adminKey2: Data?
-	var adminKey3: Data?
-	var bluetoothLoggingEnabled: Bool = false
-	var debugLogApiEnabled: Bool = false
-	var isManaged: Bool = false
+	@NSManaged public var adminChannelEnabled: Bool
+	@NSManaged public var adminKey: Data?
+	@NSManaged public var adminKey2: Data?
+	@NSManaged public var adminKey3: Data?
+	@NSManaged public var bluetoothLoggingEnabled: Bool
+	@NSManaged public var debugLogApiEnabled: Bool
+	@NSManaged public var isManaged: Bool
 	/// Raw value of `Config.SecurityConfig.PacketSignaturePolicy`. 0 (Compatible) is the
 	/// protobuf default, so an absent field and an unconfigured entity agree.
-	var packetSignaturePolicy: Int32 = 0
-	var privateKey: Data?
-	var publicKey: Data?
-	var serialEnabled: Bool = false
-	var securityConfigNode: NodeInfoEntity?
+	@NSManaged public var packetSignaturePolicy: Int32
+	@NSManaged public var privateKey: Data?
+	@NSManaged public var publicKey: Data?
+	@NSManaged public var serialEnabled: Bool
+	@NSManaged public var securityConfigNode: NodeInfoEntity?
 
-	init() {}
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "SecurityConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.adminChannelEnabled = false
+		self.adminKey = nil
+		self.adminKey2 = nil
+		self.adminKey3 = nil
+		self.bluetoothLoggingEnabled = false
+		self.debugLogApiEnabled = false
+		self.isManaged = false
+		self.packetSignaturePolicy = 0
+		self.privateKey = nil
+		self.publicKey = nil
+		self.serialEnabled = false
+		self.securityConfigNode = nil
+	}
 }
 
-@Model
-final class SerialConfigEntity {
-	var baudRate: Int32 = 0
-	var echo: Bool = false
-	var enabled: Bool = false
-	var mode: Int32 = 0
-	var overrideConsoleSerialPort: Bool = false
-	var rxd: Int32 = 0
-	var timeout: Int32 = 0
-	var txd: Int32 = 0
-	var serialConfigNode: NodeInfoEntity?
+@objc(SerialConfigEntity)
+public class SerialConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var baudRate: Int32
+	@NSManaged public var echo: Bool
+	@NSManaged public var enabled: Bool
+	@NSManaged public var mode: Int32
+	@NSManaged public var overrideConsoleSerialPort: Bool
+	@NSManaged public var rxd: Int32
+	@NSManaged public var timeout: Int32
+	@NSManaged public var txd: Int32
+	@NSManaged public var serialConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "SerialConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.baudRate = 0
+		self.echo = false
+		self.enabled = false
+		self.mode = 0
+		self.overrideConsoleSerialPort = false
+		self.rxd = 0
+		self.timeout = 0
+		self.txd = 0
+		self.serialConfigNode = nil
+	}
 }
 
-@Model
-final class StoreForwardConfigEntity {
-	var enabled: Bool = false
-	var heartbeat: Bool = false
-	var historyReturnMax: Int32 = 0
-	var historyReturnWindow: Int32 = 0
-	var isRouter: Bool = false
-	var lastHeartbeat: Date?
-	var lastRequest: Int32 = 0
-	var records: Int32 = 0
-	var storeForwardConfigNode: NodeInfoEntity?
+@objc(StoreForwardConfigEntity)
+public class StoreForwardConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var enabled: Bool
+	@NSManaged public var heartbeat: Bool
+	@NSManaged public var historyReturnMax: Int32
+	@NSManaged public var historyReturnWindow: Int32
+	@NSManaged public var isRouter: Bool
+	@NSManaged public var lastHeartbeat: Date?
+	@NSManaged public var lastRequest: Int32
+	@NSManaged public var records: Int32
+	@NSManaged public var storeForwardConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "StoreForwardConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.enabled = false
+		self.heartbeat = false
+		self.historyReturnMax = 0
+		self.historyReturnWindow = 0
+		self.isRouter = false
+		self.lastHeartbeat = nil
+		self.lastRequest = 0
+		self.records = 0
+		self.storeForwardConfigNode = nil
+	}
 }
 
-@Model
-final class StatusMessageConfigEntity {
-	var nodeStatus: String = ""
-	var statusMessageConfigNode: NodeInfoEntity?
+@objc(StatusMessageConfigEntity)
+public class StatusMessageConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var nodeStatus: String
+	@NSManaged public var statusMessageConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "StatusMessageConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.nodeStatus = ""
+		self.statusMessageConfigNode = nil
+	}
 }
 
-@Model
-final class TAKConfigEntity {
-	var role: Int32 = 0
-	var team: Int32 = 0
-	var takConfigNode: NodeInfoEntity?
+@objc(TAKConfigEntity)
+public class TAKConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var role: Int32
+	@NSManaged public var team: Int32
+	@NSManaged public var takConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "TAKConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.role = 0
+		self.team = 0
+		self.takConfigNode = nil
+	}
 }
 
-@Model
-final class TelemetryConfigEntity {
-	var airQualityEnabled: Bool = false
-	var airQualityInterval: Int32 = 0
-	var deviceTelemetryEnabled: Bool = false
-	var deviceUpdateInterval: Int32 = 0
-	var environmentDisplayFahrenheit: Bool = false
-	var environmentMeasurementEnabled: Bool = false
-	var environmentScreenEnabled: Bool = false
-	var environmentUpdateInterval: Int32 = 0
-	var powerMeasurementEnabled: Bool = false
-	var powerScreenEnabled: Bool = false
-	var powerUpdateInterval: Int32 = 0
-	var telemetryConfigNode: NodeInfoEntity?
+@objc(TelemetryConfigEntity)
+public class TelemetryConfigEntity: NSManagedObject {
 
-	init() {}
+	@NSManaged public var airQualityEnabled: Bool
+	@NSManaged public var airQualityInterval: Int32
+	@NSManaged public var deviceTelemetryEnabled: Bool
+	@NSManaged public var deviceUpdateInterval: Int32
+	@NSManaged public var environmentDisplayFahrenheit: Bool
+	@NSManaged public var environmentMeasurementEnabled: Bool
+	@NSManaged public var environmentScreenEnabled: Bool
+	@NSManaged public var environmentUpdateInterval: Int32
+	@NSManaged public var powerMeasurementEnabled: Bool
+	@NSManaged public var powerScreenEnabled: Bool
+	@NSManaged public var powerUpdateInterval: Int32
+	@NSManaged public var telemetryConfigNode: NodeInfoEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "TelemetryConfigEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.airQualityEnabled = false
+		self.airQualityInterval = 0
+		self.deviceTelemetryEnabled = false
+		self.deviceUpdateInterval = 0
+		self.environmentDisplayFahrenheit = false
+		self.environmentMeasurementEnabled = false
+		self.environmentScreenEnabled = false
+		self.environmentUpdateInterval = 0
+		self.powerMeasurementEnabled = false
+		self.powerScreenEnabled = false
+		self.powerUpdateInterval = 0
+		self.telemetryConfigNode = nil
+	}
 }

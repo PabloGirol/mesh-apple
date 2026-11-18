@@ -14,7 +14,7 @@ import OSLog
 
 struct ImportDeviceProfileView: View {
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.dismiss) private var dismiss
 
 	let plan: DeviceProfileImportPlan

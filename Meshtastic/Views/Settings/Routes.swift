@@ -6,14 +6,14 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import MapKit
 import OSLog
 
 struct Routes: View {
 
 	@State private var columnVisibility = NavigationSplitViewVisibility.doubleColumn
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@State private var selectedRoute: RouteEntity?
@@ -28,9 +28,14 @@ struct Routes: View {
 	@State var enabled = true
 	@State var color = Color(red: 51, green: 199, blue: 88)
 
-	@Query(sort: [SortDescriptor(\RouteEntity.name, order: .forward),
-				  SortDescriptor(\RouteEntity.date, order: .reverse)])
-	var routes: [RouteEntity]
+	@FetchRequest(
+		entity: RouteEntity.entity(),
+		sortDescriptors: [
+			NSSortDescriptor(keyPath: \RouteEntity.name, ascending: true),
+			NSSortDescriptor(keyPath: \RouteEntity.date, ascending: false)
+		]
+	)
+	var routes: FetchedResults<RouteEntity>
 	var body: some View {
 
 		VStack {

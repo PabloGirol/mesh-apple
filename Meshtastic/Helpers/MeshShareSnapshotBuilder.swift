@@ -6,7 +6,7 @@
 import Foundation
 import MeshtasticProtobufs
 import OSLog
-import SwiftData
+import CoreData
 
 enum MeshShareSnapshotBuilder {
 	enum BuildError: LocalizedError {
@@ -67,7 +67,7 @@ enum MeshShareSnapshotBuilder {
 	}
 
 	@MainActor
-	static func refresh(nodeNum: Int64, context: ModelContext) {
+	static func refresh(nodeNum: Int64, context: NSManagedObjectContext) {
 		guard let node = getNodeInfo(id: nodeNum, context: context) else {
 			Logger.services.error("Could not refresh Messages sharing snapshot: recent radio was not found.")
 			clearPreviousSnapshotIfNeeded(attemptedNodeNum: nodeNum)

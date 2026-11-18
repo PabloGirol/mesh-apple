@@ -3,7 +3,7 @@
 //  Meshtastic
 //
 
-import SwiftData
+import CoreData
 import SwiftUI
 
 // MARK: - Presentation
@@ -62,8 +62,8 @@ extension EnvironmentValues {
 
 /// Applies the event's contrast-safe tint above the root presentation modifiers so tabs,
 /// navigation actions, and app-level sheets all inherit the same highlight color.
-/// Gate around the tinting core: during a database reset the core (which holds a @Query on
-/// the event editions) is unmounted entirely, so no SwiftData subscription survives the
+/// Gate around the tinting core: during a database reset the core (which holds a @FetchRequest on
+/// the event editions) is unmounted entirely, so no Core Data subscription survives the
 /// container swap (see AppState.isDatabaseResetting; Datadog 324bff02-6b22-11f1). Content
 /// renders with the standard accent tint for the second or two the gate is up.
 struct EventFirmwareTintScope<Content: View>: View {
@@ -86,8 +86,13 @@ struct EventFirmwareTintScope<Content: View>: View {
 private struct EventFirmwareTintScopeCore<Content: View>: View {
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@Environment(\.colorScheme) private var colorScheme
+	@Environment(\.managedObjectContext) private var context
 	@AppStorage("useEventTheme") private var useEventTheme: Bool = true
-	@Query private var eventFirmwareEditions: [EventFirmwareEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \EventFirmwareEntity.edition, ascending: true)],
+		animation: .default
+	)
+	private var eventFirmwareEditions: FetchedResults<EventFirmwareEntity>
 	@State private var cachedTint: Color = .accentColor
 
 	private let content: Content

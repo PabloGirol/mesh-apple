@@ -10,7 +10,7 @@ import OSLog
 struct PositionLog: View {
 	private let visiblePositionLimit = 1_000
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -20,7 +20,7 @@ struct PositionLog: View {
 	}
 	@State var isExporting = false
 	@State var exportString = ""
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	@State private var isPresentingClearLogConfirm = false
 	@State private var sortOrder = [KeyPathComparator(\PositionEntity.time)]
 	@State private var positions: [PositionEntity] = []

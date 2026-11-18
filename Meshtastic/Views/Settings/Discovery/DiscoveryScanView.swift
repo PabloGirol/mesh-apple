@@ -9,11 +9,11 @@
 import MapKit
 import MeshtasticProtobufs
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 import SwiftUI
 
 struct DiscoveryScanView: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@EnvironmentObject var accessoryManager: AccessoryManager
 
@@ -49,9 +49,10 @@ struct DiscoveryScanView: View {
 	/// same way as the LoRa Config screen (`RegionCodes(rawValue:)` on the stored region code).
 	private var connectedRegionCode: Config.LoRaConfig.RegionCode? {
 		let num = Int64(UserDefaults.preferredPeripheralNum)
-		var descriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == num })
-		descriptor.fetchLimit = 1
-		guard let raw = (try? context.fetch(descriptor))?.first?.loRaConfig?.regionCode,
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %d", num)
+		request.fetchLimit = 1
+		guard let raw = (try? context.fetch(request))?.first?.loRaConfig?.regionCode,
 			  let region = RegionCodes(rawValue: Int(raw)) else { return nil }
 		return region.protoEnumValue()
 	}
@@ -81,8 +82,8 @@ struct DiscoveryScanView: View {
 	/// pre-checked when the picker first appears so a fresh scan includes any mesh a beacon told us
 	/// about, and flagged with a beacon icon in the row.
 	private var beaconPresets: Set<ModemPresets> {
-		let descriptor = FetchDescriptor<DiscoveredBeaconEntity>()
-		guard let beacons = try? context.fetch(descriptor) else { return [] }
+		let request = NSFetchRequest<DiscoveredBeaconEntity>(entityName: "DiscoveredBeaconEntity")
+		guard let beacons = try? context.fetch(request) else { return [] }
 		let available = Set(availablePresets)
 		// A public offer that pinned a slot is listed under Beacon Channels with its slot instead,
 		// since a preset chip would scan the preset's own slot.
@@ -479,10 +480,9 @@ extension DiscoveryScanView {
 	/// tune to it.
 	var beaconChannels: [BeaconChannel] {
 		// Newest first, so a channel heard again with a new key is the one the dedupe keeps.
-		let descriptor = FetchDescriptor<DiscoveredBeaconEntity>(
-			sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
-		)
-		guard let beacons = try? context.fetch(descriptor) else { return [] }
+		let request = NSFetchRequest<DiscoveredBeaconEntity>(entityName: "DiscoveredBeaconEntity")
+		request.sortDescriptors = [NSSortDescriptor(keyPath: \DiscoveredBeaconEntity.timestamp, ascending: false)]
+		guard let beacons = try? context.fetch(request) else { return [] }
 		// Offers for channels the radio already has are not invitations (design#140).
 		let joined = configuredChannelOfferKeys(context: context)
 		let radioRegion = connectedRegionCode?.rawValue ?? 0
@@ -774,15 +774,13 @@ extension DiscoveryScanView {
 	/// history (not just its ~60s dwell), so the setup and progress screens surface it. Two tiny
 	/// `fetchLimit = 1` fetches; `nil` when there's no data or the span is degenerate.
 	var dataCollectionSpan: (start: Date, end: Date)? {
-		var earliest = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate { $0.firstHeard != nil },
-			sortBy: [SortDescriptor(\.firstHeard, order: .forward)]
-		)
+		let earliest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		earliest.predicate = NSPredicate(format: "firstHeard != nil")
+		earliest.sortDescriptors = [NSSortDescriptor(keyPath: \NodeInfoEntity.firstHeard, ascending: true)]
 		earliest.fetchLimit = 1
-		var latest = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate { $0.lastHeard != nil },
-			sortBy: [SortDescriptor(\.lastHeard, order: .reverse)]
-		)
+		let latest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		latest.predicate = NSPredicate(format: "lastHeard != nil")
+		latest.sortDescriptors = [NSSortDescriptor(keyPath: \NodeInfoEntity.lastHeard, ascending: false)]
 		latest.fetchLimit = 1
 		guard let start = (try? context.fetch(earliest))?.first?.firstHeard,
 			  let end = (try? context.fetch(latest))?.first?.lastHeard,

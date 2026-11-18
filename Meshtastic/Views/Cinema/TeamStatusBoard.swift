@@ -6,7 +6,7 @@
 //
 #if os(visionOS)
 import CoreLocation
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// The favorites board on the tent's whiteboard in the cinema: the connected radio and the
@@ -16,7 +16,7 @@ import SwiftUI
 struct TeamStatusBoard: View {
 	@EnvironmentObject private var appState: AppState
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.openWindow) private var openWindow
 	@State private var roster: Roster?
 
@@ -206,13 +206,12 @@ struct TeamStatusBoard: View {
 		let radio = accessoryManager.isConnected ? accessoryManager.activeDeviceNum.flatMap { getNodeInfo(id: $0, context: context) } : nil
 		// No node has a negative number, so this matches every favorite when there's no radio.
 		let radioNum = radio?.num ?? -1
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate { $0.favorite == true && $0.num != radioNum },
-			sortBy: [SortDescriptor(\.lastHeard, order: .reverse)]
-		)
-		let favoriteCount = (try? context.fetchCount(descriptor)) ?? 0
-		descriptor.fetchLimit = Self.maxRows - (radio == nil ? 0 : 1)
-		let favorites = (try? context.fetch(descriptor)) ?? []
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "favorite == YES AND num != %lld", radioNum)
+		request.sortDescriptors = [NSSortDescriptor(keyPath: \NodeInfoEntity.lastHeard, ascending: false)]
+		let favoriteCount = (try? context.count(for: request)) ?? 0
+		request.fetchLimit = Self.maxRows - (radio == nil ? 0 : 1)
+		let favorites = (try? context.fetch(request)) ?? []
 
 		var members: [TeamMember] = []
 		if let radio {

@@ -20,7 +20,7 @@ import UniformTypeIdentifiers
 
 struct BackupRestoreSection: View {
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
 	/// True when the radio says a mesh administrator owns its configuration. The rows
 	/// stay visible and disabled, with the reason, rather than disappearing.

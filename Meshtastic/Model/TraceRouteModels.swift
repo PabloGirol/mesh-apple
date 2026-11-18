@@ -3,84 +3,133 @@
 //  Meshtastic
 //
 //  SwiftData models for trace routes and hops.
+//  Converted to Core Data NSManagedObject subclass for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class TraceRouteEntity {
-	var hasPositions: Bool = false
-	var hopsBack: Int32 = 0
-	var hopsTowards: Int32 = 0
-	var id: Int64 = 0
-	var response: Bool = false
+@objc(TraceRouteEntity)
+public class TraceRouteEntity: NSManagedObject {
+
+	@NSManaged public var hasPositions: Bool
+	@NSManaged public var hopsBack: Int32
+	@NSManaged public var hopsTowards: Int32
+	@NSManaged public var id: Int64
+	@NSManaged public var response: Bool
 	/// The radio refused to send this request because of its trace route cooldown.
-	var rateLimited: Bool = false
-	var routeBackText: String?
-	var routeText: String?
-	var sent: Bool = false
-	var snr: Float = 0.0
+	@NSManaged public var rateLimited: Bool
+	@NSManaged public var routeBackText: String?
+	@NSManaged public var routeText: String?
+	@NSManaged public var sent: Bool
+	@NSManaged public var snr: Float
 	/// When the response arrived (or, before one does, when the request was sent).
-	var time: Date?
+	@NSManaged public var time: Date?
 	/// When we sent the request. Nil for routes observed on the mesh and for older records.
-	var sentAt: Date?
+	@NSManaged public var sentAt: Date?
 	/// Node num that originated the trace route request (our connected node for requests we
 	/// initiated, otherwise the requester of a trace route we observed on the mesh).
-	var fromNum: Int64 = 0
+	@NSManaged public var fromNum: Int64
 	/// Node num of the trace route target/responder (matches `node.num` for requests we initiated).
-	var toNum: Int64 = 0
+	@NSManaged public var toNum: Int64
 
-	@Relationship(deleteRule: .cascade, inverse: \TraceRouteHopEntity.traceRoute)
-	var hops: [TraceRouteHopEntity] = []
+	@NSManaged public var hops: [TraceRouteHopEntity]
 
 	/// Point-in-time snapshot of each involved node's position, captured when the response was
 	/// received. One entry per unique node num (see `TraceRouteNodePositionEntity`).
-	@Relationship(deleteRule: .cascade, inverse: \TraceRouteNodePositionEntity.traceRoute)
-	var nodePositions: [TraceRouteNodePositionEntity] = []
+	@NSManaged public var nodePositions: [TraceRouteNodePositionEntity]
 
-	var node: NodeInfoEntity?
+	@NSManaged public var node: NodeInfoEntity?
 
-	/// True when this trace route was observed on the mesh rather than initiated by us.
-	var observed: Bool { !sent }
-
-	init() {}
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "TraceRouteEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.hasPositions = false
+		self.hopsBack = 0
+		self.hopsTowards = 0
+		self.id = 0
+		self.response = false
+		self.rateLimited = false
+		self.routeBackText = nil
+		self.routeText = nil
+		self.sent = false
+		self.snr = 0.0
+		self.time = nil
+		self.sentAt = nil
+		self.fromNum = 0
+		self.toNum = 0
+		self.hops = []
+		self.nodePositions = []
+		self.node = nil
+	}
 }
 
-@Model
-final class TraceRouteHopEntity {
-	var back: Bool = false
+extension TraceRouteEntity {
+	/// True when this trace route was observed on the mesh rather than initiated by us.
+	var observed: Bool { !sent }
+}
+
+@objc(TraceRouteHopEntity)
+public class TraceRouteHopEntity: NSManagedObject {
+
+	@NSManaged public var back: Bool
 	/// Position of this hop within its direction's ordered path (the `hops` relationship is
 	/// unordered, so this preserves the originator → … → target sequence for rendering).
-	var index: Int32 = 0
-	var name: String?
-	var num: Int64 = 0
-	var snr: Float = 0.0
-	var time: Date?
+	@NSManaged public var index: Int32
+	@NSManaged public var name: String?
+	@NSManaged public var num: Int64
+	@NSManaged public var snr: Float
+	@NSManaged public var time: Date?
 
-	var traceRoute: TraceRouteEntity?
+	@NSManaged public var traceRoute: TraceRouteEntity?
 
-	init() {}
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "TraceRouteHopEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.back = false
+		self.index = 0
+		self.name = nil
+		self.num = 0
+		self.snr = 0.0
+		self.time = nil
+		self.traceRoute = nil
+	}
 }
 
 /// A snapshot of a single node's position at the moment a trace route response was received.
 /// Mirrors the meaningful fields of `PositionEntity` so the route can be mapped using the
 /// positions nodes had *when the trace route ran*, independent of their later movement.
-@Model
-final class TraceRouteNodePositionEntity {
-	var num: Int64 = 0
-	var altitude: Int32 = 0
-	var heading: Int32 = 0
-	var latitudeI: Int32 = 0
-	var longitudeI: Int32 = 0
-	var precisionBits: Int32 = 32
-	var satsInView: Int32 = 0
-	var seqNo: Int32 = 0
-	var snr: Float = 0.0
-	var speed: Int32 = 0
-	var time: Date?
+@objc(TraceRouteNodePositionEntity)
+public class TraceRouteNodePositionEntity: NSManagedObject {
 
-	var traceRoute: TraceRouteEntity?
+	@NSManaged public var num: Int64
+	@NSManaged public var altitude: Int32
+	@NSManaged public var heading: Int32
+	@NSManaged public var latitudeI: Int32
+	@NSManaged public var longitudeI: Int32
+	@NSManaged public var precisionBits: Int32
+	@NSManaged public var satsInView: Int32
+	@NSManaged public var seqNo: Int32
+	@NSManaged public var snr: Float
+	@NSManaged public var speed: Int32
+	@NSManaged public var time: Date?
 
-	init() {}
+	@NSManaged public var traceRoute: TraceRouteEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "TraceRouteNodePositionEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.num = 0
+		self.altitude = 0
+		self.heading = 0
+		self.latitudeI = 0
+		self.longitudeI = 0
+		self.precisionBits = 32
+		self.satsInView = 0
+		self.seqNo = 0
+		self.snr = 0.0
+		self.speed = 0
+		self.time = nil
+		self.traceRoute = nil
+	}
 }

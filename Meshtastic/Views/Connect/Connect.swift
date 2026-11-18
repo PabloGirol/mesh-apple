@@ -5,9 +5,9 @@
 //  Copyright(c) Garth Vander Houwen 8/18/21.
 //
 
+import CoreData
 import SwiftUI
 import MapKit
-@preconcurrency import SwiftData
 import CoreLocation
 import CoreBluetooth
 import MeshtasticProtobufs
@@ -16,7 +16,7 @@ import TipKit
 
 struct Connect: View {
 	
-	@Environment(\.modelContext) private var context
+	@Environment(.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@EnvironmentObject var lockdown: LockdownCoordinator
 	@Environment(\.colorScheme) private var colorScheme
@@ -45,7 +45,7 @@ struct Connect: View {
 	@State private var showingWidgetsSheet = false
 	/// The connected node as a plain protobuf value, copied when the share menu item is tapped.
 	/// The sheet outlives the row it was opened from, and reading a faulted @Model after a
-	/// reconnect traps, so nothing SwiftData-backed is held here.
+	/// reconnect traps, so nothing Core Data-backed is held here.
 	@State private var shareContactNode: NodeInfo?
 	/// Stable identity of the node whose context menu opened the shutdown dialog, captured at tap
 	/// time so the confirmation can't drift to a different node if the connection changes first.
@@ -53,7 +53,11 @@ struct Connect: View {
 	/// All cached event-firmware editions, kept live via `@Query` so branding data
 	/// refreshes automatically once the bundled seed or a later background API refresh populates
 	/// or updates a row, with no manual re-fetch wiring on connect or appear.
-	@Query private var eventFirmwareEditions: [EventFirmwareEntity]
+	@FetchRequest(
+		entity: EventFirmwareEntity.entity(),
+		sortDescriptors: []
+	)
+	private var eventFirmwareEditions: FetchedResults<EventFirmwareEntity>
 
 	private var sortedAvailableDevices: [Device] {
 		accessoryManager.devices.sorted { lhs, rhs in
@@ -69,7 +73,7 @@ struct Connect: View {
 		}
 	}
 
-	/// The connected node, but only while it's still a live SwiftData object.
+	/// The connected node, but only while it's still a live Core Data object.
 	///
 	/// `node` is cached in `@State` and survives across connection state changes, so after a
 	/// disconnect/reconnect or node switch — which recreate the ModelContext/container — the
@@ -88,7 +92,7 @@ struct Connect: View {
 		guard let node = safeNode,
 			  node.num == accessoryManager.activeDeviceNum,
 			  let loRaConfig = node.loRaConfig,
-			  loRaConfig.modelContext != nil else { return nil }
+			  loRaConfig.managedObjectContext != nil else { return nil }
 		if !loRaConfig.usePreset {
 			return String(localized: "Custom", comment: "LoRa preset shown when the radio uses its own modem settings")
 		}
@@ -101,11 +105,11 @@ struct Connect: View {
 		accessoryManager.connectedLoRaRegionCode == RegionCodes.unset.rawValue
 	}
 
-	/// Returns `node` only while it is still a live SwiftData object (`modelContext != nil`),
+	/// Returns `node` only while it is still a live Core Data object (`modelContext != nil`),
 	/// otherwise nil. Reading attributes on a faulted/detached `@Model` traps, so callers gate
 	/// every read through this. Static + value-in/value-out so it can be unit-tested directly.
 	static func liveNode(_ node: NodeInfoEntity?) -> NodeInfoEntity? {
-		guard let node, node.modelContext != nil, !node.isDeleted else { return nil }
+		guard let node, node.managedObjectContext != nil, !node.isDeleted else { return nil }
 		return node
 	}
 
@@ -648,12 +652,11 @@ struct Connect: View {
 	private func latestBatteryLevel(for node: NodeInfoEntity?) -> Int32? {
 		guard let nodeNum = node?.num else { return nil }
 		let metricsType: Int32 = 0
-		var descriptor = FetchDescriptor<TelemetryEntity>(
-			predicate: TelemetryEntity.predicate(forNode: nodeNum, metricsType: metricsType),
-			sortBy: [SortDescriptor(\TelemetryEntity.time, order: .reverse)]
-		)
-		descriptor.fetchLimit = 1
-		guard let result = try? context.fetch(descriptor).first else { return nil }
+		let request = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+		request.predicate = TelemetryEntity.predicate(forNode: nodeNum, metricsType: metricsType)
+		request.sortDescriptors = [NSSortDescriptor(keyPath: \TelemetryEntity.time, ascending: false)]
+		request.fetchLimit = 1
+		guard let result = try? context.fetch(request).first else { return nil }
 		let level = result.batteryLevel ?? 0
 		return level > 0 ? level : nil
 	}
@@ -682,9 +685,8 @@ struct Connect: View {
 			return
 		}
 
-		var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.num == deviceNum }
-		)
+		let fetchNodeInfoRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		fetchNodeInfoRequest.predicate = NSPredicate(format: "num == %d", deviceNum)
 		fetchNodeInfoRequest.fetchLimit = 1
 
 		do {
@@ -834,7 +836,7 @@ struct ManualConnectionMenu: View {
 
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@EnvironmentObject private var router: Router
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Binding var isSwitchingRadio: Bool
 
 	private struct IterableTransport: Identifiable {
@@ -904,7 +906,7 @@ struct ManualConnectionMenu: View {
 }
 
 struct DeviceConnectRow: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@EnvironmentObject private var router: Router
 	let device: Device
@@ -1042,7 +1044,7 @@ func backupCurrentAndRestoreDatabase(
 
 	// Unmount every @Query holder (the gate replaces the tree AND the query-owning wrappers —
 	// see ContentView.gatedContent / EventFirmwareTintScope) before touching the store. Stale
-	// subscriptions process store-change notifications from ANY SwiftData save in the process
+	// subscriptions process store-change notifications from ANY Core Data save in the process
 	// (TipKit's internal store saves on background queues) against the swapped-out container —
 	// the switch-nodes SIGTRAP, Datadog 324bff02-6b22-11f1.
 	//
@@ -1071,9 +1073,9 @@ func backupCurrentAndRestoreDatabase(
 	// switch must NEVER dump the new radio's nodes on top of the old radio's (nodes have no
 	// owner column; the store is global). Deliberately NO repointToFreshContainer here:
 	// replacing the container mints an immortal stale observer bridge — SwiftUI's
-	// _SwiftData_SwiftUI bridges unregister from NotificationCenter only on dealloc and stay
+	// _Core Data_SwiftUI bridges unregister from NotificationCenter only on dealloc and stay
 	// retained after any amount of unmounting, so the next save's synchronous callout traps
-	// in SwiftData (caught live in lldb: restore saves, and post-swap dump saves, on any
+	// in Core Data (caught live in lldb: restore saves, and post-swap dump saves, on any
 	// thread, gate up or down — every container-replacement variant died there). Keeping the
 	// container's identity means every observer processes every save against the store it
 	// actually belongs to. The mounted-view hazard that container recreation was introduced
@@ -1087,7 +1089,7 @@ func backupCurrentAndRestoreDatabase(
 		// does replace the container (accepting the stale-bridge risk) because proceeding on
 		// a half-cleared store is how one radio's nodes bleed into another's session.
 		Logger.backup.error("💾 clearDatabase failed — escalating to store destruction before the switch")
-		PersistenceController.shared.destroyStoreAndRecreateContainer()
+		CoreDataStackImpl.shared.destroyStoreAndRecreateContainer()
 		// destroy… already recreated the container; rebind rather than repoint so the
 		// escalation recreates exactly once (every recreation mints a potential stale
 		// observer bridge).
@@ -1101,7 +1103,7 @@ func backupCurrentAndRestoreDatabase(
 	if let targetNodeNum {
 		restoreResult = await NodeBackupManager.shared.restoreFromBackup(
 			forNode: targetNodeNum,
-			into: PersistenceController.shared.container
+			into: CoreDataStackImpl.shared.container
 		)
 	} else {
 		restoreResult = .noBackupFound
@@ -1109,7 +1111,7 @@ func backupCurrentAndRestoreDatabase(
 
 	// The clear ran on the MeshPackets context and the restore imported through a separate
 	// liveContext, neither of which the UI's main context observes — and a batch delete sends
-	// no change notification, so the existing @Query views keep their previously-fetched
+	// no change notification, so the existing @FetchRequest views keep their previously-fetched
 	// results (the previous node's nodes/pins linger; e.g. switching back to a local node
 	// still shows the other node's map pins). Bumping databaseResetID re-identifies the root
 	// view, forcing every @Query to re-execute its fetch and return only the restored data.

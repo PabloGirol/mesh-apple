@@ -1,13 +1,13 @@
-import SwiftData
+import CoreData
 import MeshtasticProtobufs
 import SwiftUI
 
 struct ChannelMessageRow: View {
 	@EnvironmentObject var appState: AppState
-	@Environment(\.modelContext) private var context
-	
+	@Environment(\.managedObjectContext) private var context
+
 	// Core Data object observed for changes (like Tapbacks being received)
-	@Bindable var message: MessageEntity
+	var message: MessageEntity
 	
 	let replyMessage: MessageEntity?
 	let tapbacks: [MessageEntity]
@@ -83,7 +83,7 @@ struct ChannelMessageRow: View {
 		// computed-property extensions — fatally traps in SwiftData (SIGTRAP). Bail to an empty row when
 		// the message is no longer live; the List drops it on its next rebuild. Mirrors the NodeListItem
 		// guard.
-		if message.modelContext != nil && !message.isDeleted {
+		if message.managedObjectContext != nil && !message.isDeleted {
 			rowContent
 		} else {
 			EmptyView()

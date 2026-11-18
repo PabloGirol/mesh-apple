@@ -9,7 +9,7 @@
 
 import Intents
 import OSLog
-import SwiftData
+import CoreData
 
 final class SearchForMessagesIntentHandler: NSObject, INSearchForMessagesIntentHandling {
 
@@ -21,11 +21,10 @@ final class SearchForMessagesIntentHandler: NSObject, INSearchForMessagesIntentH
 	func handle(intent: INSearchForMessagesIntent) async -> INSearchForMessagesIntentResponse {
 		let messages: [INMessage] = await MainActor.run {
 			let context = PersistenceController.shared.context
-			let descriptor = FetchDescriptor<MessageEntity>(
-				sortBy: [SortDescriptor(\.messageTimestamp, order: .reverse)]
-			)
+			let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+			request.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: false)]
 
-			guard let fetched = try? context.fetch(descriptor) else {
+			guard let fetched = try? context.fetch(request) else {
 				Logger.services.error("CarPlay/Siri: Failed to search messages")
 				return []
 			}

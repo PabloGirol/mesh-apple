@@ -5,10 +5,10 @@
 //  Created by Garth Vander Houwen on 12/24/21.
 //
 
-import SwiftUI
-@preconcurrency import SwiftData
+import CoreData
+import MeshtasticProtobufs
 import OSLog
-import MeshtasticProtobufs // Added to ensure RoutingError is accessible if needed
+import SwiftUI
 
 
 
@@ -17,9 +17,9 @@ struct UserMessageList: View {
 	@EnvironmentObject private var router: Router
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.scenePhase) var scenePhase
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@FocusState var messageFieldFocused: Bool
-	@Bindable var user: UserEntity
+	var user: UserEntity
 	@State private var replyMessageId: Int64 = 0
 	@State private var messageToHighlight: Int64 = 0
 	@AppStorage("preferredPeripheralNum") private var preferredPeripheralNum = -1
@@ -143,42 +143,31 @@ struct UserMessageList: View {
 	private func fetchIncomingMessages(limit: Int? = nil, unreadOnly: Bool) throws -> [MessageEntity] {
 		let userNum = user.num
 		let detectionSensorPortNum: Int32 = 10
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> {
-				$0.fromUser?.num == userNum
-				&& $0.toUser != nil
-				&& $0.isEmoji == false && $0.admin == false && $0.portNum != detectionSensorPortNum
-				&& (!unreadOnly || $0.read == false)
-			},
-			sortBy: [
-				SortDescriptor(\MessageEntity.messageTimestamp, order: .reverse),
-				SortDescriptor(\MessageEntity.messageId, order: .reverse)
-			]
-		)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "fromUser.num == %d AND toUser != nil AND isEmoji == false AND admin == false AND portNum != %d AND (!%@ OR read == false)", userNum, detectionSensorPortNum, NSNumber(value: unreadOnly))
+		request.sortDescriptors = [
+			NSSortDescriptor(key: "messageTimestamp", ascending: false),
+			NSSortDescriptor(key: "messageId", ascending: false)
+		]
 		if let limit {
-			descriptor.fetchLimit = limit
+			request.fetchLimit = limit
 		}
-		return try context.fetch(descriptor)
+		return try context.fetch(request)
 	}
 
 	private func fetchOutgoingMessages(limit: Int? = nil, unreadOnly: Bool) throws -> [MessageEntity] {
 		let userNum = user.num
 		let detectionSensorPortNum: Int32 = 10
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> {
-				$0.toUser?.num == userNum
-				&& $0.isEmoji == false && $0.admin == false && $0.portNum != detectionSensorPortNum
-				&& (!unreadOnly || $0.read == false)
-			},
-			sortBy: [
-				SortDescriptor(\MessageEntity.messageTimestamp, order: .reverse),
-				SortDescriptor(\MessageEntity.messageId, order: .reverse)
-			]
-		)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "toUser.num == %d AND isEmoji == false AND admin == false AND portNum != %d AND (!%@ OR read == false)", userNum, detectionSensorPortNum, NSNumber(value: unreadOnly))
+		request.sortDescriptors = [
+			NSSortDescriptor(key: "messageTimestamp", ascending: false),
+			NSSortDescriptor(key: "messageId", ascending: false)
+		]
 		if let limit {
-			descriptor.fetchLimit = limit
+			request.fetchLimit = limit
 		}
-		return try context.fetch(descriptor)
+		return try context.fetch(request)
 	}
 
 
@@ -204,12 +193,10 @@ struct UserMessageList: View {
 			return result
 		}
 
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { message in
-				missingReplyIDs.contains(message.messageId)
-			}
-		)
-		for reply in try context.fetch(descriptor) {
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		let idPredicates = missingReplyIDs.map { "messageId == \($0)" }.joined(separator: " OR ")
+		request.predicate = NSPredicate(format: "%@", idPredicates)
+		for reply in try context.fetch(request) {
 			result[reply.messageId] = reply
 		}
 		return result
@@ -221,13 +208,11 @@ struct UserMessageList: View {
 			return []
 		}
 
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { message in
-				message.isEmoji == true && visibleMessageIDs.contains(message.replyID)
-			},
-			sortBy: [SortDescriptor(\MessageEntity.messageTimestamp, order: .forward)]
-		)
-		return try context.fetch(descriptor)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		let idPredicates = visibleMessageIDs.map { "replyID == \($0)" }.joined(separator: " OR ")
+		request.predicate = NSPredicate(format: "isEmoji == true AND (%@)", idPredicates)
+		request.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: true)]
+		return try context.fetch(request)
 	}
 
 
@@ -502,7 +487,7 @@ private extension UserMessageList {
 			messageToHighlight = -1
 			return
 		}
-		let actor = searchActor ?? MessageSearchActor(modelContainer: context.container)
+		let actor = searchActor ?? MessageSearchActor(context: context)
 		searchActor = actor
 		do {
 			let matches = try await actor.directMatches(userNum: user.num, query: query)

@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 9/18/26.
 //
 import SwiftUI
-@preconcurrency import SwiftData
+import CoreData
 import OSLog
 import MeshtasticProtobufs
 
@@ -25,7 +25,7 @@ extension Config.PowerConfig: ConfigFormMessage {
 }
 
 struct PowerConfig: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	let node: NodeInfoEntity?
 
@@ -83,9 +83,10 @@ struct PowerConfig: View {
 	private func resolveArchitecture() {
 		guard let hwModelId = node?.user?.hwModelId else { return }
 		let hwModelValue = Int64(hwModelId)
-		let descriptor = FetchDescriptor<DeviceHardwareEntity>(predicate: #Predicate { $0.hwModel == hwModelValue })
+		let request = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
+		request.predicate = NSPredicate(format: "hwModel == %lld", hwModelValue)
 		do {
-			let hardware = try context.fetch(descriptor)
+			let hardware = try context.fetch(request)
 			if let archString = HardwareCatalogResolver.presentation(for: hwModelValue, in: hardware)?.architecture,
 			   let arch = Architecture(rawValue: archString) {
 				architecture = arch

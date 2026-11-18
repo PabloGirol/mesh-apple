@@ -1,12 +1,11 @@
-import SwiftData
+import CoreData
 import OSLog
 import SwiftUI
 
 struct IgnoreNodeButton: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 
-	@Bindable
 	var node: NodeInfoEntity
 
 	var body: some View {

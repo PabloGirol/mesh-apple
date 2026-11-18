@@ -4,13 +4,13 @@
 //
 //  Copyright (c) Garth Vander Houwen 6/27/22.
 //
-import SwiftData
+import CoreData
 import MeshtasticProtobufs
 import SwiftUI
 
 struct UserConfig: View {
-	
-	@Environment(\.modelContext) private var context
+
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.dismiss) private var goBack
 	
@@ -306,5 +306,5 @@ struct UserConfig: View {
 #Preview {
 	UserConfig(node: nil)
 		.environmentObject(AccessoryManager.shared)
-		.modelContainer(PersistenceController.preview.container)
+		.environment(\.managedObjectContext, CoreDataStackImpl.preview.context)
 }

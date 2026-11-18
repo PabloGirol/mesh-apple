@@ -6,7 +6,7 @@
 //
 #if os(visionOS)
 import Combine
-import SwiftData
+import CoreData
 import SwiftUI
 import UIKit
 
@@ -175,7 +175,7 @@ struct CinemaScreen: View {
 	static let size = CGSize(width: 1500, height: 940)
 	static let cornerRadius: CGFloat = 48
 
-	let container: ModelContainer
+	let container: NSPersistentContainer
 	@ObservedObject var model: CinemaScreenModel
 	@EnvironmentObject private var appState: AppState
 	@EnvironmentObject private var accessoryManager: AccessoryManager
@@ -229,7 +229,7 @@ struct CinemaScreen: View {
 		.frame(width: Self.size.width, height: Self.size.height)
 		.clipShape(shape)
 		.glassBackgroundEffect(in: shape)
-		.modelContainer(container)
+		.environment(\.managedObjectContext, container.viewContext)
 		.environmentObject(appState)
 		.environmentObject(accessoryManager)
 		.environmentObject(lockdown)

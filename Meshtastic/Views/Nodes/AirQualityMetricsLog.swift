@@ -4,14 +4,14 @@
 //
 //  Particulate-matter (PM) air quality telemetry log (issue #2040).
 //
-import SwiftUI
 import Charts
+import CoreData
 import OSLog
-import SwiftData
+import SwiftUI
 
 struct AirQualityMetricsLog: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
 	/// Table on iPhone shows only its first column, even in a regular size class.
@@ -22,7 +22,7 @@ struct AirQualityMetricsLog: View {
 	@State private var isPresentingClearLogConfirm: Bool = false
 	@State var isExporting = false
 	@State var exportString = ""
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 
 	@StateObject var columnList = MetricsColumnList.airQualityDefaultColumns
 	@StateObject var seriesList = MetricsSeriesList.airQualityDefaultChartSeries
@@ -44,7 +44,7 @@ struct AirQualityMetricsLog: View {
 					if chartData.count > 0 {
 						GroupBox(label: Label("\(totalReadings) Readings Total", systemImage: "chart.xyaxis.line")) {
 							Chart(seriesList.visible) { series in
-								ForEach(chartData, id: \.persistentModelID) { dataPoint in
+								ForEach(chartData, id: \.objectID) { dataPoint in
 									series.body(dataPoint, inChartRange: chartRange)
 								}
 							}

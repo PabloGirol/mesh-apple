@@ -7,9 +7,9 @@
 
 #if os(iOS)
 import Intents
-import SwiftData
 import SwiftUI
 import OSLog
+import CoreData
 
 class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, ObservableObject {
 
@@ -73,12 +73,9 @@ class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificat
 		do {
 			var readMessageIDs = [Int64]()
 			if conversationId.hasPrefix("dm-"), let nodeNum = Int64(conversationId.replacingOccurrences(of: "dm-", with: "")) {
-				let descriptor = FetchDescriptor<MessageEntity>(
-					predicate: #Predicate { message in
-						message.read == false && message.fromUser?.num == nodeNum
-					}
-				)
-				let messages = try context.fetch(descriptor)
+				let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+				request.predicate = NSPredicate(format: "read == NO AND fromUser.num == %lld", nodeNum)
+				let messages = try context.fetch(request)
 				// toUser != nil: this is a DM conversation — without the filter,
 				// reading a DM aloud also silently marked the sender's unread
 				// CHANNEL messages as read.
@@ -87,12 +84,9 @@ class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificat
 					readMessageIDs.append(message.messageId)
 				}
 			} else if conversationId.hasPrefix("channel-"), let channelIndex = Int32(conversationId.replacingOccurrences(of: "channel-", with: "")) {
-				let descriptor = FetchDescriptor<MessageEntity>(
-					predicate: #Predicate { message in
-						message.read == false && message.channel == channelIndex
-					}
-				)
-				let messages = try context.fetch(descriptor)
+				let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+				request.predicate = NSPredicate(format: "read == NO AND channel == %d", channelIndex)
+				let messages = try context.fetch(request)
 				for message in messages where message.toUser == nil {
 					message.read = true
 					readMessageIDs.append(message.messageId)

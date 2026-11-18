@@ -8,7 +8,7 @@
 import SwiftUI
 import CoreLocation
 import MapKit
-@preconcurrency import SwiftData
+import CoreData
 
 /// Value-type hardware data captured while a user row is live.
 ///
@@ -20,7 +20,7 @@ struct NodeInfoItemSummary: Equatable {
 	let hwModelId: Int64
 
 	@MainActor init?(user: UserEntity) {
-		guard user.modelContext != nil, !user.isDeleted else { return nil }
+		guard user.managedObjectContext != nil, !user.isDeleted else { return nil }
 
 		nodeNum = user.num
 		hwModel = user.hwModel
@@ -30,14 +30,23 @@ struct NodeInfoItemSummary: Equatable {
 
 struct NodeInfoItem: View {
 
-	@Query private var users: [UserEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \UserEntity.num, ascending: true)],
+		predicate: nil,
+		animation: .default
+	)
+	private var users: FetchedResults<UserEntity>
 
 	/// Show the radio's live screen on its 3D model: the connected radio, while connected, when it reports a display.
 	let liveScreen: Bool
 
 	init(nodeNum: Int64, liveScreen: Bool = false) {
 		self.liveScreen = liveScreen
-		_users = Query(filter: #Predicate<UserEntity> { $0.num == nodeNum })
+		_users = FetchRequest(
+			sortDescriptors: [NSSortDescriptor(keyPath: \UserEntity.num, ascending: true)],
+			predicate: NSPredicate(format: "num == %lld", nodeNum),
+			animation: .default
+		)
 	}
 
 	var body: some View {
@@ -59,7 +68,12 @@ struct NodeInfoItem: View {
 private struct NodeInfoHardwareSection: View {
 	let summary: NodeInfoItemSummary
 	let liveScreen: Bool
-	@Query private var hardware: [DeviceHardwareEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \DeviceHardwareEntity.hwModelSlug, ascending: true)],
+		predicate: nil,
+		animation: .default
+	)
+	private var hardware: FetchedResults<DeviceHardwareEntity>
 	@EnvironmentObject private var meshtasticAPI: MeshtasticAPI
 	/// The 3D model for this hardware, worked out off the layout pass like the device image.
 	@State private var deviceModelFile: String?
@@ -68,9 +82,10 @@ private struct NodeInfoHardwareSection: View {
 		self.summary = summary
 		self.liveScreen = liveScreen
 		let hardwareModel = summary.hwModelId
-		_hardware = Query(
-			filter: #Predicate<DeviceHardwareEntity> { $0.hwModel == hardwareModel },
-			sort: [SortDescriptor(\.hwModelSlug)]
+		_hardware = FetchRequest(
+			sortDescriptors: [NSSortDescriptor(keyPath: \DeviceHardwareEntity.hwModelSlug, ascending: true)],
+			predicate: NSPredicate(format: "hwModel == %lld", hardwareModel),
+			animation: .default
 		)
 	}
 

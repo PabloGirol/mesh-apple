@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
 /// Public contract for the node database backup/restore service.
 /// All methods are async and safe to call from any actor context.
@@ -39,9 +39,9 @@ protocol NodeBackupManaging: Sendable {
 	///
 	/// - Parameters:
 	///   - nodeNum: The node number whose backup to restore
-	///   - container: The live ModelContainer to import into
+	///   - container: The live NSPersistentContainer to import into
 	/// - Returns: Result indicating success, skip, or no backup found
-	func restoreFromBackup(forNode nodeNum: Int64, into container: ModelContainer) async -> NodeBackupResult
+	func restoreFromBackup(forNode nodeNum: Int64, into container: NSPersistentContainer) async -> NodeBackupResult
 
 	/// Checks whether a backup exists for the specified node.
 	///

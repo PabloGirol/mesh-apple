@@ -21,7 +21,7 @@ import SwiftUI
 
 struct MeshBeaconConfig: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.dismiss) private var goBack
 	let node: NodeInfoEntity?

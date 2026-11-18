@@ -3,7 +3,7 @@
  */
 
 import SwiftUI
-import SwiftData
+import CoreData
 import UIKit
 
 struct ContentView: View {
@@ -182,10 +182,10 @@ struct ContentView: View {
 
 	// MARK: - Tab Content
 
-	/// While a node switch is clearing/swapping the SwiftData container, the tab tree AND every
+	/// While a node switch is clearing/swapping the Core Data container, the tab tree AND every
 	/// @Query holder above it (the event-editions query lived on ContentView itself) are replaced
-	/// by this SwiftData-free placeholder, so zero @Query subscriptions exist during the swap.
-	/// Stale subscriptions process store-change notifications posted by ANY SwiftData save in the
+	/// by this Core Data-free placeholder, so zero @Query subscriptions exist during the swap.
+	/// Stale subscriptions process store-change notifications posted by ANY Core Data save in the
 	/// process (TipKit runs its own store, saving on background queues) against the swapped-out
 	/// container — the switch-nodes SIGTRAP, Datadog 324bff02-6b22-11f1. The flag is flipped
 	/// inside a no-animation transaction after presented dialogs settle (see the switch flow):
@@ -203,7 +203,7 @@ struct ContentView: View {
 		}
 	}
 
-	/// Owns every SwiftData dependency of the main UI (the event-editions @Query and the
+	/// Owns every Core Data dependency of the main UI (the event-editions @Query and the
 	/// presentation environment built from it) so that unmounting it during a database reset
 	/// removes ALL query subscriptions, not just the ones inside the tabs.
 	private struct ActiveContent<Content: View>: View {
@@ -214,7 +214,11 @@ struct ContentView: View {
 		/// up. The event sheet must not auto-present over them — two sheets presented from
 		/// different levels of the tree fight, and the event sheet ends up on top.
 		let isOnboarding: Bool
-		@Query private var eventFirmwareEditions: [EventFirmwareEntity]
+		@FetchRequest(
+		entity: EventFirmwareEntity.entity(),
+		sortDescriptors: []
+	)
+	private var eventFirmwareEditions: FetchedResults<EventFirmwareEntity>
 		@State private var isShowingEventFirmwareInfo: Bool = false
 		/// The post-event upgrade sheet auto-presents once per connect. ActiveContent is
 		/// remounted for every node switch (databaseResetID), so plain @State is exactly
@@ -403,9 +407,9 @@ struct ContentView: View {
 
 // MARK: - Reset Placeholder
 
-/// SwiftData-free stand-in shown while a node switch clears/swaps the container. Shared by
+/// Core Data-free stand-in shown while a node switch clears/swaps the container. Shared by
 /// the WindowGroup-root gate in MeshtasticAppleApp (which unmounts the `.modelContainer`
-/// modifier itself — its SwiftData↔SwiftUI bridge observes save notifications process-wide
+/// modifier itself — its Core Data↔SwiftUI bridge observes save notifications process-wide
 /// and does NOT rebind when the container underneath it is swapped; a restore-time save then
 /// traps in the stale bridge, the "silent" half of Datadog 324bff02) and by ContentView's
 /// inner gate (defense in depth).

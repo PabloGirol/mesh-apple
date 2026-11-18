@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 11/1/26.
 //
 #if os(visionOS)
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// A node's last heard, battery, signal and hops, for the cards beside a model on the stand and
@@ -63,7 +63,7 @@ struct CinemaNodeReading {
 	let snr: Float?
 	let hopsAway: Int32?
 
-	@MainActor init?(nodeNum: Int64, context: ModelContext) {
+	@MainActor init?(nodeNum: Int64, context: NSManagedObjectContext) {
 		guard let node = getNodeInfo(id: nodeNum, context: context) else { return nil }
 		let user = node.liveUser
 		num = node.num

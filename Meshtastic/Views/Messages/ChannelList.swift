@@ -6,12 +6,12 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import OSLog
 
 struct ChannelList: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Binding var node: NodeInfoEntity?
 	@Binding var channelSelection: ChannelEntity?

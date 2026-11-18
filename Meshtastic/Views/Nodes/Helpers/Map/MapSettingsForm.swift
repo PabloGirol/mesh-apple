@@ -522,7 +522,7 @@ private struct WeatherRadarToggle: View {
 private struct DirectLinksToggle: View {
 	@AppStorage("meshMapShowDirectLinks") private var showDirectLinks = false
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
 	/// The connected radio has sent its Neighbor Info settings and the module is off. Its radio
 	/// then drops other nodes' reports, so only its own direct links can be drawn.

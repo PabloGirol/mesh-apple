@@ -13,6 +13,53 @@ import SwiftUI
 import RegexBuilder
 import OSLog
 
+/// A context-bound actor replacing the former @ModelActor. Holds a private
+/// NSManagedObjectContext created from the shared container so packet handlers
+/// run off the main thread while still having a live Core Data context.
+actor MeshPackets {
+    let modelContext: NSManagedObjectContext
+
+    init(modelContainer: NSPersistentContainer) {
+        let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        context.persistentStoreCoordinator = modelContainer.persistentStoreCoordinator
+        context.automaticallyMergesChangesFromParent = true
+        self.modelContext = context
+    }
+
+    // MARK: - Core Data Helpers
+
+    /// Fetch entities using NSFetchRequest instead of FetchDescriptor
+    func fetch<T: NSManagedObject>(_ request: NSFetchRequest<T>) throws -> [T] {
+        return try modelContext.fetch(request)
+    }
+
+    /// Fetch count using NSFetchRequest
+    func fetchCount<T: NSManagedObject>(_ request: NSFetchRequest<T>) throws -> Int {
+        return try modelContext.count(for: request)
+    }
+
+    /// Create a fetch request with predicate and sort descriptors
+    func makeFetchRequest<T: NSManagedObject>(for entityType: T.Type, predicate: NSPredicate? = nil, sortDescriptors: [NSSortDescriptor]? = nil, fetchLimit: Int? = nil, includePendingChanges: Bool = true) -> NSFetchRequest<T> {
+        let request = NSFetchRequest<T>(entityName: String(describing: entityType))
+        request.predicate = predicate
+        request.sortDescriptors = sortDescriptors
+        if let limit = fetchLimit {
+            request.fetchLimit = limit
+        }
+        request.includesPendingChanges = includePendingChanges
+        return request
+    }
+
+    /// Create a fetch request for count
+    func makeCountRequest<T: NSManagedObject>(for entityType: T.Type, predicate: NSPredicate? = nil) -> NSFetchRequest<T> {
+        let request = NSFetchRequest<T>(entityName: String(describing: entityType))
+        request.predicate = predicate
+        request.includesPendingChanges = false
+        return request
+    }
+
+    private struct StagedChannel: Sendable {
+
 // Simple extension to concisely pass values through a has_XXX boolean check
 fileprivate extension Bool {
 	func then<T>(_ value: T) -> T? {
@@ -83,9 +130,6 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 	let mute: Bool
 }
 
-@ModelActor
-actor MeshPackets {
-	private struct StagedChannel: Sendable {
 		let id: Int32
 		let index: Int32
 		let uplinkEnabled: Bool
@@ -276,12 +320,11 @@ actor MeshPackets {
 			Logger.data.error("💥 Refusing incomplete staged channel refresh for: \(nodeNum.toHex(), privacy: .public)")
 			return
 		}
-		let container = modelContext.container
 		await Self.commitChannelRefreshStageOnMainActor(
 			for: nodeNum,
 			baseline: stage.baseline,
 			stagedChannels: stage.channels,
-			container: container
+			modelContext: modelContext
 		)
 	}
 
@@ -292,17 +335,16 @@ actor MeshPackets {
 		for nodeNum: Int64,
 		baseline: [ChannelRefreshSnapshot],
 		stagedChannels: [Int32: StagedChannel],
-		container: ModelContainer
+		modelContext: NSManagedObjectContext
 	) async {
-		let context = container.mainContext
-		let fetchDescriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == nodeNum })
+		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		request.predicate = NSPredicate(format: "myNodeNum == %lld", nodeNum)
+		request.fetchLimit = 1
 		do {
-			let fetchedMyInfo = try context.fetch(fetchDescriptor)
-			guard fetchedMyInfo.count == 1 else {
+			guard let myInfo = try modelContext.fetch(request).first else {
 				Logger.data.error("💥Trying to commit staged channels to a MyInfo that does not exist: \(nodeNum.toHex(), privacy: .public)")
 				return
 			}
-			let myInfo = fetchedMyInfo[0]
 			guard channelSnapshot(from: myInfo) == baseline else {
 				Logger.data.info("💾 Discarded staged channel refresh after local channel changes for: \(nodeNum.toHex(), privacy: .public)")
 				return
@@ -317,22 +359,21 @@ actor MeshPackets {
 				return
 			}
 			for channel in myInfo.channels {
-				context.delete(channel)
+				modelContext.delete(channel)
 			}
 			myInfo.channels.removeAll()
 			let enabledChannels = stagedChannels.values
 				.filter { $0.role != Int32(Channel.Role.disabled.rawValue) }
 				.sorted(by: { $0.index < $1.index })
 			for staged in enabledChannels {
-				let channel = ChannelEntity()
-				context.insert(channel)
+				let channel = ChannelEntity(context: modelContext)
 				apply(stagedChannel: staged, to: channel)
 				myInfo.channels.append(channel)
 			}
-			try context.save()
+			try modelContext.save()
 			Logger.data.info("💾 Committed \(enabledChannels.count, privacy: .public) staged channel(s) for: \(nodeNum, privacy: .public)")
 		} catch {
-			context.rollback()
+			modelContext.rollback()
 			let nsError = error as NSError
 			Logger.data.error("💥 Error committing staged channels from ADMIN_APP \(nsError, privacy: .public)")
 		}
@@ -344,8 +385,9 @@ actor MeshPackets {
 	}
 
 	@MainActor
-	static func captureChannelRefreshBaselines(in context: ModelContext) -> [Int64: [ChannelRefreshSnapshot]] {
-		let myInfos = (try? context.fetch(FetchDescriptor<MyInfoEntity>())) ?? []
+	static func captureChannelRefreshBaselines(in context: NSManagedObjectContext) -> [Int64: [ChannelRefreshSnapshot]] {
+		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		let myInfos = (try? context.fetch(request)) ?? []
 		return myInfos.reduce(into: [:]) { baselines, myInfo in
 			baselines[myInfo.myNodeNum] = channelSnapshot(from: myInfo)
 		}
@@ -545,12 +587,11 @@ actor MeshPackets {
 	) -> [WatchNode] {
 		// A retired instance's container may already be torn down (see recreateShared()).
 		guard !invalidated else { return [] }
-		let descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.user != nil }
-		)
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "user != nil")
 		let results: [NodeInfoEntity]
 		do {
-			results = try modelContext.fetch(descriptor)
+			results = try modelContext.fetch(request)
 		} catch {
 			Logger.data.error("⌚ Watch snapshot fetch failed: \(error.localizedDescription, privacy: .public)")
 			return []
@@ -560,7 +601,7 @@ actor MeshPackets {
 		// the per-node reads held the main thread for seconds on every watch update.
 		let positions = NodeInfoEntity.latestPositions(for: results, context: modelContext)
 		return results.compactMap { node in
-			positions[node.persistentModelID].flatMap {
+			positions[node.objectID].flatMap {
 				WatchNode.make(from: node, position: $0, userLocation: userLocation, maxDistanceMeters: maxDistanceMeters)
 			}
 		}
@@ -597,11 +638,12 @@ actor MeshPackets {
 		guard !invalidated else { return .unavailable }
 		// Fetch by the scalar number only; an optional-relationship nil check in a predicate
 		// crashes on iOS 26.
-		var nodeDescriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == num })
-		nodeDescriptor.fetchLimit = 1
+		let nodeRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		nodeRequest.predicate = NSPredicate(format: "num == %lld", num)
+		nodeRequest.fetchLimit = 1
 		let fetched: [NodeInfoEntity]
 		do {
-			fetched = try modelContext.fetch(nodeDescriptor)
+			fetched = try modelContext.fetch(nodeRequest)
 		} catch {
 			Logger.data.error("🛰️ Live Activity node fetch failed: \(error.localizedDescription, privacy: .public)")
 			return .unavailable
@@ -610,9 +652,10 @@ actor MeshPackets {
 
 		var radio: NodeInfoEntity?
 		if let radioNum {
-			var radioDescriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == radioNum })
-			radioDescriptor.fetchLimit = 1
-			radio = try? modelContext.fetch(radioDescriptor).first
+			let radioRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+			radioRequest.predicate = NSPredicate(format: "num == %lld", radioNum)
+			radioRequest.fetchLimit = 1
+			radio = try? modelContext.fetch(radioRequest).first
 		}
 
 		var signalRating: Int?
@@ -647,21 +690,15 @@ actor MeshPackets {
 	/// many rows went, so a chunking caller knows when to stop.
 	@discardableResult
 	func evictNodesIfOverCap(_ cap: Int, limit: Int? = nil) -> Int {
-		guard let nodeCount = try? modelContext.fetchCount(FetchDescriptor<NodeInfoEntity>()),
-			  nodeCount > cap else { return 0 }
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate { $0.favorite == false },
-			sortBy: [SortDescriptor(\.lastHeard, order: .forward)]
-		)
+		let countRequest = makeCountRequest(for: NodeInfoEntity.self)
+		guard let nodeCount = try? fetchCount(countRequest), nodeCount > cap else { return 0 }
+		let request = makeFetchRequest(for: NodeInfoEntity.self,
+			predicate: NSPredicate(format: "favorite == NO"),
+			sortDescriptors: [NSSortDescriptor(key: "lastHeard", ascending: true)])
 		let overage = nodeCount - cap
-		descriptor.fetchLimit = limit.map { Swift.min($0, overage) } ?? overage
-		// Only already-persisted rows are eligible for eviction. Caps are enforced inside
-		// `savePendingChanges` *before* the commit, so a node just created this transaction by
-		// `findOrCreateNode` is still a pending insert with a nil `lastHeard` — which sorts first
-		// (stalest) and would otherwise be deleted before it is ever saved. The count above stays
-		// inclusive of pending inserts, so we free enough persisted rows to make room for them.
-		descriptor.includePendingChanges = false
-		guard let stale = try? modelContext.fetch(descriptor), !stale.isEmpty else { return 0 }
+		request.fetchLimit = limit.map { Swift.min($0, overage) } ?? overage
+		request.includesPendingChanges = false
+		guard let stale = try? fetch(request), !stale.isEmpty else { return 0 }
 		TelemetryEntity.deleteAll(forNodes: stale.map(\.num), in: modelContext)
 		NeighborLinkEntity.deleteAll(forNodes: stale.map(\.num), in: modelContext)
 		for node in stale { modelContext.delete(node) }
@@ -672,18 +709,14 @@ actor MeshPackets {
 	/// Waypoints: cap the total, evicting oldest-last-updated first.
 	@discardableResult
 	func evictWaypointsIfOverCap(_ cap: Int, limit: Int? = nil) -> Int {
-		guard let waypointCount = try? modelContext.fetchCount(FetchDescriptor<WaypointEntity>()),
-			  waypointCount > cap else { return 0 }
-		var descriptor = FetchDescriptor<WaypointEntity>(
-			sortBy: [SortDescriptor(\.lastUpdated, order: .forward)]
-		)
+		let countRequest = makeCountRequest(for: WaypointEntity.self)
+		guard let waypointCount = try? fetchCount(countRequest), waypointCount > cap else { return 0 }
+		let request = makeFetchRequest(for: WaypointEntity.self,
+			sortDescriptors: [NSSortDescriptor(key: "lastUpdated", ascending: true)])
 		let overage = waypointCount - cap
-		descriptor.fetchLimit = limit.map { Swift.min($0, overage) } ?? overage
-		// Same rationale as node eviction: never delete an un-saved waypoint from the in-flight
-		// transaction (a fresh insert has a nil `lastUpdated` and would sort first). Count stays
-		// inclusive of pending inserts for cap accounting.
-		descriptor.includePendingChanges = false
-		guard let stale = try? modelContext.fetch(descriptor), !stale.isEmpty else { return 0 }
+		request.fetchLimit = limit.map { Swift.min($0, overage) } ?? overage
+		request.includesPendingChanges = false
+		guard let stale = try? fetch(request), !stale.isEmpty else { return 0 }
 		for waypoint in stale { modelContext.delete(waypoint) }
 		Logger.data.info("🗄️ [Caps] Evicted \(stale.count, privacy: .public) oldest waypoint(s) (was \(waypointCount, privacy: .public), cap \(cap, privacy: .public))")
 		return stale.count
@@ -907,15 +940,16 @@ actor MeshPackets {
 		}
 	}
 
-	func myInfoPacket (myInfo: MyNodeInfo, peripheralId: String) -> PersistentIdentifier? {
+	func myInfoPacket (myInfo: MyNodeInfo, peripheralId: String) -> NSManagedObjectID? {
 		let logString = String.localizedStringWithFormat("MyInfo received: %@".localized, String(myInfo.myNodeNum))
 		Logger.admin.info("ℹ️ \(logString, privacy: .public)")
 
 		let myNodeNum = Int64(myInfo.myNodeNum)
-		let fetchDescriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == myNodeNum })
+		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		request.predicate = NSPredicate(format: "myNodeNum == %lld", myNodeNum)
 
 		do {
-			let fetchedMyInfo = try modelContext.fetch(fetchDescriptor)
+			let fetchedMyInfo = try modelContext.fetch(request)
 			// Not Found Insert
 			if fetchedMyInfo.isEmpty {
 
@@ -930,7 +964,7 @@ actor MeshPackets {
 				}
 				Logger.data.info("💾 Saved a new myInfo for node: \(myInfo.myNodeNum.toHex(), privacy: .public)")
 				savePendingChanges()
-				return myInfoEntity.persistentModelID
+				return myInfoEntity.objectID
 			} else {
 
 				fetchedMyInfo[0].peripheralId = peripheralId
@@ -948,7 +982,7 @@ actor MeshPackets {
 
 				Logger.data.info("💾 Updated myInfo for node: \(myInfo.myNodeNum.toHex(), privacy: .public)")
 				savePendingChanges()
-				return fetchedMyInfo[0].persistentModelID
+				return fetchedMyInfo[0].objectID
 			}
 		} catch {
 			Logger.data.error("💥 Fetch MyInfo Error")
@@ -966,8 +1000,9 @@ actor MeshPackets {
 	}
 
 	private func currentChannelSnapshot(for nodeNum: Int64) -> [ChannelRefreshSnapshot] {
-		let fetchDescriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == nodeNum })
-		guard let myInfo = try? modelContext.fetch(fetchDescriptor).first else { return [] }
+		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+		request.predicate = NSPredicate(format: "myNodeNum == %lld", nodeNum)
+		guard let myInfo = try? modelContext.fetch(request).first else { return [] }
 		return currentChannelSnapshot(from: myInfo)
 	}
 
@@ -1000,7 +1035,8 @@ actor MeshPackets {
 				if isStaging { return }
 			}
 
-			let fetchDescriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == fromNum })
+			let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+			request.predicate = NSPredicate(format: "myNodeNum == %lld", fromNum)
 
 			do {
 				let fetchedMyInfo = try modelContext.fetch(fetchDescriptor)
@@ -1083,10 +1119,10 @@ actor MeshPackets {
 			let logString = String.localizedStringWithFormat("Device Metadata received from: %@".localized, fromNum.toHex())
 			Logger.admin.info("🏷️ \(logString, privacy: .public)")
 
-			let fetchDescriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == fromNum })
+			let request = makeFetchRequest(for: NodeInfoEntity.self, predicate: NSPredicate(format: "num == %lld", fromNum))
 
 			do {
-				let fetchedNode = try modelContext.fetch(fetchDescriptor)
+				let fetchedNode = try fetch(request)
 				guard fromNum > 0 else { return }
 				let node = fetchedNode.first ?? findOrCreateNode(num: fromNum, context: modelContext)
 				let storedMetadata = node.metadata ?? DeviceMetadataEntity()
@@ -1112,8 +1148,8 @@ actor MeshPackets {
 	/// has, so it has no answer for them. Their stored heard-on-current-LoRa goes back to unknown,
 	/// rather than keeping an answer from an earlier download.
 	func markAbsentFromRadio(presentNums: Set<Int64>) {
-		let descriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.heardOnCurrentLora != nil })
-		guard let nodes = try? modelContext.fetch(descriptor) else { return }
+		let request = makeFetchRequest(for: NodeInfoEntity.self, predicate: NSPredicate(format: "heardOnCurrentLora != nil"))
+		guard let nodes = try? fetch(request) else { return }
 		for node in nodes where !presentNums.contains(node.num) {
 			node.heardOnCurrentLora = nil
 		}
@@ -1129,7 +1165,7 @@ actor MeshPackets {
 	}
 
 	func nodeInfoPacket (nodeInfo: NodeInfo, channel: UInt32, deferSave: Bool = false, connectedNodeNum: Int64? = nil,
-	                     reportsHeardOnCurrentLora: Bool = false) -> PersistentIdentifier? {
+	                     reportsHeardOnCurrentLora: Bool = false) -> NSManagedObjectID? {
 		// This path handles the connected device's local node-DB dump during wantConfig
 		// (FromRadio.nodeInfo), not packets that crossed the mesh — log it as admin/setup.
 		// Over-the-air NodeInfo arrives via upsertNodeInfoPacket and stays on .mesh.
@@ -1139,10 +1175,10 @@ actor MeshPackets {
 		guard nodeInfo.num > 0 else { return nil }
 
 		let nodeNum = Int64(nodeInfo.num)
-		let fetchDescriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == nodeNum })
+		let request = makeFetchRequest(for: NodeInfoEntity.self, predicate: NSPredicate(format: "num == %lld", nodeNum))
 
 		do {
-			let fetchedNode = try modelContext.fetch(fetchDescriptor)
+			let fetchedNode = try fetch(request)
 			// Not Found Insert
 			if fetchedNode.isEmpty && nodeInfo.num > 0 {
 
@@ -1196,10 +1232,8 @@ actor MeshPackets {
 						newUser.hwModel = String(describing: nodeInfo.user.hwModel).uppercased()
 						newUser.hwModelId = Int32(nodeInfo.user.hwModel.rawValue)
 						let hwModelValue = Int64(newUser.hwModelId)
-						let hwDescriptor = FetchDescriptor<DeviceHardwareEntity>(
-							predicate: #Predicate { $0.hwModel == hwModelValue }
-						)
-						if let hardware = try? modelContext.fetch(hwDescriptor) {
+						let hwRequest = makeFetchRequest(for: DeviceHardwareEntity.self, predicate: NSPredicate(format: "hwModel == %lld", hwModelValue))
+						if let hardware = try? fetch(hwRequest) {
 							newUser.hwDisplayName = HardwareCatalogResolver.presentation(for: hwModelValue, in: hardware)?.displayName
 						}
 						newUser.isLicensed = nodeInfo.user.isLicensed
@@ -1249,10 +1283,10 @@ actor MeshPackets {
 
 					// Look for a MyInfo
 					let myInfoNodeNum = Int64(nodeInfo.num)
-					let fetchMyInfoDescriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == myInfoNodeNum })
+					let myInfoRequest = makeFetchRequest(for: MyInfoEntity.self, predicate: NSPredicate(format: "myNodeNum == %lld", myInfoNodeNum))
 
 					do {
-						let fetchedMyInfo = try modelContext.fetch(fetchMyInfoDescriptor)
+						let fetchedMyInfo = try fetch(myInfoRequest)
 						if fetchedMyInfo.count > 0 {
 							newNode.myInfo = fetchedMyInfo[0]
 						}
@@ -1264,7 +1298,7 @@ actor MeshPackets {
 							// every maxDebounceDelay so a long dump isn't one giant save.
 							scheduleDebouncedSave()
 						}
-						return newNode.persistentModelID
+						return newNode.objectID
 					} catch {
 						Logger.data.error("Fetch MyInfo Error")
 					}
@@ -1337,10 +1371,8 @@ actor MeshPackets {
 						}
 						if let user = fetchedNode.first?.user {
 							let hwModelValue2 = Int64(user.hwModelId)
-							let hwDescriptor2 = FetchDescriptor<DeviceHardwareEntity>(
-								predicate: #Predicate { $0.hwModel == hwModelValue2 }
-							)
-							if let hardware = try? modelContext.fetch(hwDescriptor2) {
+							let hwRequest2 = makeFetchRequest(for: DeviceHardwareEntity.self, predicate: NSPredicate(format: "hwModel == %lld", hwModelValue2))
+							if let hardware = try? fetch(hwRequest2) {
 								user.hwDisplayName = HardwareCatalogResolver.presentation(for: hwModelValue2, in: hardware)?.displayName
 							}
 						}
@@ -1386,10 +1418,10 @@ actor MeshPackets {
 
 					// Look for a MyInfo
 					let myInfoNodeNum2 = Int64(nodeInfo.num)
-					let fetchMyInfoDescriptor2 = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == myInfoNodeNum2 })
+					let myInfoRequest2 = makeFetchRequest(for: MyInfoEntity.self, predicate: NSPredicate(format: "myNodeNum == %lld", myInfoNodeNum2))
 
 					do {
-						let fetchedMyInfo = try modelContext.fetch(fetchMyInfoDescriptor2)
+						let fetchedMyInfo = try fetch(myInfoRequest2)
 						if fetchedMyInfo.count > 0 {
 							fetchedNode[0].myInfo = fetchedMyInfo[0]
 						}
@@ -1399,7 +1431,7 @@ actor MeshPackets {
 						} else {
 							scheduleDebouncedSave()
 						}
-						return fetchedNode[0].persistentModelID
+						return fetchedNode[0].objectID
 					} catch {
 						Logger.data.error("💥 Fetch MyInfo Error")
 					}
@@ -1436,10 +1468,10 @@ actor MeshPackets {
 					Logger.admin.info("🥫 \(logString, privacy: .public)")
 
 					let packetFrom = Int64(packet.from)
-					let fetchDescriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == packetFrom })
+					let request = makeFetchRequest(for: NodeInfoEntity.self, predicate: NSPredicate(format: "num == %lld", packetFrom))
 
 					do {
-						let fetchedNode = try modelContext.fetch(fetchDescriptor)
+						let fetchedNode = try fetch(request)
 						if fetchedNode.count == 1 {
 							let messages =  String(cmmc.textFormatString())
 								.replacingOccurrences(of: "11: ", with: "")
@@ -1535,9 +1567,9 @@ actor MeshPackets {
 
 	private func adminResponseAck (packet: MeshPacket) {
 		let requestID = Int64(packet.decoded.requestID)
-		let fetchDescriptor = FetchDescriptor<MessageEntity>(predicate: #Predicate { $0.messageId == requestID })
+		let request = makeFetchRequest(for: MessageEntity.self, predicate: NSPredicate(format: "messageId == %lld", requestID))
 		do {
-			let fetchedMessage = try modelContext.fetch(fetchDescriptor)
+			let fetchedMessage = try fetch(request)
 			if fetchedMessage.count > 0 {
 				fetchedMessage[0].ackTimestamp = Int32(Date().timeIntervalSince1970)
 				fetchedMessage[0].ackError = Int32(RoutingError.none.rawValue)
@@ -1559,11 +1591,11 @@ actor MeshPackets {
 		Logger.mesh.info("[PAX Counter] packet received from \(packet.from.toHex(), privacy: .public)\(paxDetail, privacy: .public)")
 
 		let packetFrom = Int64(packet.from)
-		var fetchDescriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == packetFrom })
-		fetchDescriptor.fetchLimit = 1
+		let request = makeFetchRequest(for: NodeInfoEntity.self, predicate: NSPredicate(format: "num == %lld", packetFrom))
+		request.fetchLimit = 1
 
 		do {
-			let fetchedNode = try modelContext.fetch(fetchDescriptor)
+			let fetchedNode = try fetch(request)
 
 			if let paxMessage = try? Paxcount(serializedBytes: packet.decoded.payload) {
 				// Create the sending node when unheard, same as deviceMetadataPacket and
@@ -1594,10 +1626,10 @@ actor MeshPackets {
 			Logger.mesh.info("🕸️ \(logString, privacy: .public)")
 
 			let requestID = Int64(packet.decoded.requestID)
-			let fetchDescriptor = FetchDescriptor<MessageEntity>(predicate: #Predicate { $0.messageId == requestID })
+			let request = makeFetchRequest(for: MessageEntity.self, predicate: NSPredicate(format: "messageId == %lld", requestID))
 
 			do {
-				let fetchedMessage = try modelContext.fetch(fetchDescriptor)
+				let fetchedMessage = try fetch(request)
 				if fetchedMessage.count > 0 {
 					if fetchedMessage[0].toUser != nil {
 						// Real ACK from DM Recipient
@@ -1805,18 +1837,12 @@ actor MeshPackets {
 			let metricsType = telemetry.metricsType
 			let nodeNum = packetFrom
 			if shouldPruneTelemetryHistory(nodeNum: nodeNum, metricsType: metricsType) {
-				let countDescriptor = FetchDescriptor<TelemetryEntity>(
-					predicate: TelemetryEntity.predicate(forNode: nodeNum, metricsType: metricsType)
-				)
-				let currentCount = (try? modelContext.fetchCount(countDescriptor)) ?? 0
+				let countRequest = makeCountRequest(for: TelemetryEntity.self, predicate: TelemetryEntity.predicate(forNode: nodeNum, metricsType: metricsType))
+				let currentCount = (try? fetchCount(countRequest)) ?? 0
 				if currentCount > MeshPackets.maxTelemetryPerType {
 					let excess = currentCount - MeshPackets.maxTelemetryPerType
-					var pruneDescriptor = FetchDescriptor<TelemetryEntity>(
-						predicate: TelemetryEntity.predicate(forNode: nodeNum, metricsType: metricsType),
-						sortBy: [SortDescriptor(\TelemetryEntity.time, order: .forward)]
-					)
-					pruneDescriptor.fetchLimit = excess
-					let toDelete = (try? modelContext.fetch(pruneDescriptor)) ?? []
+					var pruneRequest = makeFetchRequest(for: TelemetryEntity.self, predicate: TelemetryEntity.predicate(forNode: nodeNum, metricsType: metricsType), sortDescriptors: [NSSortDescriptor(key: "time", ascending: true)], fetchLimit: excess)
+					let toDelete = (try? fetch(pruneRequest)) ?? []
 					for old in toDelete {
 						modelContext.delete(old)
 					}
@@ -1913,10 +1939,12 @@ actor MeshPackets {
 	///
 	/// Made `static` and context-injected (rather than reading `self.modelContext`) so the
 	/// phantom-tapback guard and body formatting can be exercised directly in unit tests.
-	static func reactionNotificationBody(replyID: Int64, emoji: String?, senderName: String, context: ModelContext) -> String? {
+	static func reactionNotificationBody(replyID: Int64, emoji: String?, senderName: String, context: NSManagedObjectContext) -> String? {
 		guard replyID > 0 else { return nil }
-		let descriptor = FetchDescriptor<MessageEntity>(predicate: #Predicate { $0.messageId == replyID })
-		guard let original = try? context.fetch(descriptor).first else { return nil }
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "messageId == %lld", replyID)
+		request.fetchLimit = 1
+		guard let original = try? context.fetch(request).first else { return nil }
 		let originalText = original.messagePayload ?? ""
 		let reactionEmoji = (emoji?.isEmpty == false) ? emoji! : "❤️"
 		// Mirrors how iMessage phrases a tapback notification ("Name liked …").
@@ -2028,9 +2056,9 @@ actor MeshPackets {
 				Logger.mesh.info("\(messageLabel, privacy: .public) packet received from \(packet.from.toHex(), privacy: .public) — \(messageDetail, privacy: .public)")
 				let toNum = Int64(packet.to)
 				let fromNum = Int64(packet.from)
-				let fetchDescriptor = FetchDescriptor<UserEntity>(predicate: #Predicate { $0.num == toNum || $0.num == fromNum })
+				let userRequest = makeFetchRequest(for: UserEntity.self, predicate: NSPredicate(format: "num == %lld OR num == %lld", toNum, fromNum))
 				do {
-					let fetchedUsers = try modelContext.fetch(fetchDescriptor)
+					let fetchedUsers = try fetch(userRequest)
 
 					// Dedupe: if we already have a row with this messageId, skip re-ingestion.
 					// messageId is @Attribute(.unique), so without this guard the radio echo
@@ -2041,8 +2069,9 @@ actor MeshPackets {
 					// replay of something already received live — lands on this row instead of
 					// inserting another one.
 					let packetId = Int64(storeForwardOriginalId != 0 ? storeForwardOriginalId : packet.id)
-					let existingDescriptor = FetchDescriptor<MessageEntity>(predicate: #Predicate { $0.messageId == packetId })
-					if let existing = try? modelContext.fetch(existingDescriptor), !existing.isEmpty {
+					let existingRequest = makeFetchRequest(for: MessageEntity.self, predicate: NSPredicate(format: "messageId == %lld", packetId))
+					existingRequest.fetchLimit = 1
+					if let existing = try? fetch(existingRequest), !existing.isEmpty {
 						Logger.data.debug("Skipping duplicate text message, messageId \(packetId, privacy: .public) already stored")
 						return
 					}
@@ -2140,8 +2169,8 @@ actor MeshPackets {
 						do {
 							let newUser = try createUser(num: Int64(truncatingIfNeeded: packet.from), context: modelContext)
 							// Reuse an existing NodeInfoEntity if present to avoid creating duplicates
-							let existingNodeFetchDescriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == fromNum })
-							let existingNodes = try modelContext.fetch(existingNodeFetchDescriptor)
+							let existingNodeRequest = makeFetchRequest(for: NodeInfoEntity.self, predicate: NSPredicate(format: "num == %lld", fromNum))
+							let existingNodes = try fetch(existingNodeRequest)
 							if let existingNode = existingNodes.first {
 								existingNode.user = newUser
 							} else {
@@ -2183,14 +2212,11 @@ actor MeshPackets {
 						// Keep message storage bounded without scanning the whole table
 						// after every incoming text.
 						if shouldPruneMessageHistory() {
-							let countDescriptor = FetchDescriptor<MessageEntity>()
-							let totalMessages = (try? modelContext.fetchCount(countDescriptor)) ?? 0
+							let countRequest = makeCountRequest(for: MessageEntity.self)
+							let totalMessages = (try? fetchCount(countRequest)) ?? 0
 							if totalMessages > MeshPackets.maxTotalMessages {
-								var oldestDescriptor = FetchDescriptor<MessageEntity>(
-									sortBy: [SortDescriptor(\MessageEntity.messageTimestamp, order: .forward)]
-								)
-								oldestDescriptor.fetchLimit = totalMessages - MeshPackets.maxTotalMessages
-								if let oldMessages = try? modelContext.fetch(oldestDescriptor) {
+								var oldestRequest = makeFetchRequest(for: MessageEntity.self, sortDescriptors: [NSSortDescriptor(key: "messageTimestamp", ascending: true)], fetchLimit: totalMessages - MeshPackets.maxTotalMessages)
+								if let oldMessages = try? fetch(oldestRequest) {
 									for old in oldMessages {
 										modelContext.delete(old)
 									}
@@ -2275,9 +2301,9 @@ actor MeshPackets {
 								}
 							}
 						} else if newMessage.fromUser != nil && newMessage.toUser == nil {
-							let myInfoFetchDescriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == connectedNode })
+							let myInfoRequest = makeFetchRequest(for: MyInfoEntity.self, predicate: NSPredicate(format: "myNodeNum == %lld", connectedNode))
 							do {
-								let fetchedMyInfo = try modelContext.fetch(myInfoFetchDescriptor)
+								let fetchedMyInfo = try fetch(myInfoRequest)
 								if let myInfo = fetchedMyInfo.first {
 									// Snapshot everything off this context NOW, synchronously, and capture only
 									// plain values into the deferred Task. The entity (and `newMessage`) must not
@@ -2331,8 +2357,10 @@ actor MeshPackets {
 											// entity (unreadMessages is @MainActor); never touch the captured
 											// MeshPackets entity, which a device switch may have invalidated.
 											let mainContext = PersistenceController.shared.context
-											let liveDescriptor = FetchDescriptor<MyInfoEntity>(predicate: #Predicate { $0.myNodeNum == connectedNodeNum })
-											if let liveMyInfo = try? mainContext.fetch(liveDescriptor).first {
+											let liveRequest = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
+											liveRequest.predicate = NSPredicate(format: "myNodeNum == %lld", connectedNodeNum)
+											liveRequest.fetchLimit = 1
+											if let liveMyInfo = try? mainContext.fetch(liveRequest).first {
 												appState?.unreadChannelMessages = liveMyInfo.unreadMessages(context: mainContext)
 											}
 										}
@@ -2369,18 +2397,18 @@ actor MeshPackets {
 			if let waypointMessage = try? Waypoint(serializedBytes: packet.decoded.payload) {
 				// Fetch waypoint by waypointMessage.id, not packet.id
 				let waypointId = Int64(waypointMessage.id)
-				let fetchWaypointDescriptor = FetchDescriptor<WaypointEntity>(predicate: #Predicate { $0.id == waypointId })
+				let waypointRequest = makeFetchRequest(for: WaypointEntity.self, predicate: NSPredicate(format: "id == %lld", waypointId))
 
-				let fetchedWaypoint = try modelContext.fetch(fetchWaypointDescriptor)
+				let fetchedWaypoint = try fetch(waypointRequest)
 				// A local-only waypoint must never be overwritten by a mesh packet that happens to
 				// share its id — ignore the incoming waypoint entirely for that id.
 				if fetchedWaypoint.first?.isLocal == true { return }
 				// Fetch the node info to get the short name
 				var nodeShortName: String = "?"
 				let packetFrom = Int64(packet.from)
-				let fetchNodeDescriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == packetFrom })
+				let nodeRequest = makeFetchRequest(for: NodeInfoEntity.self, predicate: NSPredicate(format: "num == %lld", packetFrom))
 				do {
-					let fetchedNode = try modelContext.fetch(fetchNodeDescriptor)
+					let fetchedNode = try fetch(nodeRequest)
 					if let node = fetchedNode.first, let user = node.user {
 						nodeShortName = user.shortName ?? node.user?.userId ?? String(packet.from.toHex())
 					}

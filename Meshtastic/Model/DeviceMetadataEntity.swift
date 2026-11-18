@@ -2,42 +2,64 @@
 //  DeviceMetadataEntity.swift
 //  Meshtastic
 //
-//  SwiftData model for device metadata.
+//  Core Data NSManagedObject subclass for device metadata.
+//  Converted from SwiftData for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
-import MeshtasticProtobufs
+import CoreData
 
-@Model
-final class DeviceMetadataEntity {
-	var canShutdown: Bool = false
-	var deviceStateVersion: Int32 = 0
-	var excludedModules: Int32 = 0
-	var firmwareVersion: String?
-	var hasBluetooth: Bool = false
-	var hasEthernet: Bool = false
-	var hasWifi: Bool = false
+@objc(DeviceMetadataEntity)
+public class DeviceMetadataEntity: NSManagedObject {
+
+	@NSManaged public var canShutdown: Bool
+	@NSManaged public var deviceStateVersion: Int32
+	@NSManaged public var excludedModules: Int32
+	@NSManaged public var firmwareVersion: String?
+	@NSManaged public var hasBluetooth: Bool
+	@NSManaged public var hasEthernet: Bool
+	@NSManaged public var hasWifi: Bool
 	/// Whether this firmware build includes XEdDSA packet signature verification.
 	/// Read-only capability: gates the Packet Authenticity policy selector in Security config.
-	var hasXeddsa: Bool = false
-	var hwModel: String?
-	var positionFlags: Int32 = 0
-	var role: Int32 = 0
-	var time: Date?
+	@NSManaged public var hasXeddsa: Bool
+	@NSManaged public var hwModel: String?
+	@NSManaged public var positionFlags: Int32
+	@NSManaged public var role: Int32
+	@NSManaged public var time: Date?
 	/// The radio's screen, from `DeviceMetadata.display`. Zero width and height mean the radio
 	/// reported no display: it has none, was built without screen mirroring, or runs older firmware.
-	var displayWidth: Int32 = 0
-	var displayHeight: Int32 = 0
+	@NSManaged public var displayWidth: Int32
+	@NSManaged public var displayHeight: Int32
 	/// Raw `DisplayFrame.Format` the radio's frames will use.
-	var displayFormat: Int32 = 0
+	@NSManaged public var displayFormat: Int32
 	/// Raw `DisplayInfo.PanelClass`.
-	var displayPanelClass: Int32 = 0
-	var displayHasTouch: Bool = false
+	@NSManaged public var displayPanelClass: Int32
+	@NSManaged public var displayHasTouch: Bool
 
-	var metadataNode: NodeInfoEntity?
+	@NSManaged public var metadataNode: NodeInfoEntity?
 
-	init() {}
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "DeviceMetadataEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.canShutdown = false
+		self.deviceStateVersion = 0
+		self.excludedModules = 0
+		self.firmwareVersion = nil
+		self.hasBluetooth = false
+		self.hasEthernet = false
+		self.hasWifi = false
+		self.hasXeddsa = false
+		self.hwModel = nil
+		self.positionFlags = 0
+		self.role = 0
+		self.time = nil
+		self.displayWidth = 0
+		self.displayHeight = 0
+		self.displayFormat = 0
+		self.displayPanelClass = 0
+		self.displayHasTouch = false
+		self.metadataNode = nil
+	}
 
 	/// Whether the radio can stream its screen to the app.
 	var hasDisplay: Bool {

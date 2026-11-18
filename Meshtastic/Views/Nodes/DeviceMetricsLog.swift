@@ -10,7 +10,7 @@ import OSLog
 
 struct DeviceMetricsLog: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -26,7 +26,7 @@ struct DeviceMetricsLog: View {
 	@State private var batteryChartColor: Color = .blue
 	@State private var airtimeChartColor: Color = .yellow
 	@State private var channelUtilizationChartColor: Color = .green
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	@State private var deviceMetrics: [TelemetryEntity] = []
 	@State private var chartData: [TelemetryEntity] = []
 	@State private var totalReadings = 0

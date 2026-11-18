@@ -6,15 +6,18 @@
 //  Copyright(c) Garth Vander Houwen 2026.
 //
 
-import SwiftData
+import CoreData
 import SwiftUI
 
 struct DiscoveryHistoryView: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-	@Query(sort: \DiscoverySessionEntity.timestamp, order: .reverse)
-	private var sessions: [DiscoverySessionEntity]
+	@FetchRequest(
+		entity: DiscoverySessionEntity.entity(),
+		sortDescriptors: [NSSortDescriptor(keyPath: \DiscoverySessionEntity.timestamp, ascending: false)]
+	)
+	private var sessions: FetchedResults<DiscoverySessionEntity>
 
 	var body: some View {
 		List {

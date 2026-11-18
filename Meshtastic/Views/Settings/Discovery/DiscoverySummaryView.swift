@@ -7,7 +7,7 @@
 //
 
 import OSLog
-import SwiftData
+import CoreData
 import SwiftUI
 #if canImport(FoundationModels)
 import FoundationModels
@@ -17,7 +17,7 @@ struct DiscoverySummaryView: View {
 	let session: DiscoverySessionEntity
 
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 
 	@State private var aiSummary: String = ""
 	@State private var isGeneratingAI: Bool = false

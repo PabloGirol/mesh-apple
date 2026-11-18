@@ -8,7 +8,7 @@
 import Foundation
 import MeshtasticProtobufs
 import OSLog
-@preconcurrency import SwiftData
+import CoreData
 
 /// Bridges CoT messages between TAK clients and the Meshtastic mesh network
 /// Handles bidirectional conversion and message routing
@@ -18,8 +18,8 @@ final class TAKMeshtasticBridge {
 	weak var accessoryManager: AccessoryManager?
 	weak var takServerManager: TAKServerManager?
 
-	/// SwiftData context for node lookups
-	var context: ModelContext?
+	/// Core Data context for node lookups
+	var context: NSManagedObjectContext?
 
 	/// Lookup table mapping callsigns to device UIDs
 	/// Populated when receiving PLI packets from other TAK users
@@ -572,14 +572,12 @@ final class TAKMeshtasticBridge {
 		
 		Logger.tak.info("Starting broadcast of all mesh nodes to TAK (excluding node \(connectedNodeNum))")
 		
-		// Fetch nodes heard within the last 2 hours that have user info
-		let descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.user != nil && $0.lastHeard != nil && $0.lastHeard! >= twoHoursAgo },
-			sortBy: [SortDescriptor(\NodeInfoEntity.lastHeard, order: .reverse)]
-		)
-		
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "user != nil AND lastHeard != nil AND lastHeard >= %@", twoHoursAgo as NSDate)
+		request.sortDescriptors = [NSSortDescriptor(key: "lastHeard", ascending: false)]
+
 		do {
-			let nodes = try context.fetch(descriptor)
+			let nodes = try context.fetch(request)
 			Logger.tak.info("Found \(nodes.count) total nodes with user info, connected node: \(connectedNodeNum)")
 			
 			var broadcastCount = 0
@@ -629,13 +627,12 @@ final class TAKMeshtasticBridge {
 	private func lookupNodeInfo(nodeNum: UInt32) -> NodeInfoEntity? {
 		let context = PersistenceController.shared.context
 		let nodeNumInt64 = Int64(nodeNum)
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.num == nodeNumInt64 }
-		)
-		descriptor.fetchLimit = 1
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", nodeNumInt64)
+		request.fetchLimit = 1
 
 		do {
-			return try context.fetch(descriptor).first
+			return try context.fetch(request).first
 		} catch {
 			Logger.tak.warning("Failed to lookup node info for \(nodeNum): \(error.localizedDescription)")
 			return nil

@@ -3,19 +3,21 @@
 //  Meshtastic
 //
 
+import CoreData
 import SwiftUI
-import SwiftData
 
 struct DeviceLinksSection: View {
 	let platformioTarget: String
-	@Query var allLinks: [DeviceLinkEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \DeviceLinkEntity.shortCode, ascending: true)],
+		animation: .default
+	)
+	var allLinks: FetchedResults<DeviceLinkEntity>
 	@Environment(\.openURL) private var openURL
 	@State private var isExpanded: Bool = false
 
 	init(platformioTarget: String) {
 		self.platformioTarget = platformioTarget
-		// Fetch all links — we filter in the view since #Predicate doesn't support contains on arrays.
-		_allLinks = Query(sort: [SortDescriptor(\DeviceLinkEntity.shortCode)])
 	}
 
 	/// Links that apply to this device, region-filtered for marketplaces.

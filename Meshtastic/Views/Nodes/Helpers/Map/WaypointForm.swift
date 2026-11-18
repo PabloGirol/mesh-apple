@@ -10,14 +10,14 @@ import MapKit
 import MeshtasticProtobufs
 import OSLog
 import SwiftUI
-@preconcurrency import SwiftData
+import CoreData
 
 struct WaypointForm: View {
 
 	@EnvironmentObject var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.dismiss) private var dismiss
-	@State var waypoint: WaypointEntity
+	var waypoint: WaypointEntity
 	let distanceFormatter = MKDistanceFormatter()
 	@State var editMode: Bool = false
 	@FocusState private var iconIsFocused: Bool
@@ -722,13 +722,12 @@ struct WaypointForm: View {
 		// --- Fetch createdBy node ---
 		if waypoint.createdBy != 0 {
 			let createdByNum = Int64(waypoint.createdBy)
-			var createdByDescriptor = FetchDescriptor<NodeInfoEntity>(
-				predicate: #Predicate<NodeInfoEntity> { $0.num == createdByNum }
-			)
-			createdByDescriptor.fetchLimit = 1
+			let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+			request.predicate = NSPredicate(format: "num == %lld", createdByNum)
+			request.fetchLimit = 1
 
 			do {
-				let nodes = try context.fetch(createdByDescriptor)
+				let nodes = try context.fetch(request)
 				createdByNode = nodes.first
 			} catch {
 				Logger.services.warning("Error fetching createdBy node: \(error.localizedDescription)")
@@ -739,13 +738,12 @@ struct WaypointForm: View {
 		if waypoint.lastUpdatedBy != 0,
 		   waypoint.lastUpdatedBy != waypoint.createdBy {
 			let updatedByNum = Int64(waypoint.lastUpdatedBy)
-			var updatedByDescriptor = FetchDescriptor<NodeInfoEntity>(
-				predicate: #Predicate<NodeInfoEntity> { $0.num == updatedByNum }
-			)
-			updatedByDescriptor.fetchLimit = 1
+			let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+			request.predicate = NSPredicate(format: "num == %lld", updatedByNum)
+			request.fetchLimit = 1
 
 			do {
-				let nodes = try context.fetch(updatedByDescriptor)
+				let nodes = try context.fetch(request)
 				lastUpdatedByNode = nodes.first
 			} catch {
 				Logger.services.warning("Error fetching lastUpdatedBy node: \(error.localizedDescription)")

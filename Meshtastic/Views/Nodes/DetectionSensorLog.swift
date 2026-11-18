@@ -5,14 +5,14 @@
 //  Created by Ben on 8/22/23.
 //
 
-import SwiftUI
-@preconcurrency import SwiftData
 import Charts
+import CoreData
 import MeshtasticProtobufs
 import OSLog
+import SwiftUI
 
 struct DetectionSensorLog: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
 	/// Table on iPhone shows only its first column, even in a regular size class.
@@ -23,7 +23,7 @@ struct DetectionSensorLog: View {
 	@State private var isPresentingClearLogConfirm: Bool = false
 	@State var isExporting = false
 	@State var exportString = ""
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	@State private var detections: [MessageEntity] = []
 	@State private var chartData: [MessageEntity] = []
 
@@ -159,14 +159,11 @@ struct DetectionSensorLog: View {
 		}
 		let portNum: Int32 = 10
 		let sevenDaysAgoTimestamp = Int32((Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date.distantPast).timeIntervalSince1970)
-		var descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> {
-				$0.portNum == portNum && $0.messageTimestamp >= sevenDaysAgoTimestamp && $0.fromUser?.num == nodeNum
-			},
-			sortBy: [SortDescriptor(\MessageEntity.messageTimestamp, order: .reverse)]
-		)
-		descriptor.fetchLimit = 500
-		detections = (try? context.fetch(descriptor)) ?? []
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "portNum == %d AND messageTimestamp >= %d AND fromUser.num == %lld", portNum, sevenDaysAgoTimestamp, nodeNum)
+		request.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: false)]
+		request.fetchLimit = 500
+		detections = (try? context.fetch(request)) ?? []
 		let oneDayAgo = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date.distantPast
 		chartData = detections
 			.filter { $0.timestamp >= oneDayAgo }

@@ -4,10 +4,26 @@
 //
 //  Copyright(c) Garth Vander Houwen 10/3/22.
 
-@preconcurrency import SwiftData
+import CoreData
 import CoreLocation
 import MeshtasticProtobufs
 import OSLog
+
+// Helper to create NSFetchRequest with predicate for NodeInfoEntity by num
+private func nodeFetchRequest(num: Int64) -> NSFetchRequest<NodeInfoEntity> {
+    let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+    request.predicate = NSPredicate(format: "num == %lld", num)
+    request.fetchLimit = 1
+    return request
+}
+
+// Helper to create NSFetchRequest with predicate for UserEntity by num
+private func userFetchRequest(num: Int64) -> NSFetchRequest<UserEntity> {
+    let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+    request.predicate = NSPredicate(format: "num == %lld", num)
+    request.fetchLimit = 1
+    return request
+}
 
 extension MeshPackets {
 	public func clearStaleNodes(nodeExpireDays: Int) -> Bool {
@@ -17,21 +33,18 @@ extension MeshPackets {
 		var nodePKIExpireTime: TimeInterval {
 			return TimeInterval((nodeExpireDays < 7 ? -7 : -nodeExpireDays) * 86400)
 		}
-		
+
 		if nodeExpireDays == 0 {
 			Logger.data.info("💾 [NodeInfoEntity] Skip clearing stale nodes")
 			return false
 		}
 		let expireDate = Date(timeIntervalSinceNow: nodeExpireTime)
 		let pkiExpireDate = Date(timeIntervalSinceNow: nodePKIExpireTime)
-		let descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { node in
-				node.favorite == false && node.ignored == false && node.lastHeard != nil
-			}
-		)
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "favorite == NO AND ignored == NO AND lastHeard != nil")
 		do {
 			Logger.data.info("💾 [NodeInfoEntity] Clearing nodes older than \(nodeExpireDays) days")
-			let candidates = try modelContext.fetch(descriptor)
+			let candidates = try fetch(request)
 			let staleNodes = candidates.filter { node in
 				guard let lastHeard = node.lastHeard else { return false }
 				if node.user?.pkiEncrypted == true {
@@ -61,12 +74,11 @@ extension MeshPackets {
 	
 	func clearPax(destNum: Int64) -> Bool {
 		let num = destNum
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.num == num }
-		)
-		descriptor.fetchLimit = 1
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", num)
+		request.fetchLimit = 1
 		do {
-			if let node = try modelContext.fetch(descriptor).first {
+			if let node = try modelContext.fetch(request).first {
 				node.pax = []
 				try modelContext.save()
 				return true
@@ -79,12 +91,11 @@ extension MeshPackets {
 	
 	public func clearPositions(destNum: Int64) -> Bool {
 		let num = destNum
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.num == num }
-		)
-		descriptor.fetchLimit = 1
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", num)
+		request.fetchLimit = 1
 		do {
-			if let node = try modelContext.fetch(descriptor).first {
+			if let node = try modelContext.fetch(request).first {
 				node.positions = []
 				try modelContext.save()
 				return true
@@ -94,19 +105,17 @@ extension MeshPackets {
 		}
 		return false
 	}
-	
+
 	public func clearTelemetry(destNum: Int64, metricsType: Int32) -> Bool {
 		let num = destNum
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.num == num }
-		)
-		descriptor.fetchLimit = 1
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", num)
+		request.fetchLimit = 1
 		do {
-			if try modelContext.fetch(descriptor).first != nil {
-				let telemetryDescriptor = FetchDescriptor<TelemetryEntity>(
-					predicate: TelemetryEntity.predicate(forNode: num, metricsType: metricsType)
-				)
-				for entity in try modelContext.fetch(telemetryDescriptor) {
+			if try modelContext.fetch(request).first != nil {
+				let telemetryRequest = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+				telemetryRequest.predicate = TelemetryEntity.predicate(forNode: num, metricsType: metricsType)
+				for entity in try modelContext.fetch(telemetryRequest) {
 					modelContext.delete(entity)
 				}
 				try modelContext.save()
@@ -120,13 +129,10 @@ extension MeshPackets {
 	
 	public func deleteChannelMessages(channel: ChannelEntity) {
 		let channelIndex = channel.index
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { msg in
-				msg.channel == channelIndex && msg.isEmoji == false
-			}
-		)
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "channel == %d AND isEmoji == NO", channelIndex)
 		do {
-			let objects = try modelContext.fetch(descriptor)
+			let objects = try modelContext.fetch(request)
 			for object in objects where object.toUser == nil {
 				modelContext.delete(object)
 			}
@@ -135,24 +141,20 @@ extension MeshPackets {
 			Logger.data.error("💥 [MessageEntity] Error deleting channel messages: \(error.localizedDescription, privacy: .public)")
 		}
 	}
-	
+
 	public func deleteUserMessages(userNum: Int64) {
 		// Fetch in this actor's OWN ModelContext (mirrors deleteChannelMessages and the DM message
 		// list's own query), keyed on the scalar `num`. The previous version read
 		// `user.sentMessages`/`receivedMessages` off a UserEntity handed in from the view's context:
 		// across the actor/context boundary those relationships resolved empty, and deleting
 		// foreign-context objects through this context was a no-op — so deleting a DM did nothing.
-		// Keep only the selective OR in the #Predicate: the full five-term compound (two
-		// optional-chained comparisons + three scalar tests) blows the #Predicate macro's
-		// type-check budget — the same limit documented in UserMessageList's ACK counts.
-		// The scalar screens run in-memory over the (small) single-conversation result.
-		let descriptor = FetchDescriptor<MessageEntity>(
-			predicate: #Predicate<MessageEntity> { msg in
-				msg.fromUser?.num == userNum || msg.toUser?.num == userNum
-			}
-		)
+		// Keep only the selective OR in the predicate: the full compound (two
+		// optional-chained comparisons + three scalar tests) is complex; the scalar screens run
+		// in-memory over the (small) single-conversation result.
+		let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		request.predicate = NSPredicate(format: "fromUser.num == %lld OR toUser.num == %lld", userNum, userNum)
 		do {
-			let objects = try modelContext.fetch(descriptor).filter { msg in
+			let objects = try modelContext.fetch(request).filter { msg in
 				msg.toUser != nil && msg.isEmoji == false && msg.admin == false && msg.portNum != 10
 			}
 			for object in objects {
@@ -192,7 +194,7 @@ extension MeshPackets {
 			// still references them ("Constraint trigger violation" — which aborted the whole clear
 			// and quietly left EVERY entity in place, the direct cause of one radio's nodes
 			// surviving into another radio's session). Save the severing before the batch deletes.
-			let hardwareDevices = try modelContext.fetch(FetchDescriptor<DeviceHardwareEntity>())
+			let hardwareDevices = try modelContext.fetch(makeFetchRequest(for: DeviceHardwareEntity.self))
 			for device in hardwareDevices {
 				device.tags.removeAll()
 				device.images.removeAll()
@@ -214,10 +216,9 @@ extension MeshPackets {
 			// empty — otherwise we'd delete the very favorites we were asked to preserve.
 			var favoriteNodeNums: Set<Int64> = []
 			if preserveFavorites {
-				let favDescriptor = FetchDescriptor<NodeInfoEntity>(
-					predicate: #Predicate<NodeInfoEntity> { $0.favorite == true }
-				)
-				favoriteNodeNums = Set(try modelContext.fetch(favDescriptor).map(\.num))
+				let favRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+				favRequest.predicate = NSPredicate(format: "favorite == YES")
+				favoriteNodeNums = Set((try? modelContext.fetch(favRequest))?.map(\.num) ?? [])
 			}
 
 			for modelType in MeshtasticSchema.allModels {
@@ -233,12 +234,9 @@ extension MeshPackets {
 				if preserveFavorites && modelType == NodeInfoEntity.self {
 					// Keep favorited nodes so the device and app stay in sync when the
 					// firmware is told to preserve favorites (nodedbReset = true).
-					let descriptor = FetchDescriptor<NodeInfoEntity>(
-						predicate: #Predicate<NodeInfoEntity> { node in
-							node.favorite == false
-						}
-					)
-					for node in try modelContext.fetch(descriptor) {
+					let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+					request.predicate = NSPredicate(format: "favorite == NO")
+					for node in try modelContext.fetch(request) {
 						modelContext.delete(node)
 					}
 					try commit()
@@ -246,7 +244,8 @@ extension MeshPackets {
 				}
 				if preserveFavorites && modelType == UserEntity.self {
 					// Only delete users not belonging to favorite nodes.
-					for user in try modelContext.fetch(FetchDescriptor<UserEntity>()) {
+					let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+					for user in try modelContext.fetch(request) {
 						if let userNodeNum = user.userNode?.num, favoriteNodeNums.contains(userNodeNum) {
 							continue
 						}
@@ -272,10 +271,10 @@ extension MeshPackets {
 		// - snr
 		// - via_mqtt
 		// - hops_away
-		
+
 		guard packet.from > 0 else { return }
 		guard packet.from != activeDeviceNum else { return }
-		
+
 		// Skip routing packets with no rxTime — these are locally-generated implicit ACKs
 		// that don't represent actual RF contact with the remote node.
 		let isImplicitAck = packet.decoded.portnum == .routingApp && packet.rxTime == 0
@@ -285,18 +284,17 @@ extension MeshPackets {
 		let isReplay = packet.transportMechanism == .transportLora && !packet.hasRxRssi
 		// Signal values only mean something for a packet this radio just received over the air.
 		let isLiveLora = packet.hasRxRssi && !packet.viaMqtt
-		
+
 		let num = Int64(packet.from)
-		var descriptor = FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.num == num }
-		)
-		descriptor.fetchLimit = 1
-		
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", num)
+		request.fetchLimit = 1
+
 		do {
-			if let node = try modelContext.fetch(descriptor).first {
+			if let node = try modelContext.fetch(request).first {
 				node.id = Int64(packet.from)
 				node.num = Int64(packet.from)
-				
+
 				// Single source of truth for lastHeard on received packets: this runs for
 				// every packet (mirroring firmware NodeDB::updateFrom), so the per-packet
 				// handlers no longer touch lastHeard for remote nodes.
@@ -308,7 +306,7 @@ extension MeshPackets {
 						node.lastHeard = heard
 					}
 				}
-				
+
 				if isLiveLora {
 					node.snr = packet.rxSnr
 					node.rssi = packet.rxRssi
@@ -322,13 +320,13 @@ extension MeshPackets {
 				if reportsHeardOnCurrentLora && !isImplicitAck && !packet.viaMqtt && packet.hasRxRssi {
 					node.heardOnCurrentLora = true
 				}
-				
+
 				// MQTT packets still count: their hops are to the gateway, as on the radio.
 				if !isReplay && packet.hopStart != 0 && packet.hopLimit <= packet.hopStart {
 					node.hopsAway = Int32(truncatingIfNeeded: packet.hopStart - packet.hopLimit)
 					Logger.data.debug("💾 [updateAnyPacketFrom] Updating node \(packet.from.toHex(), privacy: .public) hopsAway=\(node.hopsAway)")
 				}
-				
+
 				// Changes are saved by the subsequent packet handler's save call
 				Logger.data.debug("💾 [updateAnyPacketFrom] Updated node \(node.num.toHex(), privacy: .public) snr=\(node.snr), rssi=\(node.rssi) from packet \(packet.id.toHex(), privacy: .public)")
 			}
@@ -381,14 +379,13 @@ extension MeshPackets {
 		}
 
 		guard packet.from > 0 else { return }
-		
+
 		let fetchNum = Int64(packet.from)
-		var fetchNodeInfoAppRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-		fetchNodeInfoAppRequest.fetchLimit = 1
-		
+		let request = makeFetchRequest(for: NodeInfoEntity.self, predicate: NSPredicate(format: "num == %lld", fetchNum), fetchLimit: 1)
+
 		do {
-			
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoAppRequest)
+
+			let fetchedNode = try fetch(request)
 			if fetchedNode.count == 0 {
 				// Not Found Insert. Use findOrCreateNode (not a bare insert): NodeInfoEntity.num is
 				// @Attribute(.unique), and the fetch above only sees SAVED rows — a crafted second
@@ -472,10 +469,8 @@ extension MeshPackets {
 						}
 						
 						let fetchHwModel1 = Int64(newUser.hwModelId)
-						let hwDescriptor1 = FetchDescriptor<DeviceHardwareEntity>(
-							predicate: #Predicate { $0.hwModel == fetchHwModel1 }
-						)
-						if let hardware = try? modelContext.fetch(hwDescriptor1) {
+						let hwRequest1 = makeFetchRequest(for: DeviceHardwareEntity.self, predicate: NSPredicate(format: "hwModel == %lld", fetchHwModel1))
+						if let hardware = try? fetch(hwRequest1) {
 							newUser.hwDisplayName = HardwareCatalogResolver.presentation(for: fetchHwModel1, in: hardware)?.displayName
 						}
 						newNode.user = newUser
@@ -579,10 +574,8 @@ extension MeshPackets {
 						fetchedNode[0].user?.applyInboundPublicKey(nodeInfoMessage.user.publicKey, nodeNum: Int64(nodeInfoMessage.num))
 						if let user = fetchedNode.first?.user {
 							let fetchHwModel2 = Int64(user.hwModelId)
-							let hwDescriptor2 = FetchDescriptor<DeviceHardwareEntity>(
-								predicate: #Predicate { $0.hwModel == fetchHwModel2 }
-							)
-							if let hardware = try? modelContext.fetch(hwDescriptor2) {
+							let hwRequest2 = makeFetchRequest(for: DeviceHardwareEntity.self, predicate: NSPredicate(format: "hwModel == %lld", fetchHwModel2))
+							if let hardware = try? fetch(hwRequest2) {
 								user.hwDisplayName = HardwareCatalogResolver.presentation(for: fetchHwModel2, in: hardware)?.displayName
 							}
 						}
@@ -661,17 +654,16 @@ extension MeshPackets {
 	func upsertPositionPacket (packet: MeshPacket) {
 
 		Logger.mesh.info("📍 [Position] packet received from \(packet.from.toHex(), privacy: .public)\(self.positionLogDetails(from: packet), privacy: .public)")
-		
+
 		let fetchNum = Int64(packet.from)
-			var fetchNodePositionRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodePositionRequest.fetchLimit = 1
+		let request = makeFetchRequest(for: NodeInfoEntity.self, predicate: NSPredicate(format: "num == %lld", fetchNum), fetchLimit: 1)
 		do {
 			
 			if let positionMessage = try? Position(serializedBytes: packet.decoded.payload) {
 				
 				/// Don't save placeholder position packets from null island (0, 0) or Apple Park.
 				if positionMessage.hasValidCoordinates {
-					var fetchedNode = try modelContext.fetch(fetchNodePositionRequest)
+					var fetchedNode = try fetch(request)
 					// Create a stub node if one doesn't exist yet — it will be updated when the NodeInfo packet arrives
 					if fetchedNode.isEmpty {
 						let newNode = findOrCreateNode(num: Int64(packet.from), context: modelContext)
@@ -753,18 +745,13 @@ extension MeshPackets {
 						// Keep the history cap as a soft cap during packet bursts; the
 						// count/sort/delete prune pass is expensive with large node stores.
 						if shouldPrunePositionHistory(for: posNum) {
-							let countDescriptor = FetchDescriptor<PositionEntity>(
-								predicate: #Predicate<PositionEntity> { $0.nodePosition?.num == posNum }
-							)
-							let totalCount = try modelContext.fetchCount(countDescriptor)
+							let countRequest = makeFetchRequest(for: PositionEntity.self, predicate: NSPredicate(format: "nodePosition.num == %lld", posNum))
+							countRequest.includesPendingChanges = false
+							let totalCount = try fetchCount(countRequest)
 							if totalCount > MeshPackets.maxPositionHistoryPerNode {
 								let excess = totalCount - MeshPackets.maxPositionHistoryPerNode
-								var pruneDescriptor = FetchDescriptor<PositionEntity>(
-									predicate: #Predicate<PositionEntity> { $0.nodePosition?.num == posNum && $0.latest == false },
-									sortBy: [SortDescriptor(\PositionEntity.time, order: .forward)]
-								)
-								pruneDescriptor.fetchLimit = excess
-								let toDelete = try modelContext.fetch(pruneDescriptor)
+								let pruneRequest = makeFetchRequest(for: PositionEntity.self, predicate: NSPredicate(format: "nodePosition.num == %lld AND latest == NO", posNum), sortDescriptors: [NSSortDescriptor(key: "time", ascending: true)], fetchLimit: excess)
+								let toDelete = try modelContext.fetch(pruneRequest)
 								for old in toDelete {
 									modelContext.delete(old)
 								}
@@ -793,23 +780,21 @@ extension MeshPackets {
 	/// node succeeded. Never cleared once set; gates admin-only UI (like the status message
 	/// editor) for nodes other than the connected one.
 	func markNodeAdministered(num: Int64) {
-		var descriptor = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == num })
-		descriptor.fetchLimit = 1
-		guard let node = try? modelContext.fetch(descriptor).first, !node.hasBeenAdministered else { return }
+			let request = nodeFetchRequest(num: num)
+			guard let node = try? fetch(request).first, !node.hasBeenAdministered else { return }
 		node.hasBeenAdministered = true
 		savePendingChanges()
 	}
 
 	func upsertBluetoothConfigPacket(config: Config.BluetoothConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("Bluetooth config received: %@".localized, String(nodeNum))
 		Logger.admin.info("📶 \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save Device Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].bluetoothConfig == nil {
@@ -840,14 +825,13 @@ extension MeshPackets {
 	}
 	
 	func upsertDeviceConfigPacket(config: Config.DeviceConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("Device config received: %@".localized, String(nodeNum))
 		Logger.admin.info("📟 \(logString, privacy: .public)")
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save Device Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].deviceConfig == nil {
@@ -890,15 +874,14 @@ extension MeshPackets {
 	}
 	
 	func upsertDisplayConfigPacket(config: Config.DisplayConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("Display config received: %@".localized, nodeNum.toHex())
 		Logger.data.info("🖥️ \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save Device Config
 			if !fetchedNode.isEmpty {
 				
@@ -946,15 +929,14 @@ extension MeshPackets {
 	}
 	
 	func upsertLoRaConfigPacket(config: Config.LoRaConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("LoRa config received: %@".localized, nodeNum.toHex())
 		Logger.data.info("📻 \(logString, privacy: .public)")
-		
+
 		let fetchNum = nodeNum
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save LoRa Config
 			if fetchedNode.count > 0 {
 				if fetchedNode[0].loRaConfig == nil {
@@ -1015,15 +997,14 @@ extension MeshPackets {
 	}
 	
 	func upsertNetworkConfigPacket(config: Config.NetworkConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("Network config received: %@".localized, String(nodeNum))
 		Logger.data.info("🌐 \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save WiFi Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].networkConfig == nil {
@@ -1072,15 +1053,14 @@ extension MeshPackets {
 	}
 	
 	func upsertPositionConfigPacket(config: Config.PositionConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("Position config received: %@".localized, String(nodeNum))
 		Logger.data.info("🗺️ \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save LoRa Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].positionConfig == nil {
@@ -1133,12 +1113,11 @@ extension MeshPackets {
 	func upsertPowerConfigPacket(config: Config.PowerConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
 		let logString = String.localizedStringWithFormat("Power config received: %@".localized, String(nodeNum))
 		Logger.data.info("🗺️ \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save Power Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].powerConfig == nil {
@@ -1190,12 +1169,11 @@ extension MeshPackets {
 
 		let logString = String.localizedStringWithFormat("Security config received: @".localized, String(nodeNum))
 		Logger.data.info("🛡️ \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save Security Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].securityConfig == nil {
@@ -1241,10 +1219,9 @@ extension MeshPackets {
 		Logger.data.info("🔊 \(logString, privacy: .public)")
 
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].audioConfig == nil {
 					let newAudioConfig = AudioConfigEntity()
@@ -1282,15 +1259,14 @@ extension MeshPackets {
 	}
 
 	func upsertAmbientLightingModuleConfigPacket(config: ModuleConfig.AmbientLightingConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("Ambient Lighting module config received: %@".localized, String(nodeNum))
 		Logger.data.info("🏮 \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save Ambient Lighting Config
 			if !fetchedNode.isEmpty {
 				
@@ -1320,15 +1296,14 @@ extension MeshPackets {
 	}
 	
 	func upsertCannedMessagesModuleConfigPacket(config: ModuleConfig.CannedMessageConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("Canned Message module config received: %@".localized, String(nodeNum))
 		Logger.data.info("🥫 \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save Canned Message Config
 			if !fetchedNode.isEmpty {
 				
@@ -1375,15 +1350,14 @@ extension MeshPackets {
 	}
 
 	func upsertDetectionSensorModuleConfigPacket(config: ModuleConfig.DetectionSensorConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("Detection Sensor module config received: %@".localized, String(nodeNum))
 		Logger.data.info("🕵️ \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save Detection Sensor Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].detectionSensorConfig == nil {
@@ -1431,10 +1405,9 @@ extension MeshPackets {
 		Logger.data.info("📡 \(logString, privacy: .public)")
 
 		let fetchNum = Int64(nodeNum)
-		var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-		fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save Mesh Beacon Config
 			if !fetchedNode.isEmpty {
 				let entity: MeshBeaconConfigEntity
@@ -1488,15 +1461,14 @@ extension MeshPackets {
 	}
 
 	func upsertExternalNotificationModuleConfigPacket(config: ModuleConfig.ExternalNotificationConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("External Notification module config received: %@".localized, String(nodeNum))
 		Logger.data.info("📣 \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save External Notificaitone Config
 			if !fetchedNode.isEmpty {
 				
@@ -1557,10 +1529,9 @@ extension MeshPackets {
 		Logger.data.info("🏘️ \(logString, privacy: .public)")
 
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].neighborInfoConfig == nil {
 					let newConfig = NeighborInfoConfigEntity()
@@ -1590,15 +1561,14 @@ extension MeshPackets {
 	}
 
 	func upsertPaxCounterModuleConfigPacket(config: ModuleConfig.PaxcounterConfig, nodeNum: Int64, sessionPasskey: Data? = nil) {
-		
+
 		let logString = String.localizedStringWithFormat("PAX Counter config received: %@".localized, String(nodeNum))
 		Logger.data.info("🧑‍🤝‍🧑 \(logString, privacy: .public)")
-		
+
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try fetch(request)
 			// Found a node, save PAX Counter Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].paxCounterConfig == nil {
@@ -1636,10 +1606,9 @@ extension MeshPackets {
 		Logger.data.info("⛰️ \(logString, privacy: .public)")
 		
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
-		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let request = nodeFetchRequest(num: fetchNum)
+			do {
+				let fetchedNode = try modelContext.fetch(request)
 			// Found a node, save RTTTL Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].rtttlConfig == nil {
@@ -1671,10 +1640,9 @@ extension MeshPackets {
 		Logger.data.info("🌉 \(logString, privacy: .public)")
 		
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
-		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let request = nodeFetchRequest(num: fetchNum)
+			do {
+				let fetchedNode = try modelContext.fetch(request)
 			// Found a node, save MQTT Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].mqttConfig == nil {
@@ -1730,10 +1698,9 @@ extension MeshPackets {
 		Logger.data.info("⛰️ \(logString, privacy: .public)")
 		
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
-		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let request = nodeFetchRequest(num: fetchNum)
+			do {
+				let fetchedNode = try modelContext.fetch(request)
 			// Found a node, save Device Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].rangeTestConfig == nil {
@@ -1769,10 +1736,9 @@ extension MeshPackets {
 		Logger.data.info("🤖 \(logString, privacy: .public)")
 		
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
-		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let request = nodeFetchRequest(num: fetchNum)
+			do {
+				let fetchedNode = try modelContext.fetch(request)
 			// Found a node, save Device Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].serialConfig == nil {
@@ -1817,10 +1783,9 @@ extension MeshPackets {
 		Logger.data.info("📬 \(logString, privacy: .public)")
 
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
-		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let request = nodeFetchRequest(num: fetchNum)
+			do {
+				let fetchedNode = try modelContext.fetch(request)
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].statusMessageConfig == nil {
 					let newConfig = StatusMessageConfigEntity()
@@ -1863,10 +1828,9 @@ extension MeshPackets {
 		let logString = String.localizedStringWithFormat("Node status received: %@".localized, String(fetchNum))
 		Logger.data.info("📬 \(logString, privacy: .public)")
 
-		var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-		fetchNodeInfoRequest.fetchLimit = 1
+		let request = nodeFetchRequest(num: fetchNum)
 		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let fetchedNode = try modelContext.fetch(request)
 			guard !fetchedNode.isEmpty else {
 				Logger.data.error("💥 [NodeStatus] No node found matching \(fetchNum.toHex(), privacy: .public) unable to save node status")
 				return
@@ -1886,10 +1850,9 @@ extension MeshPackets {
 		Logger.data.info("📬 \(logString, privacy: .public)")
 		
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
-		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let request = nodeFetchRequest(num: fetchNum)
+			do {
+				let fetchedNode = try modelContext.fetch(request)
 			// Found a node, save Store & Forward Sensor Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].storeForwardConfig == nil {
@@ -1933,10 +1896,9 @@ extension MeshPackets {
 		Logger.data.info("📈 \(logString, privacy: .public)")
 		
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
-		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let request = nodeFetchRequest(num: fetchNum)
+			do {
+				let fetchedNode = try modelContext.fetch(request)
 			// Found a node, save Telemetry Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].telemetryConfig == nil {
@@ -1990,10 +1952,9 @@ extension MeshPackets {
 		Logger.data.info("🎯 \(logString, privacy: .public)")
 
 		let fetchNum = Int64(nodeNum)
-			var fetchNodeInfoRequest = FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { $0.num == fetchNum })
-			fetchNodeInfoRequest.fetchLimit = 1
-		do {
-			let fetchedNode = try modelContext.fetch(fetchNodeInfoRequest)
+			let request = nodeFetchRequest(num: fetchNum)
+			do {
+				let fetchedNode = try modelContext.fetch(request)
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].takConfig == nil {
 					let newTAKConfig = TAKConfigEntity()

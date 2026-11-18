@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import CoreLocation
 import MapKit
 
@@ -33,12 +33,12 @@ private struct NodeMapContentEquatableWrapper<Content: View>: View, Equatable {
 struct NodeMapSwiftUI: View {
 	private let visiblePositionLimit = 1_000
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@Environment(\.displayScale) private var displayScale
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	/// Parameters
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	@State var showUserLocation: Bool = false
 	@State private var positions: [PositionEntity] = []
 	@State private var totalPositionCount = 0
@@ -66,9 +66,9 @@ struct NodeMapSwiftUI: View {
 	@State private var mapRegion = MKCoordinateRegion.init()
 
 	var body: some View {
-		// isDeleted too: a deleted-but-unsaved node keeps its modelContext until the save
+		// isDeleted too: a deleted-but-unsaved node keeps its managedObjectContext until the save
 		// completes, and reading its persisted properties in that window traps.
-		if node.modelContext != nil && !node.isDeleted {
+		if !node.isDeleted {
 			Group {
 				if totalPositionCount > 0 {
 					mapWithNavigation

@@ -8,6 +8,7 @@
 import CoreGraphics
 import Foundation
 import MeshtasticProtobufs
+import Combine
 
 /// The views that can ask for the radio's screen. The stream stays on while any of them wants it.
 enum DisplayMirrorOwner: Hashable {
@@ -20,8 +21,7 @@ enum DisplayMirrorOwner: Hashable {
 /// The connected radio's screen as the app last saw it. AccessoryManager feeds it chunks and
 /// clears it when the connection closes, so an old screen is never shown as live.
 @MainActor
-@Observable
-final class DisplayMirrorSession {
+final class DisplayMirrorSession: ObservableObject {
 
 	/// The latest complete frame, drawn 1:1.
 	private(set) var image: CGImage?

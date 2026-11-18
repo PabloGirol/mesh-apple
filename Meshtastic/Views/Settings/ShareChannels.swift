@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 4/8/22.
 //
 import SwiftUI
-import SwiftData
+import CoreData
 import CoreImage.CIFilterBuiltins
 import MeshtasticProtobufs
 import TipKit
@@ -33,7 +33,7 @@ struct QrCodeImage {
 
 struct ShareChannels: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.dismiss) private var dismiss

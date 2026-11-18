@@ -1,5 +1,5 @@
 import Combine
-import SwiftData
+import CoreData
 import OSLog
 import SwiftUI
 
@@ -94,22 +94,22 @@ class Router: ObservableObject {
 
 	// MARK: Node Object ID Cache
 
-	/// In-memory cache mapping node numbers to their SwiftData `PersistentIdentifier` for O(1) lookups.
+	/// In-memory cache mapping node numbers to their Core Data `NSManagedObjectID` for O(1) lookups.
 	/// Thread-safe by virtue of Router's @MainActor isolation — all access is on the main thread.
-	private var nodeObjectIDCache: [Int64: PersistentIdentifier] = [:]
+	private var nodeObjectIDCache: [Int64: NSManagedObjectID] = [:]
 
 	/// Updates the node cache from a set of fetched nodes. Call this when the node list changes.
 	func updateNodeIndex<C: Collection>(from nodes: C) where C.Element: NodeInfoEntity {
 		nodeObjectIDCache = Dictionary(
-			nodes.map { ($0.num, $0.persistentModelID) },
+			nodes.map { ($0.num, $0.objectID) },
 			uniquingKeysWith: { _, new in new }
 		)
 	}
 
-	/// Looks up a node using the in-memory cache for O(1) performance, falling back to a SwiftData fetch.
-	func cachedNodeInfo(id: Int64, context: ModelContext) -> NodeInfoEntity? {
-		if let persistentID = nodeObjectIDCache[id] {
-			if let node = context.model(for: persistentID) as? NodeInfoEntity {
+	/// Looks up a node using the in-memory cache for O(1) performance, falling back to a Core Data fetch.
+	func cachedNodeInfo(id: Int64, context: NSManagedObjectContext) -> NodeInfoEntity? {
+		if let objectID = nodeObjectIDCache[id] {
+			if let node = try? context.existingObject(with: objectID) as? NodeInfoEntity {
 				return node
 			}
 			// Stale entry (object deleted or faulted) — evict and fall back to a fresh fetch
@@ -118,7 +118,7 @@ class Router: ObservableObject {
 		// Cache miss — fall back to standard fetch
 		let node = getNodeInfo(id: id, context: context)
 		if let node {
-			nodeObjectIDCache[id] = node.persistentModelID
+			nodeObjectIDCache[id] = node.objectID
 		}
 		return node
 	}

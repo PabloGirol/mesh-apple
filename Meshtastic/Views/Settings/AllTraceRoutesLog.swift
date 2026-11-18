@@ -7,18 +7,23 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 import OSLog
 
 struct AllTraceRoutesLog: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 
-	@Query(sort: \TraceRouteEntity.time, order: .reverse)
-	private var traceRoutes: [TraceRouteEntity]
-	@Query private var nodes: [NodeInfoEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \TraceRouteEntity.time, ascending: false)],
+		animation: .default)
+	private var traceRoutes: FetchedResults<TraceRouteEntity>
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \NodeInfoEntity.num, ascending: true)],
+		animation: .default)
+	private var nodes: FetchedResults<NodeInfoEntity>
 
-	@State private var openRouteID: PersistentIdentifier?
+	@State private var openRouteID: NSManagedObjectID?
 
 	private var nodeNames: [Int64: String] {
 		Dictionary(nodes.map { ($0.num, $0.user?.longName ?? $0.num.toHex()) }, uniquingKeysWith: { first, _ in first })
@@ -31,10 +36,10 @@ struct AllTraceRoutesLog: View {
 			} else {
 				let names = nodeNames
 				List {
-					ForEach(traceRoutes, id: \.persistentModelID) { route in
+					ForEach(traceRoutes, id: \.objectID) { route in
 						TraceRouteStateTimeline(route: route) { now in
 							Button {
-								openRouteID = route.persistentModelID
+								openRouteID = route.objectID
 							} label: {
 								TraceRouteCard(
 									model: TraceRouteCardModel(route: route, title: title(for: route, names: names), now: now),
@@ -57,7 +62,7 @@ struct AllTraceRoutesLog: View {
 		}
 		.navigationTitle("Trace Routes")
 		.navigationDestination(item: $openRouteID) { id in
-			if let route = traceRoutes.first(where: { $0.persistentModelID == id }) {
+			if let route = traceRoutes.first(where: { $0.objectID == id }) {
 				TraceRouteDetail(route: route)
 			}
 		}
@@ -75,7 +80,7 @@ struct AllTraceRoutesLog: View {
 	}
 
 	private func delete(_ route: TraceRouteEntity) {
-		if openRouteID == route.persistentModelID {
+		if openRouteID == route.objectID {
 			openRouteID = nil
 		}
 		context.delete(route)

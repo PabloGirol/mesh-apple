@@ -5,13 +5,13 @@
 //  Copyright(c) Garth Vander Houwen 10/13/26.
 //
 
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// One trace route: the summary card, a row of actions, then the hop timeline when it came back
 /// (otherwise what happened to the request) and the round trip and hop counts.
 struct TraceRouteDetail: View {
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var router: Router
 	@EnvironmentObject var accessoryManager: AccessoryManager
 

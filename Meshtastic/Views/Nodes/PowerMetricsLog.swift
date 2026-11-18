@@ -12,9 +12,9 @@ import OSLog
 
 struct PowerMetricsLog: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
 	/// Table on iPhone shows only its first column, even in a regular size class.
@@ -22,7 +22,7 @@ struct PowerMetricsLog: View {
 		horizontalSizeClass == .regular && UIDevice.current.userInterfaceIdiom != .phone
 	}
 	@State private var sortOrder = [KeyPathComparator(\TelemetryEntity.time, order: .reverse)]
-	@State private var selection: TelemetryEntity.ID?
+	@State private var selection: NSManagedObjectID?
 	@State private var chartSelection: Date?
 
 	@State private var isPresentingClearLogConfirm: Bool = false

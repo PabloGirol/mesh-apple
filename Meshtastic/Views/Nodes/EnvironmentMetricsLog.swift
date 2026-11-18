@@ -4,14 +4,14 @@
 //
 //  Copyright(c) Garth Vander Houwen 7/7/22.
 //
-import SwiftUI
 import Charts
+import CoreData
 import OSLog
-import SwiftData
+import SwiftUI
 
 struct EnvironmentMetricsLog: View {
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@EnvironmentObject var accessoryManager: AccessoryManager
 
@@ -22,7 +22,7 @@ struct EnvironmentMetricsLog: View {
 	@State private var isPresentingClearLogConfirm: Bool = false
 	@State var isExporting = false
 	@State var exportString = ""
-	@Bindable var node: NodeInfoEntity
+	var node: NodeInfoEntity
 
 	@StateObject var columnList = MetricsColumnList.environmentDefaultColumns
 	@StateObject var seriesList = MetricsSeriesList.environmentDefaultChartSeries

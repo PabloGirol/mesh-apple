@@ -13,82 +13,105 @@
 //
 
 import Foundation
-import ImageIO
-import SwiftData
+import CoreData
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-@Model
-final class EventFirmwareEntity {
+@objc(EventFirmwareEntity)
+public class EventFirmwareEntity: NSManagedObject {
 
 	/// The stable proto edition key, e.g. `"DEFCON"`, `"OPEN_SAUCE"`. This is the enum
 	/// name from `FirmwareEdition` and is the join key against the connected device's
 	/// reported `firmwareEdition`. Unique so refreshes upsert rather than duplicate.
-	@Attribute(.unique) var edition: String = ""
+	/// Note: @Attribute(.unique) in SwiftData maps to a unique constraint in the Core Data model.
+	@NSManaged public var edition: String
 
 	// MARK: - Identity & copy
 
-	var displayName: String?
-	var welcomeMessage: String?
-	var tag: String?
-	var location: String?
-	var domain: String?
+	@NSManaged public var displayName: String?
+	@NSManaged public var welcomeMessage: String?
+	@NSManaged public var tag: String?
+	@NSManaged public var location: String?
+	@NSManaged public var domain: String?
 
 	// MARK: - Lifecycle (dates evaluated in `timeZone`)
 
 	/// ISO-8601 calendar date string, e.g. `"2026-08-06"`. Stored as-is from the API;
 	/// parsed on demand via `eventStartDate` / `eventEndDate`.
-	var eventStart: String?
-	var eventEnd: String?
+	@NSManaged public var eventStart: String?
+	@NSManaged public var eventEnd: String?
 	/// IANA time-zone identifier, e.g. `"America/Los_Angeles"`. Drives when the event is
 	/// considered over; falls back to the device's zone when missing/unparseable.
-	var timeZone: String?
+	@NSManaged public var timeZone: String?
 
 	// MARK: - Branding
 
 	/// Hex accent color, e.g. `"#0D294A"`. Used inside the dedicated event information
 	/// surface. Optional — a missing/invalid value falls back to `.accentColor`.
-	var accentColor: String?
+	@NSManaged public var accentColor: String?
 	/// Hosted event icon URL (may be nil — not every edition ships one).
-	var iconUrl: String?
+	@NSManaged public var iconUrl: String?
 
 	// MARK: - Theme (v2, progressively consumed)
 
-	var themeName: String?
-	var themeTagline: String?
+	@NSManaged public var themeName: String?
+	@NSManaged public var themeTagline: String?
 	/// Named brand colors used when a manifest does not provide an authored palette.
-	var themePrimaryColor: String?
-	var themeSecondaryColor: String?
+	@NSManaged public var themePrimaryColor: String?
+	@NSManaged public var themeSecondaryColor: String?
 	/// The theme's high-energy accent candidate. It is used for small marks only after
 	/// satisfying the 3:1 graphical-object contrast requirement against the current surface.
-	var themeAccentColor: String?
-	/// Ordered palette of hex colors. Non-optional array (SwiftData cannot materialize an
-	/// optional value-type array — see `DeviceLinkEntity.regions`, issue #1949).
-	var themePalette: [String] = []
+	@NSManaged public var themeAccentColor: String?
+	/// Ordered palette of hex colors.
+	@NSManaged public var themePalette: [String]
 	/// Google Font *family names* (not URLs) — resolved via the platform font mechanism,
 	/// falling back to the system font when unavailable.
-	var themeFontHeading: String?
-	var themeFontBody: String?
+	@NSManaged public var themeFontHeading: String?
+	@NSManaged public var themeFontBody: String?
 
 	// MARK: - Links
 
 	/// Event links (`label`/`url`), JSON-encoded. Decoded on demand via `links`. Stored as a
 	/// blob rather than a relationship to keep the whole edition a single upsertable row.
-	var linksJSON: String?
+	@NSManaged public var linksJSON: String?
 
 	// MARK: - Firmware build (v2, progressively consumed)
 
-	var firmwareSlug: String?
-	var firmwareVersion: String?
-	var firmwareId: String?
-	var firmwareTitle: String?
-	var firmwareReleaseNotes: String?
+	@NSManaged public var firmwareSlug: String?
+	@NSManaged public var firmwareVersion: String?
+	@NSManaged public var firmwareId: String?
+	@NSManaged public var firmwareTitle: String?
+	@NSManaged public var firmwareReleaseNotes: String?
 
-	init() {}
-
-	init(edition: String) {
-		self.edition = edition
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "EventFirmwareEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.edition = ""
+		self.displayName = nil
+		self.welcomeMessage = nil
+		self.tag = nil
+		self.location = nil
+		self.domain = nil
+		self.eventStart = nil
+		self.eventEnd = nil
+		self.timeZone = nil
+		self.accentColor = nil
+		self.iconUrl = nil
+		self.themeName = nil
+		self.themeTagline = nil
+		self.themePrimaryColor = nil
+		self.themeSecondaryColor = nil
+		self.themeAccentColor = nil
+		self.themePalette = []
+		self.themeFontHeading = nil
+		self.themeFontBody = nil
+		self.linksJSON = nil
+		self.firmwareSlug = nil
+		self.firmwareVersion = nil
+		self.firmwareId = nil
+		self.firmwareTitle = nil
+		self.firmwareReleaseNotes = nil
 	}
 }
 

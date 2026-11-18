@@ -8,7 +8,7 @@
 
 import Intents
 import OSLog
-import SwiftData
+import CoreData
 
 final class SetMessageAttributeIntentHandler: NSObject, INSetMessageAttributeIntentHandling {
 
@@ -46,10 +46,10 @@ final class SetMessageAttributeIntentHandler: NSObject, INSetMessageAttributeInt
 
 		let success = await MainActor.run { () -> Bool in
 			let context = PersistenceController.shared.context
-			let descriptor = FetchDescriptor<MessageEntity>()
+			let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
 
 			do {
-				let allMessages = try context.fetch(descriptor)
+				let allMessages = try context.fetch(request)
 				let messages = allMessages.filter { messageIds.contains($0.messageId) }
 				guard !messages.isEmpty else {
 					return false

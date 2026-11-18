@@ -7,7 +7,7 @@
 import CoreLocation
 import Foundation
 import OSLog
-import SwiftData
+import CoreData
 
 /// A stored traceroute reduced to the two paths the spatial map draws and flies.
 struct SpatialRouteSnapshot: Identifiable, Equatable, Sendable {
@@ -78,16 +78,23 @@ struct SpatialRouteMenuEntry: Equatable {
 }
 
 /// Reads the trace route menu's routes on a background context, so paging through a long route
-/// history never holds up the main actor. Create it off the main thread: a model actor created on
-/// the main thread runs its work there.
-@ModelActor
+/// history never holds up the main actor. Create it off the main thread.
 actor SpatialRouteReader {
+	let modelContext: NSManagedObjectContext
+
+	init(modelContainer: NSPersistentContainer) {
+		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+		context.persistentStoreCoordinator = modelContainer.persistentStoreCoordinator
+		context.automaticallyMergesChangesFromParent = true
+		self.modelContext = context
+	}
+
 	func routes() -> [SpatialRouteSnapshot] {
 		SpatialRouteSource.routes(context: modelContext)
 	}
 
 	/// Creates a reader off the main thread and reads the routes with it.
-	nonisolated static func routes(container: ModelContainer) async -> [SpatialRouteSnapshot] {
+	nonisolated static func routes(container: NSPersistentContainer) async -> [SpatialRouteSnapshot] {
 		await Task.detached(priority: .utility) {
 			await SpatialRouteReader(modelContainer: container).routes()
 		}.value
@@ -99,11 +106,10 @@ enum SpatialRouteSource {
 	static let routeLimit = 20
 
 	/// The newest routes that came back with positions, newest first.
-	static func routes(context: ModelContext) -> [SpatialRouteSnapshot] {
-		var descriptor = FetchDescriptor<TraceRouteEntity>(
-			predicate: #Predicate<TraceRouteEntity> { $0.hasPositions == true && $0.response == true },
-			sortBy: [SortDescriptor(\.time, order: .reverse)]
-		)
+	static func routes(context: NSManagedObjectContext) -> [SpatialRouteSnapshot] {
+		var descriptor = NSFetchRequest<TraceRouteEntity>(entityName: "TraceRouteEntity")
+		descriptor.predicate = NSPredicate(format: "hasPositions == YES AND response == YES")
+		descriptor.sortDescriptors = [NSSortDescriptor(key: "time", ascending: false)]
 		// A route counts as having positions when one node has one, but drawing it needs two, so
 		// some routes drop out below. Fetch a page at a time until the menu is full or none are left.
 		let pageSize = routeLimit * 3
@@ -122,7 +128,9 @@ enum SpatialRouteSource {
 			if page.count < pageSize { break }
 		}
 		let originNums = Array(Set(drawable.map(\.route.fromNum)))
-		let origins = (try? context.fetch(FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { originNums.contains($0.num) }))) ?? []
+		let originsRequest = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		originsRequest.predicate = NSPredicate(format: "num IN %@", originNums)
+		let origins = (try? context.fetch(originsRequest)) ?? []
 		let names = Dictionary(origins.compactMap { node in node.user?.longName.map { (node.num, $0) } }, uniquingKeysWith: { first, _ in first })
 		return Array(newestFirst(drawable.compactMap { snapshot($0.route, hops: $0.hops, originName: names[$0.route.fromNum]) }).prefix(routeLimit))
 	}
@@ -131,9 +139,10 @@ enum SpatialRouteSource {
 	/// its hops in the ingest context, which this one never hears about, and reading a hop it
 	/// deleted traps. A fetch only returns hops that are still there, with their values loaded.
 	/// Nil if the fetch fails, which is logged; an empty list is a route with no hops.
-	static func hops(of route: TraceRouteEntity, context: ModelContext) -> [TraceRouteHopEntity]? {
-		let routeID = route.persistentModelID
-		let descriptor = FetchDescriptor<TraceRouteHopEntity>(predicate: #Predicate { $0.traceRoute?.persistentModelID == routeID })
+	static func hops(of route: TraceRouteEntity, context: NSManagedObjectContext) -> [TraceRouteHopEntity]? {
+		let routeID = route.objectID
+		let descriptor = NSFetchRequest<TraceRouteHopEntity>(entityName: "TraceRouteHopEntity")
+		descriptor.predicate = NSPredicate(format: "traceRoute == %@", routeID)
 		do {
 			return try context.fetch(descriptor)
 		} catch {

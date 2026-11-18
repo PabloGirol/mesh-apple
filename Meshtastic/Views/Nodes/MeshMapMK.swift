@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-@preconcurrency import SwiftData
+import CoreData
 import CoreLocation
 import Foundation
 import OSLog
@@ -20,7 +20,7 @@ private struct MeshMapVisiblePositionState {
 struct MeshMapMK: View {
 	private let denseMapPositionLimit = 700
 
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
 	@Environment(\.openWindow) private var openWindow
 	@EnvironmentObject var accessoryManager: AccessoryManager
@@ -190,10 +190,9 @@ struct MeshMapMK: View {
 	@State private var appliedPositionStateKey: Int64 = .min
 
 	private func fetchLatestPositions() -> [PositionEntity] {
-		let descriptor = FetchDescriptor<PositionEntity>(
-			predicate: #Predicate<PositionEntity> { $0.nodePosition != nil && $0.latest == true && $0.nodePosition?.ignored != true }
-		)
-		return (try? context.fetch(descriptor)) ?? []
+		let request = NSFetchRequest<PositionEntity>(entityName: "PositionEntity")
+		request.predicate = NSPredicate(format: "nodePosition != nil AND latest == YES AND nodePosition.ignored != YES")
+		return (try? context.fetch(request)) ?? []
 	}
 
 	/// Re-fetch positions, rebuild the derived state, and apply it when it actually changed.
@@ -217,11 +216,19 @@ struct MeshMapMK: View {
 	}
 
 	/// Enabled saved routes drawn as polylines + start/finish markers (parity with the old map).
-	@Query(filter: #Predicate<RouteEntity> { $0.enabled == true }, sort: \RouteEntity.name)
-	private var routes: [RouteEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \RouteEntity.name, ascending: true)],
+		predicate: NSPredicate(format: "enabled == YES"),
+		animation: .default
+	)
+	private var routes: FetchedResults<RouteEntity>
 
 	/// Saved waypoints, shown as tappable markers (tap -> form; long-press empty map -> create).
-	@Query private var allWaypoints: [WaypointEntity]
+	@FetchRequest(
+		sortDescriptors: [NSSortDescriptor(keyPath: \WaypointEntity.id, ascending: true)],
+		animation: .default
+	)
+	private var allWaypoints: FetchedResults<WaypointEntity>
 
 	/// Positions filtered once per render using the full NodeFilterParameters.
 	private func filteredPositions(from positions: [PositionEntity]) -> [PositionEntity] {
@@ -296,7 +303,7 @@ struct MeshMapMK: View {
 		// snapshot/overlay rebuilds, and a truncated sample would leave pins beyond it permanently
 		// stale when a node moves without changing the set's count or ordering.
 		for position in positions {
-			combine(&key, Int64(truncatingIfNeeded: position.persistentModelID.hashValue))
+			combine(&key, Int64(truncatingIfNeeded: position.objectID.hashValue))
 			combine(&key, Int64(position.latitudeI))
 			combine(&key, Int64(position.longitudeI))
 			combine(&key, Int64(position.precisionBits))
@@ -1505,7 +1512,7 @@ struct MeshMapMK: View {
 					var entitiesByID: [Int64: WaypointEntity] = [:]
 					snapshots.reserveCapacity(visibleWaypoints.count)
 					for waypoint in visibleWaypoints {
-						let id = Int64(truncatingIfNeeded: waypoint.persistentModelID.hashValue)
+						let id = Int64(truncatingIfNeeded: waypoint.objectID.hashValue)
 						let icon = String(UnicodeScalar(Int(waypoint.icon)) ?? "📍")
 						snapshots.append(MeshMapWaypointSnapshot(
 							id: id,
@@ -1529,7 +1536,7 @@ struct MeshMapMK: View {
 						lineWidth: 2
 					)
 					for waypoint in waypoints {
-						let key = waypoint.persistentModelID.hashValue
+						let key = waypoint.objectID.hashValue
 						if waypoint.geofenceRadius > 0, let center = waypoint.waypointCoordinate {
 							result.append(ClusterMapOverlay(
 								id: "geofence-circle-\(key)",
@@ -1570,7 +1577,7 @@ struct MeshMapMK: View {
 			for route in routes {
 				let coords = route.locations.compactMap { $0.locationCoordinate }
 				guard coords.count >= 2 else { continue }
-				let key = route.persistentModelID.hashValue
+				let key = route.objectID.hashValue
 				var line = coords
 				overlays.append(ClusterMapOverlay(
 					id: "route-\(key)",
@@ -1648,7 +1655,7 @@ struct MeshMapMK: View {
 		}
 		var overlays: [ClusterMapOverlay] = []
 		var decorations: [ClusterMapDecoration] = []
-		let idKey = route.persistentModelID.hashValue
+		let idKey = route.objectID.hashValue
 		let modemPreset = ModemPresets(rawValue: UserDefaults.modemPreset) ?? .longFast
 		// Node names for the endpoint circles; the lines and badges only need numbers and positions.
 		let legs = TraceRouteLegs(route: route, preset: modemPreset) { num in
@@ -1795,16 +1802,18 @@ struct MeshMapMK: View {
 		let epoch = Date.distantPast
 		// The radio's own direct links.
 		let directCutoff = now.addingTimeInterval(-NodeLinks.maxAge)
-		var nodes = (try? context.fetch(FetchDescriptor<NodeInfoEntity>(
-			predicate: #Predicate<NodeInfoEntity> { $0.hopsAway == 0 && $0.viaMqtt == false && ($0.lastHeard ?? epoch) >= directCutoff }
-		))) ?? []
+		let request1 = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request1.predicate = NSPredicate(format: "hopsAway == 0 AND viaMqtt == NO AND lastHeard >= %@", directCutoff as NSDate)
+		var nodes = (try? context.fetch(request1)) ?? []
 		// Neighbor Info reports.
 		let reports = NodeLinks.reportRows(context: context, now: now)
 		// Nodes named in reports that aren't already loaded, for their positions.
 		let loaded = Set(nodes.map(\.num))
 		let missing = Array(Set(reports.flatMap { [$0.reporter, $0.neighbor] }).union([connectedNum]).subtracting(loaded))
 		if !missing.isEmpty {
-			nodes += (try? context.fetch(FetchDescriptor<NodeInfoEntity>(predicate: #Predicate<NodeInfoEntity> { missing.contains($0.num) }))) ?? []
+			let request2 = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+			request2.predicate = NSPredicate(format: "num IN %@", missing)
+			nodes += (try? context.fetch(request2)) ?? []
 		}
 		// Ignored nodes aren't on the map. With a filter or search on, only draw links between
 		// nodes the filter still shows; the connected radio always counts as shown.

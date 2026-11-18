@@ -3,60 +3,62 @@
 //  Meshtastic
 //
 //  SwiftData model for user information.
+//  Converted to Core Data NSManagedObject subclass for iOS 15 compatibility.
 //
 
 import Foundation
 import OSLog
-import SwiftData
+import CoreData
 
-@Model
-final class UserEntity {
-	var hwDisplayName: String?
-	var hwModel: String?
-	var hwModelId: Int32 = 0
-	var isLicensed: Bool = false
-	var keyMatch: Bool = true
-	var lastMessage: Date?
-	var longName: String?
-	var mute: Bool = false
-	var newPublicKey: Data?
-	@Attribute(.unique) var num: Int64 = 0
-	var numString: String?
-	var pkiEncrypted: Bool = false
-	var publicKey: Data?
-	var role: Int32 = 0
-	var shortName: String?
-	var unmessagable: Bool = false
-	var userId: String?
+@objc(UserEntity)
+public class UserEntity: NSManagedObject {
 
-	@Relationship(inverse: \MessageEntity.fromUser)
-	var sentMessages: [MessageEntity] = []
+	@NSManaged public var hwDisplayName: String?
+	@NSManaged public var hwModel: String?
+	@NSManaged public var hwModelId: Int32
+	@NSManaged public var isLicensed: Bool
+	@NSManaged public var keyMatch: Bool
+	@NSManaged public var lastMessage: Date?
+	@NSManaged public var longName: String?
+	@NSManaged public var mute: Bool
+	@NSManaged public var newPublicKey: Data?
+	@NSManaged public var num: Int64
+	@NSManaged public var numString: String?
+	@NSManaged public var pkiEncrypted: Bool
+	@NSManaged public var publicKey: Data?
+	@NSManaged public var role: Int32
+	@NSManaged public var shortName: String?
+	@NSManaged public var unmessagable: Bool
+	@NSManaged public var userId: String?
 
-	@Relationship(inverse: \MessageEntity.toUser)
-	var receivedMessages: [MessageEntity] = []
+	@NSManaged public var sentMessages: [MessageEntity]
+	@NSManaged public var receivedMessages: [MessageEntity]
+	@NSManaged public var userNode: NodeInfoEntity?
 
-	var userNode: NodeInfoEntity?
-
-	/// Whether a direct message to this contact can actually be delivered.
-	///
-	/// Two independent gates. `unmessagable` is the node saying it does not accept messages.
-	/// The public key is what the sending radio needs: firmware has generated a keypair since 2.5,
-	/// so a direct message takes the PKC path, and a radio with no key for the destination refuses
-	/// to send (`PKI_SEND_FAIL_PUBLIC_KEY`) rather than falling back to channel encryption. A node we
-	/// have only heard packets from has no key until its NodeInfo arrives, and cannot be messaged.
-	var canDirectMessage: Bool {
-		!unmessagable && !(publicKey?.isEmpty ?? true)
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "UserEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.hwDisplayName = nil
+		self.hwModel = nil
+		self.hwModelId = 0
+		self.isLicensed = false
+		self.keyMatch = true
+		self.lastMessage = nil
+		self.longName = nil
+		self.mute = false
+		self.newPublicKey = nil
+		self.num = 0
+		self.numString = nil
+		self.pkiEncrypted = false
+		self.publicKey = nil
+		self.role = 0
+		self.shortName = nil
+		self.unmessagable = false
+		self.userId = nil
+		self.sentMessages = []
+		self.receivedMessages = []
+		self.userNode = nil
 	}
-
-	/// Whether to offer the Message shortcut for this contact.
-	///
-	/// `canDirectMessage` with an escape hatch: a contact we can no longer send to may still have a
-	/// thread worth reading. The contact list keeps those rows for the same reason.
-	var showsDirectMessageAction: Bool {
-		canDirectMessage || lastMessage != nil
-	}
-
-	init() {}
 }
 
 // MARK: - First-wins public-key handling
@@ -141,5 +143,26 @@ extension UserEntity {
 		pkiEncrypted = true
 		keyMatch = true
 		newPublicKey = nil
+	}
+}
+
+extension UserEntity {
+	/// Whether a direct message to this contact can actually be delivered.
+	///
+	/// Two independent gates. `unmessagable` is the node saying it does not accept messages.
+	/// The public key is what the sending radio needs: firmware has generated a keypair since 2.5,
+	/// so a direct message takes the PKC path, and a radio with no key for the destination refuses
+	/// to send (`PKI_SEND_FAIL_PUBLIC_KEY`) rather than falling back to channel encryption. A node we
+	/// have only heard packets from has no key until its NodeInfo arrives, and cannot be messaged.
+	var canDirectMessage: Bool {
+		!unmessagable && !(publicKey?.isEmpty ?? true)
+	}
+
+	/// Whether to offer the Message shortcut for this contact.
+	///
+	/// `canDirectMessage` with an escape hatch: a contact we can no longer send to may still have a
+	/// thread worth reading. The contact list keeps those rows for the same reason.
+	var showsDirectMessageAction: Bool {
+		canDirectMessage || lastMessage != nil
 	}
 }

@@ -3,46 +3,77 @@
 //  Meshtastic
 //
 //  SwiftData model for messages.
+//  Converted to Core Data NSManagedObject subclass for iOS 15 compatibility.
 //
 
 import Foundation
-import SwiftData
+import CoreData
 
-@Model
-final class MessageEntity {
-	var ackError: Int32 = 0
-	var ackSNR: Float = 0.0
-	var ackTimestamp: Int32 = 0
-	var admin: Bool = false
-	var adminDescription: String?
-	var channel: Int32 = 0
-	var isEmoji: Bool = false
-	@Attribute(.unique) var messageId: Int64 = 0
-	var messagePayload: String? = ""
-	var messagePayloadMarkdown: String?
-	var messagePayloadTranslated: String?
-	var messagePayloadTranslatedMarkdown: String?
-	var messageTimestamp: Int32 = 0
-	var pkiEncrypted: Bool = false
-	var portNum: Int32 = 0
-	var publicKey: Data?
-	var read: Bool = false
-	var realACK: Bool = false
-	var receivedACK: Bool = false
-	var relayNode: Int64 = 0
-	var relays: Int16 = 0
-	var replyID: Int64 = 0
-	var rssi: Int32 = 0
-	var showTranslatedMessage: Bool = false
-	var snr: Float = 0.0
-	/// True when the radio verified this received broadcast's XEdDSA signature (MeshPacket.xeddsa_signed, field 22).
-	/// Firmware only ever sets this on broadcasts — never on DMs — so it can be trusted on its own.
-	var xeddsaSigned: Bool = false
+@objc(MessageEntity)
+public class MessageEntity: NSManagedObject {
 
-	var fromUser: UserEntity?
-	var toUser: UserEntity?
+	@NSManaged public var ackError: Int32
+	@NSManaged public var ackSNR: Float
+	@NSManaged public var ackTimestamp: Int32
+	@NSManaged public var admin: Bool
+	@NSManaged public var adminDescription: String?
+	@NSManaged public var channel: Int32
+	@NSManaged public var isEmoji: Bool
+	@NSManaged public var messageId: Int64
+	@NSManaged public var messagePayload: String
+	@NSManaged public var messagePayloadMarkdown: String?
+	@NSManaged public var messagePayloadTranslated: String?
+	@NSManaged public var messagePayloadTranslatedMarkdown: String?
+	@NSManaged public var messageTimestamp: Int32
+	@NSManaged public var pkiEncrypted: Bool
+	@NSManaged public var portNum: Int32
+	@NSManaged public var publicKey: Data?
+	@NSManaged public var read: Bool
+	@NSManaged public var realACK: Bool
+	@NSManaged public var receivedACK: Bool
+	@NSManaged public var relayNode: Int64
+	@NSManaged public var relays: Int16
+	@NSManaged public var replyID: Int64
+	@NSManaged public var rssi: Int32
+	@NSManaged public var showTranslatedMessage: Bool
+	@NSManaged public var snr: Float
+	@NSManaged public var xeddsaSigned: Bool
 
-	init() {}
+	@NSManaged public var fromUser: UserEntity?
+	@NSManaged public var toUser: UserEntity?
+
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "MessageEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.ackError = 0
+		self.ackSNR = 0.0
+		self.ackTimestamp = 0
+		self.admin = false
+		self.adminDescription = nil
+		self.channel = 0
+		self.isEmoji = false
+		self.messageId = 0
+		self.messagePayload = ""
+		self.messagePayloadMarkdown = nil
+		self.messagePayloadTranslated = nil
+		self.messagePayloadTranslatedMarkdown = nil
+		self.messageTimestamp = 0
+		self.pkiEncrypted = false
+		self.portNum = 0
+		self.publicKey = nil
+		self.read = false
+		self.realACK = false
+		self.receivedACK = false
+		self.relayNode = 0
+		self.relays = 0
+		self.replyID = 0
+		self.rssi = 0
+		self.showTranslatedMessage = false
+		self.snr = 0.0
+		self.xeddsaSigned = false
+		self.fromUser = nil
+		self.toUser = nil
+	}
 }
 
 extension MessageEntity {

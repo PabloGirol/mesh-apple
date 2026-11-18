@@ -3,11 +3,12 @@
 //  Meshtastic
 //
 //  Copyright(c) Garth Vander Houwen 10/15/26.
+//  Converted to Core Data NSManagedObject subclass for iOS 15 compatibility.
 //
 
 import Foundation
 import OSLog
-import SwiftData
+import CoreData
 
 /// One entry from a Neighbor Info report: `reporterNum` heard `neighborNum` directly, at `snr` dB.
 ///
@@ -15,39 +16,52 @@ import SwiftData
 /// round. Nodes are stored as plain numbers with no relationship to `NodeInfoEntity`, so saving a
 /// report never loads a node's other rows, and the rows survive a node being deleted or
 /// renumbered until the clean-up code below removes or rewrites them.
-@Model
-final class NeighborLinkEntity {
+@objc(NeighborLinkEntity)
+public class NeighborLinkEntity: NSManagedObject {
+
 	/// `"reporterNum:neighborNum"`, so each reporter has at most one row per neighbor.
-	@Attribute(.unique) var key: String = ""
-	var reporterNum: Int64 = 0
-	var neighborNum: Int64 = 0
+	@NSManaged public var key: String
+	@NSManaged public var reporterNum: Int64
+	@NSManaged public var neighborNum: Int64
 	/// SNR in dB, measured by the reporter.
-	var snr: Float = 0
+	@NSManaged public var snr: Float
 	/// When the report arrived. Reports don't say how old each entry is.
-	var receivedAt: Date = Date.distantPast
+	@NSManaged public var receivedAt: Date
 	/// How often the reporter says it sends a report. Used to decide when a row is too old.
-	var reporterIntervalSecs: Int32 = 0
+	@NSManaged public var reporterIntervalSecs: Int32
 	/// Whether the report reached us over MQTT rather than from the radio's own LoRa.
-	var viaMqtt: Bool = false
+	@NSManaged public var viaMqtt: Bool
 
-	init() {}
+	convenience init(context: NSManagedObjectContext) {
+		let entity = NSEntityDescription.entity(forEntityName: "NeighborLinkEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.key = ""
+		self.reporterNum = 0
+		self.neighborNum = 0
+		self.snr = 0
+		self.receivedAt = Date.distantPast
+		self.reporterIntervalSecs = 0
+		self.viaMqtt = false
+	}
+}
 
+extension NeighborLinkEntity {
 	static func key(reporter: Int64, neighbor: Int64) -> String {
 		"\(reporter):\(neighbor)"
 	}
 
 	/// Rows that mention any of `nodeNums`, on either side.
-	static func predicate(involving nodeNums: [Int64]) -> Predicate<NeighborLinkEntity> {
-		#Predicate<NeighborLinkEntity> {
-			nodeNums.contains($0.reporterNum) || nodeNums.contains($0.neighborNum)
-		}
+	static func predicate(involving nodeNums: [Int64]) -> NSPredicate {
+		NSPredicate(format: "reporterNum IN %@ OR neighborNum IN %@", nodeNums, nodeNums)
 	}
 
 	/// Deletes the rows of nodes that are being deleted. Does not save.
-	static func deleteAll(forNodes nodeNums: [Int64], in context: ModelContext) {
+	static func deleteAll(forNodes nodeNums: [Int64], in context: NSManagedObjectContext) {
 		guard !nodeNums.isEmpty else { return }
+		let request = NSFetchRequest<NeighborLinkEntity>(entityName: "NeighborLinkEntity")
+		request.predicate = predicate(involving: nodeNums)
 		do {
-			for row in try context.fetch(FetchDescriptor(predicate: predicate(involving: nodeNums))) {
+			for row in try context.fetch(request) {
 				context.delete(row)
 			}
 		} catch {

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import SwiftData
+import CoreData
 import OSLog
 
 /// Moves everything the app stored for one node number onto another.
@@ -20,7 +20,7 @@ enum NodeRenumber {
 	/// Rewrites every reference to `oldNum` as `newNum`. Expects to run before any data for
 	/// `newNum` is ingested, and saves the context itself.
 	@discardableResult
-	static func apply(from oldNum: Int64, to newNum: Int64, in context: ModelContext) -> Bool {
+	static func apply(from oldNum: Int64, to newNum: Int64, in context: NSManagedObjectContext) -> Bool {
 		guard oldNum != newNum, oldNum != 0, newNum != 0 else { return false }
 
 		do {
@@ -41,7 +41,7 @@ enum NodeRenumber {
 
 	/// Stages every edit in the context without saving, so the caller can commit or discard
 	/// the whole rewrite at once.
-	private static func rewrite(from oldNum: Int64, to newNum: Int64, in context: ModelContext) throws {
+	private static func rewrite(from oldNum: Int64, to newNum: Int64, in context: NSManagedObjectContext) throws {
 		try foldExistingRows(from: oldNum, to: newNum, in: context)
 
 		// The node itself.
@@ -65,13 +65,13 @@ enum NodeRenumber {
 			for hop in route.hops where hop.num == oldNum { hop.num = newNum }
 			for snapshot in route.nodePositions where snapshot.num == oldNum { snapshot.num = newNum }
 		}
-		let telemetry = try context.fetch(
-			FetchDescriptor<TelemetryEntity>(predicate: #Predicate { $0.nodeNum == oldNum })
-		)
+		let telemetryRequest = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+		telemetryRequest.predicate = NSPredicate(format: "nodeNum == %lld", oldNum)
+		let telemetry = try context.fetch(telemetryRequest)
 		for row in telemetry { row.nodeNum = newNum }
-		let relayed = try context.fetch(
-			FetchDescriptor<MessageEntity>(predicate: #Predicate { $0.relayNode == oldNum })
-		)
+		let relayedRequest = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
+		relayedRequest.predicate = NSPredicate(format: "relayNode == %lld", oldNum)
+		let relayed = try context.fetch(relayedRequest)
 		for message in relayed { message.relayNode = newNum }
 		for waypoint in try fetchAll(WaypointEntity.self, in: context) {
 			if waypoint.createdBy == oldNum { waypoint.createdBy = newNum }
@@ -88,11 +88,13 @@ enum NodeRenumber {
 
 	/// Rows already saved under the new number would collide with the moved ones on `key`, and
 	/// the old number's rows are the ones that belong to this radio, so the new number's go.
-	private static func renumberNeighborLinks(from oldNum: Int64, to newNum: Int64, in context: ModelContext) throws {
-		for row in try context.fetch(FetchDescriptor(predicate: NeighborLinkEntity.predicate(involving: [newNum]))) {
+	private static func renumberNeighborLinks(from oldNum: Int64, to newNum: Int64, in context: NSManagedObjectContext) throws {
+		let newNumPredicate = NeighborLinkEntity.predicate(involving: [newNum])
+		for row in try context.fetch(NSFetchRequest<NeighborLinkEntity>(entityName: "NeighborLinkEntity", predicate: newNumPredicate)) {
 			context.delete(row)
 		}
-		for row in try context.fetch(FetchDescriptor(predicate: NeighborLinkEntity.predicate(involving: [oldNum]))) {
+		let oldNumPredicate = NeighborLinkEntity.predicate(involving: [oldNum])
+		for row in try context.fetch(NSFetchRequest<NeighborLinkEntity>(entityName: "NeighborLinkEntity", predicate: oldNumPredicate)) {
 			if row.reporterNum == oldNum { row.reporterNum = newNum }
 			if row.neighborNum == oldNum { row.neighborNum = newNum }
 			row.key = NeighborLinkEntity.key(reporter: row.reporterNum, neighbor: row.neighborNum)
@@ -102,7 +104,7 @@ enum NodeRenumber {
 	/// The app can hear a radio on the mesh before it connects to it, so the new number may
 	/// already have rows of its own. They have to go, because `num` is unique — but their
 	/// messages move to the surviving node first so none are orphaned.
-	private static func foldExistingRows(from oldNum: Int64, to newNum: Int64, in context: ModelContext) throws {
+	private static func foldExistingRows(from oldNum: Int64, to newNum: Int64, in context: NSManagedObjectContext) throws {
 		guard let keeper = try fetchUser(num: oldNum, in: context) else { return }
 
 		if let duplicate = try fetchUser(num: newNum, in: context), duplicate !== keeper {
@@ -113,9 +115,9 @@ enum NodeRenumber {
 		if let duplicateNode = try fetchNode(num: newNum, in: context), duplicateNode !== keeper.userNode {
 			// Older telemetry is only linked to the node, and deleting the node unlinks it.
 			// Give it the number first so it stays with the renumbered radio.
-			let linked = try context.fetch(FetchDescriptor<TelemetryEntity>(
-				predicate: #Predicate { $0.nodeNum == 0 && $0.nodeTelemetry?.num == newNum }
-			))
+			let linkedRequest = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+			linkedRequest.predicate = NSPredicate(format: "nodeNum == 0 AND nodeTelemetry.num == %lld", newNum)
+			let linked = try context.fetch(linkedRequest)
 			for row in linked { row.nodeNum = newNum }
 			context.delete(duplicateNode)
 		}
@@ -123,15 +125,15 @@ enum NodeRenumber {
 
 	// MARK: - Fetch helpers
 
-	private static func fetchUser(num: Int64, in context: ModelContext) throws -> UserEntity? {
-		try context.fetch(FetchDescriptor<UserEntity>(predicate: #Predicate { $0.num == num })).first
+	private static func fetchUser(num: Int64, in context: NSManagedObjectContext) throws -> UserEntity? {
+		try context.fetchFirst(UserEntity.self, predicate: NSPredicate(format: "num == %lld", num))
 	}
 
-	private static func fetchNode(num: Int64, in context: ModelContext) throws -> NodeInfoEntity? {
-		try context.fetch(FetchDescriptor<NodeInfoEntity>(predicate: #Predicate { $0.num == num })).first
+	private static func fetchNode(num: Int64, in context: NSManagedObjectContext) throws -> NodeInfoEntity? {
+		try context.fetchFirst(NodeInfoEntity.self, predicate: NSPredicate(format: "num == %lld", num))
 	}
 
-	private static func fetchAll<T: PersistentModel>(_ type: T.Type, in context: ModelContext) throws -> [T] {
-		try context.fetch(FetchDescriptor<T>())
+	private static func fetchAll<T: CoreDataEntity>(_ type: T.Type, in context: NSManagedObjectContext) throws -> [T] {
+		try context.fetchAll(type)
 	}
 }

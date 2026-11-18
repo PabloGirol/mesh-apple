@@ -7,13 +7,13 @@
 
 import Foundation
 import OSLog
-import SwiftData
+import CoreData
 
 // Telemetry rows are tied to their node by `nodeNum`, not by the `nodeTelemetry` relationship.
-// Setting the relationship makes SwiftData update `NodeInfoEntity.telemetries`, which loads every
-// telemetry row the node has, and it did that on the main thread for nearly every packet. Rows
-// saved before `nodeNum` existed only have the relationship; a one-time backfill copies the number
-// across, and until it finishes the lookups below match either one.
+/// Setting the relationship makes SwiftData update `NodeInfoEntity.telemetries`, which loads every
+/// telemetry row the node has, and it did that on the main thread for nearly every packet. Rows
+/// saved before `nodeNum` existed only have the relationship; a one-time backfill copies the number
+/// across, and until it finishes the lookups below match either one.
 
 extension TelemetryEntity {
 
@@ -30,61 +30,55 @@ extension TelemetryEntity {
 	// version with the node 0 case inside timed out on CI.
 
 	/// No rows: the lookup for node 0.
-	private static let noRows = #Predicate<TelemetryEntity> { _ in false }
+	private static let noRows = NSPredicate(format: "FALSEPREDICATE")
 
 	/// All telemetry for one node.
-	static func predicate(forNode nodeNum: Int64) -> Predicate<TelemetryEntity> {
+	static func predicate(forNode nodeNum: Int64) -> NSPredicate {
 		guard nodeNum != 0 else { return noRows }
 		if TelemetryNodeNumBackfill.isComplete {
-			return #Predicate<TelemetryEntity> { $0.nodeNum == nodeNum }
+			return NSPredicate(format: "nodeNum == %lld", nodeNum)
 		}
-		return #Predicate<TelemetryEntity> { $0.nodeNum == nodeNum || $0.nodeTelemetry?.num == nodeNum }
+		return NSPredicate(format: "nodeNum == %lld OR nodeTelemetry.num == %lld", nodeNum, nodeNum)
 	}
 
 	/// One metrics type for one node.
-	static func predicate(forNode nodeNum: Int64, metricsType: Int32) -> Predicate<TelemetryEntity> {
+	static func predicate(forNode nodeNum: Int64, metricsType: Int32) -> NSPredicate {
 		guard nodeNum != 0 else { return noRows }
 		if TelemetryNodeNumBackfill.isComplete {
-			return #Predicate<TelemetryEntity> { $0.nodeNum == nodeNum && $0.metricsType == metricsType }
+			return NSPredicate(format: "nodeNum == %lld AND metricsType == %d", nodeNum, metricsType)
 		}
-		return #Predicate<TelemetryEntity> {
-			$0.metricsType == metricsType && ($0.nodeNum == nodeNum || $0.nodeTelemetry?.num == nodeNum)
-		}
+		return NSPredicate(format: "metricsType == %d AND (nodeNum == %lld OR nodeTelemetry.num == %lld)", metricsType, nodeNum, nodeNum)
 	}
 
 	/// All telemetry for any of `nodeNums`.
-	static func predicate(forNodes nodeNums: [Int64]) -> Predicate<TelemetryEntity> {
+	static func predicate(forNodes nodeNums: [Int64]) -> NSPredicate {
 		let nums = nodeNums.filter { $0 != 0 }
 		guard !nums.isEmpty else { return noRows }
 		if TelemetryNodeNumBackfill.isComplete {
-			return #Predicate<TelemetryEntity> { nums.contains($0.nodeNum) }
+			return NSPredicate(format: "nodeNum IN %@", nums)
 		}
-		return #Predicate<TelemetryEntity> {
-			nums.contains($0.nodeNum) || ($0.nodeTelemetry.flatMap { nums.contains($0.num) } ?? false)
-		}
+		return NSPredicate(format: "nodeNum IN %@ OR nodeTelemetry.num IN %@", nums, nums)
 	}
 
 	/// One metrics type for any of `nodeNums`.
-	static func predicate(forNodes nodeNums: [Int64], metricsType: Int32) -> Predicate<TelemetryEntity> {
+	static func predicate(forNodes nodeNums: [Int64], metricsType: Int32) -> NSPredicate {
 		let nums = nodeNums.filter { $0 != 0 }
 		guard !nums.isEmpty else { return noRows }
 		if TelemetryNodeNumBackfill.isComplete {
-			return #Predicate<TelemetryEntity> { $0.metricsType == metricsType && nums.contains($0.nodeNum) }
+			return NSPredicate(format: "metricsType == %d AND nodeNum IN %@", metricsType, nums)
 		}
-		return #Predicate<TelemetryEntity> {
-			$0.metricsType == metricsType
-				&& (nums.contains($0.nodeNum) || ($0.nodeTelemetry.flatMap { nums.contains($0.num) } ?? false))
-		}
+		return NSPredicate(format: "metricsType == %d AND (nodeNum IN %@ OR nodeTelemetry.num IN %@)", metricsType, nums, nums)
 	}
 
 	/// Deletes the telemetry of nodes that are being deleted. New rows have no relationship, so the
 	/// node's `.nullify` rule never reaches them and they would be left behind. Rows are deleted one
 	/// by one rather than with a batch delete, because older rows are still linked to a node that
 	/// may be deleted in the same save. Does not save.
-	static func deleteAll(forNodes nodeNums: [Int64], in context: ModelContext) {
+	static func deleteAll(forNodes nodeNums: [Int64], in context: NSManagedObjectContext) {
 		guard !nodeNums.isEmpty else { return }
-		var descriptor = FetchDescriptor<TelemetryEntity>(predicate: predicate(forNodes: nodeNums))
-		descriptor.propertiesToFetch = [\.nodeNum]
+		var descriptor = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+		descriptor.predicate = predicate(forNodes: nodeNums)
+		descriptor.propertiesToFetch = ["nodeNum"]
 		do {
 			for row in try context.fetch(descriptor) {
 				context.delete(row)
@@ -156,17 +150,22 @@ enum TelemetryNodeNumBackfill {
 	}
 }
 
-@ModelActor
 actor TelemetryNodeNumBackfillActor {
+
+	let modelContext: NSManagedObjectContext
+
+	init(modelContainer: NSPersistentContainer) {
+		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+		context.persistentStoreCoordinator = modelContainer.persistentStoreCoordinator
+		context.automaticallyMergesChangesFromParent = true
+		self.modelContext = context
+	}
 
 	/// Fills `nodeNum` from the relationship on up to `limit` rows and saves. Returns how many
 	/// were filled (0 when none are left), or nil if the fetch or save failed.
 	func fillChunk(limit: Int) -> Int? {
-		var descriptor = FetchDescriptor<TelemetryEntity>(
-			predicate: #Predicate<TelemetryEntity> {
-				$0.nodeNum == 0 && $0.nodeTelemetry != nil && $0.nodeTelemetry?.num != 0
-			}
-		)
+		var descriptor = NSFetchRequest<TelemetryEntity>(entityName: "TelemetryEntity")
+		descriptor.predicate = NSPredicate(format: "nodeNum == 0 AND nodeTelemetry != nil AND nodeTelemetry.num != 0")
 		descriptor.fetchLimit = limit
 		let rows: [TelemetryEntity]
 		do {

@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 10/29/26.
 //
 #if os(visionOS)
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// The nodes' status messages on the cinema's second whiteboard: the connected radio's own status
@@ -18,7 +18,7 @@ struct NodeStatusBoard: View {
 	let environment: CinemaEnvironment
 	@EnvironmentObject private var appState: AppState
 	@EnvironmentObject private var accessoryManager: AccessoryManager
-	@Environment(\.modelContext) private var context
+	@Environment(\.managedObjectContext) private var context
 	@Environment(\.openWindow) private var openWindow
 	@State private var sheet: Sheet?
 
