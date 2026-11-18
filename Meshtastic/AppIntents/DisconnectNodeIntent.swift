@@ -6,8 +6,11 @@
 //
 
 import Foundation
+
+#if canImport(AppIntents) && compiler(>=5.9)
 import AppIntents
 
+@available(iOS 16.0, *)
 struct DisconnectNodeIntent: AppIntent {
 	static let title: LocalizedStringResource = "Disconnect Node"
 
@@ -28,3 +31,4 @@ struct DisconnectNodeIntent: AppIntent {
 	return .result()
 	}
 }
+#endif

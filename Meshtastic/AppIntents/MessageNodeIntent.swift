@@ -6,8 +6,11 @@
 //
 
 import Foundation
+
+#if canImport(AppIntents) && compiler(>=5.9)
 import AppIntents
 
+@available(iOS 16.0, *)
 struct MessageNodeIntent: AppIntent {
 	static var title: LocalizedStringResource = "Send a Direct Message"
 
@@ -45,3 +48,4 @@ struct MessageNodeIntent: AppIntent {
 	return .result()
 	}
 }
+#endif

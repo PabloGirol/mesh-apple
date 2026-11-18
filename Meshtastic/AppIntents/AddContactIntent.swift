@@ -5,9 +5,13 @@
 //  Created by Benjamin Faershtein on 5/13/25.
 //
 
-import AppIntents
+import Foundation
 import MeshtasticProtobufs
 
+#if canImport(AppIntents) && compiler(>=5.9)
+import AppIntents
+
+@available(iOS 16.0, *)
 struct AddContactIntent: AppIntent {
 	static let title: LocalizedStringResource = "Add Contact"
 	static let description: IntentDescription = "Takes a Meshtastic contact URL and saves it to the nodes database"
@@ -47,3 +51,4 @@ struct AddContactIntent: AppIntent {
 		}
 	}
 }
+#endif

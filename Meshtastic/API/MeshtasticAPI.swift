@@ -20,6 +20,9 @@ enum ReleaseType: String {
 	case unlisted = "Unlisted"
 }
 
+// Core Data stack typealias for cleaner code
+typealias PersistentContainer = NSPersistentContainer
+
 enum Architecture: String, Codable, Identifiable {
 	case esp32 = "esp32"
 	case esp32C3 = "esp32-c3"
@@ -175,7 +178,7 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 			return MeshtasticAPI(container: nil)
 		}
 #endif
-		return MeshtasticAPI(container: MainActor.assumeIsolated { PersistenceController.shared.container })
+		return MeshtasticAPI(container: MainActor.assumeIsolated { CoreDataStackImpl.shared.container })
 	}()
 	
 	// MARK: - Constants
@@ -213,7 +216,7 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 
 	private let fileManager = FileManager.default
 	private let decoder = JSONDecoder()
-	private let container: ModelContainer?
+	private let container: PersistentContainer?
 	private let urlSession: URLSession
 	
 	@Published var isLoadingDeviceList: Bool = false
@@ -242,7 +245,7 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 	// assert the bundled seed stays network-free. `shared` remains the only app-side entry.
 	// `startupRefresh: false` suppresses the launch refresh cascade below so a test can call a
 	// single refresh function in isolation without the detached startup work racing it.
-	init(container: ModelContainer?, startupRefresh: Bool = true, urlSession: URLSession? = nil) {
+	init(container: PersistentContainer?, startupRefresh: Bool = true, urlSession: URLSession? = nil) {
 		self.container = container
 		self.urlSession = urlSession ?? Self.defaultURLSession
 		guard container != nil, startupRefresh else { return }
@@ -285,7 +288,7 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 			// Same short-circuit as the catalog: an unchanged list is not worth re-writing.
 			if let eTag, eTag == Self.lastETag(for: Self.firmwareListETagKey) {
 				let hasReleases = await MainActor.run {
-					let context = container.mainContext
+					let context = container.viewContext
 					let request = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
 					return ((try? context.count(for: request)) ?? 0) > 0
 				}
@@ -296,7 +299,7 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 					// successful read may replace the stored nightly.
 					if let nightlyRelease = await fetchNightlyRelease() {
 						await MainActor.run {
-							let context = container.mainContext
+							let context = container.viewContext
 							self.applyNightlyRelease(nightlyRelease, context: context)
 							try? context.save()
 						}
@@ -318,7 +321,7 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 
 		// All DB work on mainContext so @Query observers see changes
 		await MainActor.run {
-			let context = container.mainContext
+			let context = container.viewContext
 
 			for stableRelease in decodedFirmware.releases.stable {
 				self.processFirmware(release: stableRelease, releaseType: .stable, context: context)
@@ -375,7 +378,7 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 		// A database clear leaves the stored ETag behind, so an empty catalog must still be rebuilt.
 		if let eTag, eTag == Self.lastETag(for: Self.deviceCatalogETagKey) {
 			let hasRows = await MainActor.run {
-				let context = container.mainContext
+				let context = container.viewContext
 				let request = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
 				return ((try? context.count(for: request)) ?? 0) > 0
 			}
@@ -392,7 +395,7 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 
 		// PHASE 2: Database on mainContext so @Query observers see changes
 		try await MainActor.run {
-			let context = container.mainContext
+			let context = container.viewContext
 
 			// 1. Update Devices and Tags
 			for device in decodedDevices {
@@ -467,7 +470,7 @@ deviceEntity.architecture = device.architecture
 
 		await MainActor.run {
 			guard !Task.isCancelled else { return }
-			let context = container.mainContext
+			let context = container.viewContext
 			var importedCount = 0
 			let importedShortCodes = Set(decoded.routes.map { $0.shortCode })
 
@@ -652,7 +655,7 @@ deviceEntity.architecture = device.architecture
 		// The image's device relationship is to-one, so shared art is stored once per
 		// device — every device that references the file needs its own current copy.
 		let isUpToDate: Bool = await MainActor.run {
-			let context = container.mainContext
+			let context = container.viewContext
 			for platform in platforms {
 				let deviceRequest = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
 				deviceRequest.predicate = NSPredicate(format: "platformioTarget == %@", platform)
@@ -702,7 +705,7 @@ deviceEntity.architecture = device.architecture
 
 		await MainActor.run {
 			guard !Task.isCancelled else { return }
-			let context = container.mainContext
+			let context = container.viewContext
 
 			// Link the image to every device that references it. The device relationship
 			// is to-one (the inverse of DeviceHardwareEntity.images), so each device gets
@@ -782,7 +785,7 @@ extension MeshtasticAPI {
 		let bundledData = try Self.bundledDeviceHardwareData()
 		let decodedDevices = try decoder.decode([DeviceHardware].self, from: bundledData)
 		try await MainActor.run {
-			let context = container.mainContext
+			let context = container.viewContext
 			for device in decodedDevices {
 				let target = device.platformioTarget
 				let descriptor = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
@@ -952,7 +955,7 @@ extension MeshtasticAPI {
 		}
 		await MainActor.run {
 			guard !Task.isCancelled else { return }
-			let context = container.mainContext
+			let context = container.viewContext
 			Self.deleteOrphanedImages(context: context)
 			try? context.save()
 		}
@@ -1191,7 +1194,7 @@ extension MeshtasticAPI {
 	func importEventEditions(_ editions: [EventFirmwarePayload], overwriteExisting: Bool) async {
 		guard let container else { return }
 		await MainActor.run {
-			let context = container.mainContext
+			let context = container.viewContext
 
 			for payload in editions {
 				let key = payload.edition

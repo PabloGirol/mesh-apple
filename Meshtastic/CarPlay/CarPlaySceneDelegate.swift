@@ -41,7 +41,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 	// message, so a newer unread message re-donates and stays readable by Siri.
 	private var donatedReadKeys = Set<String>()
 
-	private lazy var context: NSManagedObjectContext = PersistenceController.shared.context
+	private lazy var context: NSManagedObjectContext = CoreDataStackImpl.shared.container.viewContext
 
 	/// Returns a human-readable "last heard" string.
 	/// `now` is passed in so all rows in a single render share one `Date()` allocation.
@@ -639,7 +639,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPI
 	/// messages that arrived before the CarPlay session started.
 	private func donateUnreadMessages() {
 		Task { @MainActor in
-			let context = PersistenceController.shared.context
+			let context = CoreDataStackImpl.shared.container.viewContext
 			let descriptor = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
 			descriptor.predicate = NSPredicate(format: "read == NO AND admin == NO AND isEmoji == NO")
 			descriptor.fetchLimit = 50

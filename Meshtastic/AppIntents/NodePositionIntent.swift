@@ -6,10 +6,13 @@
 //
 
 import Foundation
-import AppIntents
 import CoreLocation
 import CoreData
 
+#if canImport(AppIntents) && compiler(>=5.9)
+import AppIntents
+
+@available(iOS 16.0, *)
 struct NodePositionIntent: AppIntent {
 
 	@Parameter(title: "Node Number")
@@ -27,7 +30,7 @@ struct NodePositionIntent: AppIntent {
 		request.predicate = NSPredicate(format: "num == %lld", nodeNumInt64)
 		request.fetchLimit = 1
 		do {
-			let fetchedNode = try await MainActor.run { try PersistenceController.shared.context.fetch(request) }
+			let fetchedNode = try await MainActor.run { try CoreDataStackImpl.shared.container.viewContext.fetch(request) }
 			guard fetchedNode.count == 1 else {
 				throw $nodeNum.needsValueError("Could not find node")
 			}
@@ -51,3 +54,4 @@ struct NodePositionIntent: AppIntent {
 		}
 	}
 }
+#endif

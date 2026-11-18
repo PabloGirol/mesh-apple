@@ -6,6 +6,7 @@
 //
 
 import CoreData
+import CoreDataStackImpl
 import CoreLocation
 import OSLog
 import SwiftUI
@@ -26,7 +27,7 @@ struct NavigateToButton: View {
 			request.fetchLimit = 1
 
 			do {
-				let fetchedNodes = try PersistenceController.shared.container.viewContext.fetch(request)
+				let fetchedNodes = try CoreDataStackImpl.shared.container.viewContext.fetch(request)
 				guard let nodeInfo = fetchedNodes.first else {
 					Logger.services.error("NavigateToAction: Node with userNum \(userNum, privacy: .public) not found in Core Data")
 					return

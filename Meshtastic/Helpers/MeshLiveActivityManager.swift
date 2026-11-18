@@ -69,7 +69,7 @@ final class MeshLiveActivityManager: ObservableObject {
 	private var packetSubscription: AnyCancellable?
 #endif
 
-	private init() {}
+	override init() {}
 
 	// MARK: - Lifecycle
 
@@ -115,7 +115,7 @@ final class MeshLiveActivityManager: ObservableObject {
 #if os(iOS) && !targetEnvironment(macCatalyst) && canImport(ActivityKit)
 		guard let radioNum = canStart(mode) else { return }
 
-		let context = PersistenceController.shared.context
+		let context = CoreDataStackImpl.shared.container.viewContext
 		let radioUser = getNodeInfo(id: radioNum, context: context)?.user
 		var nodeShortName: String?
 		var nodeLongName: String?
@@ -281,7 +281,7 @@ final class MeshLiveActivityManager: ObservableObject {
 
 	private func scheduleTrackedRead(after delay: Duration) {
 		guard let activity, let num = activity.attributes.mode.trackedNodeNum else { return }
-		guard !PersistenceController.shared.isProvisionalPendingFirstUnlock else { return }
+		guard !CoreDataStackImpl.shared.isProvisionalPendingFirstUnlock else { return }
 		// A read waiting out the delay after a packet covers this request too,
 		// and reads after the packet's writes land.
 		if delay == .zero, trackedReadIsDelayed { return }

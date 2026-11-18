@@ -6,6 +6,7 @@
 //
 
 import CoreLocation
+import CoreDataStackImpl
 import Foundation
 import CoreData
 import MeshtasticProtobufs
@@ -158,7 +159,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 	/// rather than a stale, torn-down container. Only read on the main actor (recreateShared and
 	/// the initial `_shared` are both reached from @MainActor code).
 	private static var _container: ModelContainer {
-		MainActor.assumeIsolated { PersistenceController.shared.container }
+		MainActor.assumeIsolated { CoreDataStackImpl.shared.container }
 	}
 
 	/// The current shared instance. Access via `MeshPackets.shared`.
@@ -2356,7 +2357,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 											// Recompute the badge against a freshly re-fetched, live main-context
 											// entity (unreadMessages is @MainActor); never touch the captured
 											// MeshPackets entity, which a device switch may have invalidated.
-											let mainContext = PersistenceController.shared.context
+											let mainContext = CoreDataStackImpl.shared.context
 											let liveRequest = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
 											liveRequest.predicate = NSPredicate(format: "myNodeNum == %lld", connectedNodeNum)
 											liveRequest.fetchLimit = 1

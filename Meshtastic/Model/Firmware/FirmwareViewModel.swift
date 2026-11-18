@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import CoreDataStackImpl
 import OSLog
 import CoreData
 
@@ -73,7 +74,7 @@ class FirmwareViewModel: ObservableObject {
 		let hardwareArchitecture = hardware.architecture.flatMap { Architecture(rawValue: $0) }
 
 		// First, loop through all firmware entities and create an entry for those
-		let context = PersistenceController.shared.container.viewContext
+		let context = CoreDataStackImpl.shared.container.viewContext
 		let firmwareRequest = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
 		do {
 			let firmwareReleases = try context.fetch(firmwareRequest)
@@ -159,7 +160,7 @@ class FirmwareViewModel: ObservableObject {
 	}
 
 	func mostRecentFirmwareVersion(forReleaseType releaseType: ReleaseType) -> String? {
-		let context = PersistenceController.shared.container.viewContext
+		let context = CoreDataStackImpl.shared.container.viewContext
 		let releaseTypeRaw = releaseType.rawValue
 		let request = NSFetchRequest<FirmwareReleaseEntity>(entityName: "FirmwareReleaseEntity")
 		request.predicate = NSPredicate(format: "releaseType == %d", releaseTypeRaw)

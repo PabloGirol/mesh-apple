@@ -6,8 +6,11 @@
 //
 
 import Foundation
+
+#if canImport(AppIntents) && compiler(>=5.9)
 import AppIntents
 
+@available(iOS 16.0, *)
 struct ShortcutsProvider: AppShortcutsProvider {
 	static var appShortcuts: [AppShortcut] {
 		AppShortcut(intent: ShutDownNodeIntent(),
@@ -41,3 +44,4 @@ struct ShortcutsProvider: AppShortcutsProvider {
 					systemImageName: "antenna.radiowaves.left.and.right.slash")
 	}
 }
+#endif

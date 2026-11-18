@@ -7,6 +7,7 @@
 
 import Foundation
 import OSLog
+import CoreDataStackImpl
 import SwiftUI
 import CoreData
 
@@ -232,7 +233,7 @@ class FirmwareFile: ObservableObject, Hashable, Equatable {
 		}
 		
 		// Look up the architecture for this file
-		let context = PersistenceController.shared.container.viewContext
+		let context = CoreDataStackImpl.shared.container.viewContext
 		let hardwareRequest = NSFetchRequest<DeviceHardwareEntity>(entityName: "DeviceHardwareEntity")
 		hardwareRequest.predicate = NSPredicate(format: "platformioTarget == %@", target)
 		hardwareRequest.fetchLimit = 1

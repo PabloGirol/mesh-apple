@@ -9,6 +9,7 @@ import CoreLocation
 import RealityKit
 import CoreData
 import SwiftUI
+import CoreDataStackImpl
 
 /// Root of the cinema immersive space: an environment around the viewer and a small panel to
 /// change the environment, open the 3D map or leave. The front wall is a screen that shows
@@ -211,7 +212,7 @@ struct CinemaSpace: View {
 			}
 			while !Task.isCancelled {
 				if !appState.isDatabaseResetting {
-					radioCoordinate = getNodeInfo(id: radioNum, context: container?.viewContext ?? PersistenceController.shared.context)?.latestPosition?.nodeCoordinate
+					radioCoordinate = getNodeInfo(id: radioNum, context: container?.viewContext ?? CoreDataStackImpl.shared.context)?.latestPosition?.nodeCoordinate
 				}
 				try? await Task.sleep(for: .seconds(60))
 			}
@@ -232,7 +233,7 @@ struct CinemaSpace: View {
 		.task(id: modelRequest) {
 			modelHasDisplay = false
 			if let container, !appState.isDatabaseResetting, let nodeNum = modelRequest?.nodeNum {
-				modelHasDisplay = getNodeInfo(id: nodeNum, context: container?.viewContext ?? PersistenceController.shared.context)?.metadata?.hasDisplay == true
+				modelHasDisplay = getNodeInfo(id: nodeNum, context: container?.viewContext ?? CoreDataStackImpl.shared.context)?.metadata?.hasDisplay == true
 			}
 			await modelStand.show(modelRequest, environment: environment)
 		}

@@ -9,6 +9,7 @@
 import Intents
 import OSLog
 import CoreData
+import CoreDataStackImpl
 
 final class SetMessageAttributeIntentHandler: NSObject, INSetMessageAttributeIntentHandling {
 
@@ -45,7 +46,7 @@ final class SetMessageAttributeIntentHandler: NSObject, INSetMessageAttributeInt
 		}
 
 		let success = await MainActor.run { () -> Bool in
-			let context = PersistenceController.shared.context
+			let context = CoreDataStackImpl.shared.context
 			let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
 
 			do {

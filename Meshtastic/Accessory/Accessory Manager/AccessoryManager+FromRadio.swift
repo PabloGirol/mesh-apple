@@ -306,7 +306,7 @@ extension AccessoryManager {
 			// A half-cleared store must not receive this radio's dump (that IS the bleed).
 			// Escalate to a guaranteed-empty store; the foreign radio's data was backed up above.
 			Logger.data.error("💾 [Database] clearDatabase failed during cross-device reset — escalating to store destruction")
-			PersistenceController.shared.destroyStoreAndRecreateContainer()
+			CoreDataStackImpl.shared.recreateContainer()
 		}
 		// Pops views, repoints the container (recreating the MeshPackets actor), and bumps
 		// databaseResetID so @Query views rebind before the new radio's data starts landing.

@@ -3,6 +3,7 @@
 //  Meshtastic
 //
 //  Created by niccellular 12/26/25
+import CoreDataStackImpl
 //
 
 import Foundation
@@ -563,7 +564,7 @@ final class TAKMeshtasticBridge {
 		guard let takServerManager, takServerManager.isRunning else { return }
 		
 		// Get context - try the bridge's context first, then fall back to PersistenceController
-		let context = self.context ?? PersistenceController.shared.context
+		let context = self.context ?? CoreDataStackImpl.shared.context
 		
 		let twoHoursAgo = Date().addingTimeInterval(-7200)
 		
@@ -625,7 +626,7 @@ final class TAKMeshtasticBridge {
 	// MARK: - Helper Methods
 
 	private func lookupNodeInfo(nodeNum: UInt32) -> NodeInfoEntity? {
-		let context = PersistenceController.shared.context
+		let context = CoreDataStackImpl.shared.context
 		let nodeNumInt64 = Int64(nodeNum)
 		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
 		request.predicate = NSPredicate(format: "num == %lld", nodeNumInt64)

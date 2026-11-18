@@ -541,7 +541,7 @@ actor BLETransport: Transport {
 				do {
 					let descriptor = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
 					descriptor.predicate = NSPredicate(format: "num == %lld", nodeNumVal)
-					let context = PersistenceController.shared.context
+					let context = CoreDataStackImpl.shared.container.viewContext
 					let fetchedNodes = try context.fetch(descriptor)
 					if let first = fetchedNodes.first {
 						return (first.user?.longName, first.user?.shortName)

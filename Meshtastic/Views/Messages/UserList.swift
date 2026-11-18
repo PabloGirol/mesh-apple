@@ -6,6 +6,7 @@
 //
 
 import CoreData
+import CoreDataStackImpl
 import OSLog
 import SwiftUI
 import TipKit
@@ -135,7 +136,7 @@ private struct FilteredUserList: View {
 		let localeDateFormat = DateFormatter.dateFormat(fromTemplate: "yyMMdd", options: 0, locale: Locale.current)
 		let dateFormatString = (localeDateFormat ?? "MM/dd/YY")
 		let activeDeviceNum = Int64(accessoryManager.activeDeviceNum ?? 0)
-		let containerGeneration = PersistenceController.shared.containerGeneration
+		let containerGeneration = CoreDataStackImpl.shared.containerGeneration
 		let visibleUsers = users.filter { $0.num != activeDeviceNum }
 		let summaryUsers = allUsers.filter { $0.num != activeDeviceNum && $0.lastMessage != nil }
 		let summaryUserNums = Set(summaryUsers.map(\.num))
@@ -202,7 +203,7 @@ private struct FilteredUserList: View {
 		for userNums: Set<Int64>,
 		containerGeneration: Int
 	) async {
-		guard containerGeneration == PersistenceController.shared.containerGeneration else { return }
+		guard containerGeneration == CoreDataStackImpl.shared.containerGeneration else { return }
 		guard !userNums.isEmpty else {
 			directMessageSummaries = [:]
 			return
@@ -211,15 +212,15 @@ private struct FilteredUserList: View {
 		do {
 			// Coalesce a burst of refresh triggers; a newer one cancels this task during the wait.
 			try await Task.sleep(for: .milliseconds(100))
-			guard containerGeneration == PersistenceController.shared.containerGeneration else { return }
-			let currentContainer = PersistenceController.shared.container
+			guard containerGeneration == CoreDataStackImpl.shared.containerGeneration else { return }
+			let currentContainer = CoreDataStackImpl.shared.container
 			guard context.container === currentContainer else { return }
 			// Built per refresh: it costs little next to the fetch, and nothing has to track the
 			// container it was made for.
 			let actor = DirectMessageSummaryActor(modelContainer: currentContainer)
 			let summaries = try await actor.summaries(for: userNums)
 			guard !Task.isCancelled,
-				  containerGeneration == PersistenceController.shared.containerGeneration else { return }
+				  containerGeneration == CoreDataStackImpl.shared.containerGeneration else { return }
 			directMessageSummaries = summaries
 		} catch is CancellationError {
 			return

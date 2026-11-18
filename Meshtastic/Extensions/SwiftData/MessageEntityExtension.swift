@@ -139,7 +139,7 @@ extension MessageEntity {
 		let relaySuffix = Int64(self.relayNode & 0xFF)
 		let hexFallback = String(format: "Node 0x%02X", UInt32(self.relayNode & 0xFF))
 
-		let context = PersistenceController.shared.context
+		let context = CoreDataStackImpl.shared.container.viewContext
 		let request = NSFetchRequest<UserEntity>(entityName: "UserEntity")
 		guard let users = try? context.fetch(request) else {
 			return hexFallback

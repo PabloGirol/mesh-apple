@@ -6,9 +6,12 @@
 //
 
 import Foundation
+
+#if canImport(AppIntents) && compiler(>=5.9)
 import AppIntents
 
 // Define the AppIntent for saving channel settings from a URL
+@available(iOS 16.0, *)
 struct SaveChannelSettingsIntent: AppIntent {
 	// Define a title and description for the intent
 	static let title: LocalizedStringResource = "Save Channel Settings"
@@ -56,3 +59,4 @@ struct SaveChannelSettingsIntent: AppIntent {
 		return .result()
 	}
 }
+#endif

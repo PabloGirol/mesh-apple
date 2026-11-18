@@ -9,6 +9,7 @@ import OSLog
 import RealityKit
 import CoreData
 import SwiftUI
+import CoreDataStackImpl
 
 /// Root of the hardware showcase immersive space: the room with the viewer's seat at the origin,
 /// device models and the connected radio on the display tables, the mesh on the wall rack, the
@@ -106,7 +107,7 @@ struct ShowcaseSpace: View {
 		.gesture(tap)
 		.task {
 			// The context is read here, not in the RealityView's make, where SwiftData traps.
-			let hardware = await ShowcaseCatalog.hardware(in: PersistenceController.shared.container)
+			let hardware = await ShowcaseCatalog.hardware(in: CoreDataStackImpl.shared.container)
 			await scene.setDisplayHardware(hardware)
 			#if DEBUG
 			// `--meshtastic-showcase-card <model>` opens a model's card once the tables are set.
@@ -121,7 +122,7 @@ struct ShowcaseSpace: View {
 		}
 		.task(id: accessoryManager.activeDeviceNum) {
 			// Made off the main thread: a model actor made on it runs its fetches there too.
-			let container = PersistenceController.shared.container
+			let container = CoreDataStackImpl.shared.container
 			let reader = await Task.detached { ShowcaseSnapshotReader(modelContainer: container) }.value
 			while !Task.isCancelled {
 				let result = await reader.read(connectedNodeNum: accessoryManager.activeDeviceNum)

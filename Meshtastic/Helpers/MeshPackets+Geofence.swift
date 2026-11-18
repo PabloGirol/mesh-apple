@@ -12,6 +12,7 @@ import CoreData
 import CoreLocation
 import Foundation
 import OSLog
+import CoreDataStackImpl
 
 /// Thread-safe, in-memory record of whether each (waypoint, node) pair was last seen
 /// inside its geofence. Not persisted: the first observation of a pair only establishes
@@ -43,7 +44,7 @@ extension MeshPackets {
 		// Only consider waypoints that actually want enter/exit notifications.
 		let request = NSFetchRequest<WaypointEntity>(entityName: "WaypointEntity")
 		request.predicate = NSPredicate(format: "notifyOnEnter == YES OR notifyOnExit == YES")
-		guard let waypoints = try? PersistenceController.shared.context.fetch(request) else { return }
+		guard let waypoints = try? CoreDataStackImpl.shared.context.fetch(request) else { return }
 
 		// Resolved lazily once per call: whether this node is a favorite on THIS receiver, used by
 		// waypoints set to notify for favorites only.
@@ -80,7 +81,7 @@ extension MeshPackets {
 		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
 		request.predicate = NSPredicate(format: "num == %lld", nodeNum)
 		request.fetchLimit = 1
-		return ((try? PersistenceController.shared.context.fetch(request))?.first?.favorite) ?? false
+		return ((try? CoreDataStackImpl.shared.context.fetch(request))?.first?.favorite) ?? false
 	}
 
 	private func scheduleGeofenceNotification(waypointId: Int64, waypointName: String, nodeNum: Int64, nodeName: String, entered: Bool) {

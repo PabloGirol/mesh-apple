@@ -9,6 +9,7 @@ import CoreLocation
 import OSLog
 import CoreData
 import Foundation
+import CoreDataStackImpl
 
 struct NodeList: View {
 	@Environment(\.managedObjectContext) private var context
@@ -306,7 +307,7 @@ private struct FilteredNodeList: View {
 	@State private var displayedNodes: [NodeListEntry] = []
 	/// Kept in view state so a controller swap invalidates this task until SwiftUI remounts the
 	/// list against the new root `.modelContainer` and `databaseResetID`.
-	@State private var boundContainerGeneration = PersistenceController.shared.containerGeneration
+	@State private var boundContainerGeneration = CoreDataStackImpl.shared.containerGeneration
 
 	var connectedNode: NodeInfoEntity?
 	@Binding var isPresentingDeleteNodeAlert: Bool
@@ -502,7 +503,7 @@ private struct FilteredNodeList: View {
 	}
 
 	private func refreshDisplayedNodes() {
-		guard boundContainerGeneration == PersistenceController.shared.containerGeneration else { return }
+		guard boundContainerGeneration == CoreDataStackImpl.shared.containerGeneration else { return }
 		guard router.selectedTab == .nodes else { return }
 		let allNodes = (try? context.fetch(makeNodeFetchRequest())) ?? []
 		replaceDisplayedNodesIfNeeded(with: displayNodes(from: allNodes, activeNodeNum: accessoryManager.activeDeviceNum))
@@ -513,7 +514,7 @@ private struct FilteredNodeList: View {
 	/// real refresh — cheap enough to run while the tab is parked in the background.
 	/// `modelContext`/`isDeleted` are safe to read on a dead object; persisted properties are not.
 	private func purgeDeadDisplayedNodes() {
-		guard boundContainerGeneration == PersistenceController.shared.containerGeneration else { return }
+		guard boundContainerGeneration == CoreDataStackImpl.shared.containerGeneration else { return }
 		let live = displayedNodes.filter { $0.node.modelContext != nil && !$0.node.isDeleted }
 		if live.count != displayedNodes.count {
 			displayedNodes = live

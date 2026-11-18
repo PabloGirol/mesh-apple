@@ -7,6 +7,7 @@
 
 #if DEBUG
 import CoreData
+import CoreDataStackImpl
 import OSLog
 import Foundation
 
@@ -130,7 +131,7 @@ enum PerformanceSeedData {
 		}
 	}
 
-	static func seedIfNeeded(using controller: PersistenceController, configuration: PerformanceSeedConfiguration, appState: AppState) {
+	static func seedIfNeeded(using controller: CoreDataStackImpl, configuration: PerformanceSeedConfiguration, appState: AppState) {
 		let start = Date()
 		let context = controller.container.mainContext
 
@@ -739,7 +740,7 @@ extension PerformanceSeedData {
 	/// `--meshtastic-seed-beacons` launch argument (or `MESHTASTIC_SEED_BEACONS=1`). Independent of
 	/// the node performance seed: it neither resets the store nor blocks a live radio connection, so
 	/// the seeded Discovery history can be viewed while the app is connected to a real/replay radio.
-	static func seedDiscoveryBeaconsIfRequested(using controller: PersistenceController) {
+	static func seedDiscoveryBeaconsIfRequested(using controller: CoreDataStackImpl) {
 		let args = ProcessInfo.processInfo.arguments
 		let env = ProcessInfo.processInfo.environment
 		// The marketing seed auto-includes a discovery session so the Local Mesh Discovery screens are

@@ -164,7 +164,7 @@ class AccessoryManager: ObservableObject, MqttClientProxyManagerDelegate {
 	// Chicken/Egg problem.  Set in the App object immediately after
 	// AppState and AccessoryManager are created
 	var appState: AppState!
-	lazy var context = PersistenceController.shared.context
+	lazy var context = CoreDataStackImpl.shared.container.viewContext
 
 	/// Alert history for firmware `ClientNotification`s, keyed by notice identity, used to
 	/// back off repeats (see `shouldSurfaceFirmwareNotice`). In memory on purpose: after a
@@ -179,21 +179,21 @@ class AccessoryManager: ObservableObject, MqttClientProxyManagerDelegate {
 	// MARK: - Database reset
 
 	/// Call after a full data clear (clear app data / device reset / node switch). Reopens the
-	/// SwiftData container fresh and repoints the MeshPackets actor and this manager's cached
+	/// Core Data container fresh and repoints the MeshPackets actor and this manager's cached
 	/// `context` at it, so no long-lived context keeps stale objects that would trap
-	/// ("destroyed by ModelContext.reset") when a reconnect reuses freed SQLite rowids.
+	/// when a reconnect reuses freed SQLite rowids.
 	func repointToFreshContainer() {
-		PersistenceController.shared.recreateContainer()
+		CoreDataStackImpl.shared.recreateContainer()
 		rebindToCurrentContainer()
 	}
 
 	/// The repoint minus the container recreation: rebuilds the MeshPackets actor and this
-	/// manager's cached context on whatever container PersistenceController currently holds.
+	/// manager's cached context on whatever container CoreDataStackImpl currently holds.
 	/// Used when the caller already recreated the container (the store-destroy escalation) —
 	/// every recreation mints a potential stale observer bridge, so never recreate twice.
 	func rebindToCurrentContainer() {
 		MeshPackets.recreateShared()
-		context = PersistenceController.shared.context
+		context = CoreDataStackImpl.shared.container.viewContext
 		// Re-deliver the new container to the SwiftUI environment immediately: the scene body
 		// re-evaluates on this bump and .modelContainer(...) reads the recreated container, so
 		// @Query subscriptions re-bind in place instead of staying attached to the old store

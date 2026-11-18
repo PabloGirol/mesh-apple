@@ -6,8 +6,11 @@
 //
 
 import Foundation
+
+#if canImport(AppIntents) && compiler(>=5.9)
 import AppIntents
 
+@available(iOS 16.0, *)
 struct FactoryResetNodeIntent: AppIntent {
 	static let title: LocalizedStringResource = "Factory Reset"
 	static let description: IntentDescription = "Perform a factory reset on the node you are connected to"
@@ -29,7 +32,7 @@ struct FactoryResetNodeIntent: AppIntent {
 		}
 
 		// Safely unwrap the connected node information
-		let context = await MainActor.run { PersistenceController.shared.context }
+		let context = await MainActor.run { CoreDataStackImpl.shared.container.viewContext }
 		if let connectedPeripheralNum = await AccessoryManager.shared.activeDeviceNum,
 		   let connectedNode = getNodeInfo(id: connectedPeripheralNum, context: context),
 		   let fromUser = connectedNode.user,
@@ -44,7 +47,8 @@ struct FactoryResetNodeIntent: AppIntent {
 		} else {
 			throw AppIntentErrors.AppIntentError.message("Failed to retrieve connected node or required data")
 		}
-//		
+//
 		return .result()
 	}
 }
+#endif

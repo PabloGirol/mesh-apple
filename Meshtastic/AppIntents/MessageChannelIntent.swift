@@ -6,8 +6,11 @@
 //
 
 import Foundation
+
+#if canImport(AppIntents) && compiler(>=5.9)
 import AppIntents
 
+@available(iOS 16.0, *)
 struct MessageChannelIntent: AppIntent {
 	static let title: LocalizedStringResource = "Send a Group Message"
 
@@ -50,3 +53,4 @@ struct MessageChannelIntent: AppIntent {
 	return .result()
 	}
 }
+#endif

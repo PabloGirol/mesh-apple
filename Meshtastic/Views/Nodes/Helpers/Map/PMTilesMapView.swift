@@ -409,7 +409,6 @@ final class OfflineVectorTileProvider: ObservableObject {
 				}
 			}
 			polys = identified(polys)
-		}
 
 		var lines: [OfflineMapPolyline] = []
 		var counter = 0
@@ -417,8 +416,7 @@ final class OfflineVectorTileProvider: ObservableObject {
 		var stitchedVertexCount = 0
 		let decodeDuration = -decodeStart.timeIntervalSinceNow
 		let stitchStart = Date()
-		let stitchStart = Date()
-			for role in roadDrawOrder {
+		for role in roadDrawOrder {
 				guard let allSegments = rawSegmentsByRole[role] else { continue }
 				// A bridge or tunnel is stitched apart from the road it carries on from.
 				for structure in OfflineRoadStructure.allCases {

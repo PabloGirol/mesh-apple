@@ -32,7 +32,15 @@ enum DeviceImageLinkThrottle {
 	/// the completion write are compare-and-act sequences; holding the lock across each is what
 	/// makes them atomic with respect to an intervening `invalidate()`. The critical sections are
 	/// a `UserDefaults` read/write and an integer compare — short enough for an unfair lock.
-	private static let state = OSAllocatedUnfairLock(initialState: 0)
+	/// Uses os_unfair_lock (available iOS 10+) for iOS 15 compatibility.
+	private static var stateLock = os_unfair_lock()
+	private static var stateGeneration = 0
+
+	private static func withLock<T>(_ body: (inout Int) -> T) -> T {
+		os_unfair_lock_lock(&stateLock)
+		defer { os_unfair_lock_unlock(&stateLock) }
+		return body(&stateGeneration)
+	}
 
 	/// Claims a pass if the last one is older than `interval`, returning the token to complete with.
 	///
@@ -40,7 +48,7 @@ enum DeviceImageLinkThrottle {
 	/// freshness check and the token capture happen under one lock acquisition so a clear cannot
 	/// land between them and hand back a token that is already stale.
 	static func beginIfStale(interval: TimeInterval) -> Int? {
-		state.withLock { generation in
+		withLock { generation in
 			let last = UserDefaults.lastDeviceImageAndLinkUpdate
 			guard last == .distantPast || abs(last.timeIntervalSinceNow) > interval else {
 				return nil
@@ -55,7 +63,7 @@ enum DeviceImageLinkThrottle {
 	/// just wrote are gone. Dropping the write leaves the timestamp at `.distantPast` and lets the
 	/// next connect run a real restore.
 	static func complete(token: Int) {
-		state.withLock { generation in
+		withLock { generation in
 			guard generation == token else { return }
 			UserDefaults.lastDeviceImageAndLinkUpdate = Date()
 		}
@@ -65,7 +73,7 @@ enum DeviceImageLinkThrottle {
 	///
 	/// Called by `clearDatabase` after wiping the image/link rows.
 	static func invalidate() {
-		state.withLock { generation in
+		withLock { generation in
 			generation &+= 1
 			UserDefaults.lastDeviceImageAndLinkUpdate = .distantPast
 		}

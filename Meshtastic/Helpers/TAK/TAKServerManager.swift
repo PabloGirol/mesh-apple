@@ -9,6 +9,7 @@ import Foundation
 import Network
 import OSLog
 import Combine
+import CoreDataStackImpl
 import SwiftUI
 import CoreData
 import MeshtasticProtobufs
@@ -164,7 +165,7 @@ final class TAKServerManager: ObservableObject {
 	/// Check the primary channel for validity
 	/// Returns true if the primary channel is valid for TAK server operation
 	func checkPrimaryChannelValidity() {
-		let context = PersistenceController.shared.context
+		let context = CoreDataStackImpl.shared.context
 		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
 		request.fetchLimit = 1
 
@@ -745,7 +746,7 @@ final class TAKServerManager: ObservableObject {
 
 		Logger.tak.info("Auto-fixing primary channel for TAK compatibility")
 
-		let context = PersistenceController.shared.context
+		let context = CoreDataStackImpl.shared.context
 
 		guard let connectedNodeNum = accessoryManager.activeDeviceNum else {
 			Logger.tak.error("Cannot fix channel: No active device number")

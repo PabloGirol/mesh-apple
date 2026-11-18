@@ -6,8 +6,11 @@
 //
 
 import Foundation
+
+#if canImport(AppIntents) && compiler(>=5.9)
 import AppIntents
 
+@available(iOS 16.0, *)
 struct RestartNodeIntent: AppIntent {
 	static let title: LocalizedStringResource = "Restart"
 
@@ -19,7 +22,7 @@ struct RestartNodeIntent: AppIntent {
 			throw AppIntentErrors.AppIntentError.notConnected
 		}
 		// Safely unwrap the connectedNode using if let
-		let context = await MainActor.run { PersistenceController.shared.context }
+		let context = await MainActor.run { CoreDataStackImpl.shared.container.viewContext }
 		if let connectedPeripheralNum = await AccessoryManager.shared.activeDeviceNum,
 		   let connectedNode = getNodeInfo(id: connectedPeripheralNum, context: context),
 		   let fromUser = connectedNode.user,
@@ -37,3 +40,4 @@ struct RestartNodeIntent: AppIntent {
 		return .result()
 	}
 }
+#endif

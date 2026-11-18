@@ -7,6 +7,7 @@
 
 import Foundation
 import OSLog
+import CoreDataStackImpl
 import CoreData
 
 // Telemetry rows are tied to their node by `nodeNum`, not by the `nodeTelemetry` relationship.
@@ -105,7 +106,7 @@ enum TelemetryNodeNumBackfill {
 	/// recording completion, if a database reset starts or the container is replaced, and tries
 	/// again on the next launch.
 	@MainActor
-	static func startIfNeeded(persistence: PersistenceController, appState: AppState) {
+	static func startIfNeeded(persistence: CoreDataStackImpl, appState: AppState) {
 		guard !isComplete, !persistence.isProvisionalPendingFirstUnlock else { return }
 		let container = persistence.container
 		let generation = persistence.containerGeneration

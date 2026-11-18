@@ -9,6 +9,7 @@ import Foundation
 import CryptoKit
 import OSLog
 import SQLite3
+import CoreDataStackImpl
 import CoreData
 
 /// Core backup/restore service for node database snapshots.
@@ -114,7 +115,7 @@ final class NodeBackupManager: NodeBackupManaging {
 	///
 	/// `activeStoreURL` points `createBackup` at a store the test owns. Without it the manager reads
 	/// the live Application Support store, which the schema-history tests open and replace through
-	/// the real `PersistenceController` — so a full parallel run could catch it mid-manipulation and
+	/// the real `CoreDataStackImpl` — so a full parallel run could catch it mid-manipulation and
 	/// fail tests that pass in isolation.
 	init(baseURL: URL, activeStoreURL: URL? = nil) {
 		backupBaseURL = baseURL

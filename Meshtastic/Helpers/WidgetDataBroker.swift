@@ -7,6 +7,7 @@
 //  Builds WidgetSnapshots from the database and tells WidgetKit when to reload.
 //  Runs only in the app process; the widget extension just reads the snapshot.
 //
+import CoreDataStackImpl
 //  Reload budget: WidgetKit allows roughly 40-70 background reloads per widget
 //  per day, so refreshes are debounced (a node DB dump is one write, not
 //  hundreds) and each widget kind has a minimum reload interval. Widgets render
@@ -140,7 +141,7 @@ final class WidgetDataBroker {
 	private func buildAndStore(_ triggers: Set<Trigger>) async {
 		// Before first unlock the store is provisional; skip and let the next
 		// trigger rebuild. Class C file writes would fail here anyway.
-		guard !PersistenceController.shared.isProvisionalPendingFirstUnlock else { return }
+		guard !CoreDataStackImpl.shared.isProvisionalPendingFirstUnlock else { return }
 
 		let accessoryManager = AccessoryManager.shared
 		let connectionState = Self.connectionState(for: accessoryManager)
@@ -161,8 +162,8 @@ final class WidgetDataBroker {
 
 		// The reads run on a context of their own, off the main thread: they only read, and
 		// they return plain values, so nothing here touches a model object afterwards.
-		let container = PersistenceController.shared.container
-		let generation = PersistenceController.shared.containerGeneration
+		let container = CoreDataStackImpl.shared.container
+		let generation = CoreDataStackImpl.shared.containerGeneration
 		let needsStoredStats = latestLocalStats == nil
 		await TrackedWidgetNodes.shared.refresh()
 		// Nil if iOS hasn't answered yet; the last snapshot's missing list stands until it does.
@@ -172,7 +173,7 @@ final class WidgetDataBroker {
 		}.value
 		// The store was reset while reading; what was read belongs to the old one. Build again
 		// from the new store.
-		guard generation == PersistenceController.shared.containerGeneration else {
+		guard generation == CoreDataStackImpl.shared.containerGeneration else {
 			pendingTriggers.formUnion(triggers)
 			retry(after: 0)
 			return

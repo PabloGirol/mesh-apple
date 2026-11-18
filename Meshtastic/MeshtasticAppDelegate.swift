@@ -9,6 +9,7 @@
 import Intents
 import SwiftUI
 import OSLog
+import CoreDataStackImpl
 import CoreData
 
 class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, ObservableObject {
@@ -69,7 +70,7 @@ class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificat
 
 	/// Marks all unread messages in a CarPlay conversation as read after Siri reads them aloud.
 	private func markCarPlayMessagesAsRead(conversationId: String) {
-		let context = PersistenceController.shared.context
+		let context = CoreDataStackImpl.shared.context
 		do {
 			var readMessageIDs = [Int64]()
 			if conversationId.hasPrefix("dm-"), let nodeNum = Int64(conversationId.replacingOccurrences(of: "dm-", with: "")) {

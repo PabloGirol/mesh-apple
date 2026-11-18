@@ -7,6 +7,7 @@
 //  and returns them as INMessage objects.
 //
 
+import CoreDataStackImpl
 import Intents
 import OSLog
 import CoreData
@@ -20,7 +21,7 @@ final class SearchForMessagesIntentHandler: NSObject, INSearchForMessagesIntentH
 
 	func handle(intent: INSearchForMessagesIntent) async -> INSearchForMessagesIntentResponse {
 		let messages: [INMessage] = await MainActor.run {
-			let context = PersistenceController.shared.context
+			let context = CoreDataStackImpl.shared.context
 			let request = NSFetchRequest<MessageEntity>(entityName: "MessageEntity")
 			request.sortDescriptors = [NSSortDescriptor(key: "messageTimestamp", ascending: false)]
 

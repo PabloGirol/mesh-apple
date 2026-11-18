@@ -7,9 +7,12 @@
 
 import CoreLocation
 import Foundation
-import AppIntents
 import MeshtasticProtobufs
 
+#if canImport(AppIntents) && compiler(>=5.9)
+import AppIntents
+
+@available(iOS 16.0, *)
 struct SendWaypointIntent: AppIntent {
 
 	var defaultDate = Date.now.addingTimeInterval(60 * 480)
@@ -109,3 +112,4 @@ struct SendWaypointIntent: AppIntent {
 		return matches?.count == 1
 	}
 }
+#endif

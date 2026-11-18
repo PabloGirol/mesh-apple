@@ -6,6 +6,8 @@
 //  Meshtastic supports exactly one destination per message: either a single
 //  direct-message recipient (a mesh node) or a channel (speakableGroupName).
 //  Multiple recipients are not supported.
+import CoreData
+import CoreDataStackImpl
 //
 
 import Intents
@@ -94,7 +96,7 @@ final class SendMessageIntentHandler: NSObject, INSendMessageIntentHandling {
 
 		let searchTerm = recipient.displayName.isEmpty ? handleValue : recipient.displayName
 		let matchingUsers = await MainActor.run {
-			let context = PersistenceController.shared.context
+			let context = CoreDataStackImpl.shared.context
 			return IntentMessageConverters.findUsers(matching: searchTerm, in: context)
 		}
 
@@ -135,7 +137,7 @@ final class SendMessageIntentHandler: NSObject, INSendMessageIntentHandling {
 		}
 
 		let matchingChannels = await MainActor.run {
-			let context = PersistenceController.shared.context
+			let context = CoreDataStackImpl.shared.context
 			return IntentMessageConverters.findChannels(matching: groupName.spokenPhrase, in: context)
 		}
 
@@ -183,7 +185,7 @@ final class SendMessageIntentHandler: NSObject, INSendMessageIntentHandling {
 			switch Self.destination(for: intent) {
 			case .namedChannel(let name):
 				let channelIndex = await MainActor.run {
-					let context = PersistenceController.shared.context
+					let context = CoreDataStackImpl.shared.context
 					return IntentMessageConverters.channelIndex(for: name, in: context)
 				}
 				// A group name that matches no channel is a failure — the old

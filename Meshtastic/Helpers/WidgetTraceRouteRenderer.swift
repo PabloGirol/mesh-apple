@@ -9,6 +9,7 @@
 //  same map view, sized for the widget — a square for small and medium, a
 //  wide one for large. The route's details go to the store as plain values so
 //  the widget lays them out itself and its times keep aging.
+import CoreDataStackImpl
 //
 
 import MapKit
@@ -62,8 +63,8 @@ final class WidgetTraceRouteRenderer {
 	/// Called after a trace route is saved, and by the widget broker so a fresh
 	/// install or launch catches up. Cheap when nothing changed: one small fetch.
 	func refresh() {
-		guard !PersistenceController.shared.isProvisionalPendingFirstUnlock else { return }
-		let context = PersistenceController.shared.context
+		guard !CoreDataStackImpl.shared.isProvisionalPendingFirstUnlock else { return }
+		let context = CoreDataStackImpl.shared.context
 		guard let route = Self.latestRoute(context: context) else {
 			clearIfNeeded()
 			return
