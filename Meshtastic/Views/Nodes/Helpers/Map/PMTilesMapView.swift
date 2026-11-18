@@ -471,6 +471,7 @@ final class OfflineVectorTileProvider: ObservableObject {
 			decode: decodeDuration,
 			stitch: stitchDuration
 		)
+		// swiftlint:disable:next identifier_name
 		return BuildResult(polygons: polys, polylines: lines, labels: labels, stats: stats)
 	}
 
