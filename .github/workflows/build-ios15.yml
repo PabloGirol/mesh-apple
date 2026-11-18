@@ -69,13 +69,13 @@ jobs:
             exit 1
           fi
 
-      - name: Generate Core Data entities
+      - name: Skip Core Data entity generation (already migrated)
         run: |
-          python3 scripts/generate_coredata_entities.py
+          echo "Skipping generate_coredata_entities.py - entities already in Meshtastic/Model/"
 
-      - name: Run bulk migration script
+      - name: Skip bulk migration script (already migrated)
         run: |
-          python3 scripts/bulk_migrate_ios15.py
+          echo "Skipping bulk_migrate_ios15.py - migration already applied and committed"
 
       - name: Generate Xcode project
         run: xcodegen generate
