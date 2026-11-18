@@ -9,7 +9,6 @@
 //  same map view, sized for the widget — a square for small and medium, a
 //  wide one for large. The route's details go to the store as plain values so
 //  the widget lays them out itself and its times keep aging.
-import CoreDataStackImpl
 //
 
 import MapKit
