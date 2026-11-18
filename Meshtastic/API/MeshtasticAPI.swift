@@ -169,13 +169,13 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 	static let shared: MeshtasticAPI = {
 		let isTest = NSClassFromString("XCTestCase") != nil || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
 		if isTest {
-			return MeshtasticAPI(container: nil)
+			return MeshtasticAPI(container: nil as PersistentContainer?)
 		}
 #if DEBUG
 		let environment = ProcessInfo.processInfo.environment
 		let arguments = ProcessInfo.processInfo.arguments
 		if arguments.contains("--meshtastic-perf-seed") || environment["MESHTASTIC_PERF_SEED_NODES"] != nil {
-			return MeshtasticAPI(container: nil)
+			return MeshtasticAPI(container: nil as PersistentContainer?)
 		}
 #endif
 		return MeshtasticAPI(container: MainActor.assumeIsolated { CoreDataStackImpl.shared.container })

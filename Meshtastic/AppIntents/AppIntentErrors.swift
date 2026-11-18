@@ -9,7 +9,7 @@ import Foundation
 import OSLog
 
 class AppIntentErrors {
-	#if canImport(AppIntents) && compiler(>=5.9)
+	#if canImport(AppIntents) && compiler(>=5.9) && !MESHTASTIC_IOS15
 	enum AppIntentError: Swift.Error, CustomLocalizedStringResourceConvertible {
 		case notConnected
 		case message(_ message: String)

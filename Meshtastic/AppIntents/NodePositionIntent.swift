@@ -9,7 +9,7 @@ import Foundation
 import CoreLocation
 import CoreData
 
-#if canImport(AppIntents) && compiler(>=5.9)
+#if canImport(AppIntents) && compiler(>=5.9) && !MESHTASTIC_IOS15
 import AppIntents
 
 @available(iOS 16.0, *)
