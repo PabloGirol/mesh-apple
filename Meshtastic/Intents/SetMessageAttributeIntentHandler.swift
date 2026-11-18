@@ -9,7 +9,6 @@
 import Intents
 import OSLog
 import CoreData
-import CoreDataStackImpl
 
 final class SetMessageAttributeIntentHandler: NSObject, INSetMessageAttributeIntentHandling {
 

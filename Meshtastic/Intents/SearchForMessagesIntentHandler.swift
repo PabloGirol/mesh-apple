@@ -7,7 +7,6 @@
 //  and returns them as INMessage objects.
 //
 
-import CoreDataStackImpl
 import Intents
 import OSLog
 import CoreData

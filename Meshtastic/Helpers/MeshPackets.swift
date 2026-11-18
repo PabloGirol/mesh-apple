@@ -6,7 +6,6 @@
 //
 
 import CoreLocation
-import CoreDataStackImpl
 import Foundation
 import CoreData
 import MeshtasticProtobufs

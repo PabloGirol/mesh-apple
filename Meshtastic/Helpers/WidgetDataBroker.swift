@@ -7,7 +7,6 @@
 //  Builds WidgetSnapshots from the database and tells WidgetKit when to reload.
 //  Runs only in the app process; the widget extension just reads the snapshot.
 //
-import CoreDataStackImpl
 //  Reload budget: WidgetKit allows roughly 40-70 background reloads per widget
 //  per day, so refreshes are debounced (a node DB dump is one write, not
 //  hundreds) and each widget kind has a minimum reload interval. Widgets render

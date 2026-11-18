@@ -9,7 +9,6 @@
 import Intents
 import SwiftUI
 import OSLog
-import CoreDataStackImpl
 import CoreData
 
 class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, ObservableObject {

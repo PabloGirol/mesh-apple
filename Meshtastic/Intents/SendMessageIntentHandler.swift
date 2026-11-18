@@ -7,7 +7,6 @@
 //  direct-message recipient (a mesh node) or a channel (speakableGroupName).
 //  Multiple recipients are not supported.
 import CoreData
-import CoreDataStackImpl
 //
 
 import Intents

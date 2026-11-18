@@ -9,7 +9,6 @@ import OSLog
 import RealityKit
 import CoreData
 import SwiftUI
-import CoreDataStackImpl
 
 /// Root of the hardware showcase immersive space: the room with the viewer's seat at the origin,
 /// device models and the connected radio on the display tables, the mesh on the wall rack, the

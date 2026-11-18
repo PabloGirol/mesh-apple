@@ -7,7 +7,6 @@
 
 import Foundation
 import OSLog
-import CoreDataStackImpl
 import CoreData
 
 // Telemetry rows are tied to their node by `nodeNum`, not by the `nodeTelemetry` relationship.

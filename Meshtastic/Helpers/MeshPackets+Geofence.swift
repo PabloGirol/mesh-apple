@@ -12,7 +12,6 @@ import CoreData
 import CoreLocation
 import Foundation
 import OSLog
-import CoreDataStackImpl
 
 /// Thread-safe, in-memory record of whether each (waypoint, node) pair was last seen
 /// inside its geofence. Not persisted: the first observation of a pair only establishes

@@ -9,7 +9,6 @@ import CoreLocation
 import RealityKit
 import CoreData
 import SwiftUI
-import CoreDataStackImpl
 
 /// Root of the cinema immersive space: an environment around the viewer and a small panel to
 /// change the environment, open the 3D map or leave. The front wall is a screen that shows
