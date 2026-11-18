@@ -69,16 +69,8 @@ jobs:
             exit 1
           fi
 
-      - name: Skip Core Data entity generation (already migrated)
-        run: |
-          echo "Skipping generate_coredata_entities.py - entities already in Meshtastic/Model/"
-
-      - name: Skip bulk migration script (already migrated)
-        run: |
-          echo "Skipping bulk_migrate_ios15.py - migration already applied and committed"
-
-      - name: Generate Xcode project
-        run: xcodegen generate
+      - name: Generate Xcode project (iOS 15 config)
+        run: xcodegen generate --spec project.yml
 
       - name: Verify generated project only references V58
         run: |
@@ -175,26 +167,12 @@ jobs:
             -scheme Meshtastic \
             -resolvePackageDependencies
 
-      - name: Install xcodes CLI (binary)
-        run: |
-          curl -L https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes.zip -o /tmp/xcodes.zip
-          unzip -o /tmp/xcodes.zip -d /usr/local/bin/
-          chmod +x /usr/local/bin/xcodes
-
-      - name: List available iOS simulator runtimes
-        run: |
-          xcodes runtimes list | head -30
-
-      - name: Install iOS 15.5 simulator runtime
-        run: |
-          sudo xcodes runtimes install "iOS 15.5"
-
       - name: Build for iOS Simulator (verify compiles)
         run: |
           xcodebuild \
             -project Meshtastic.xcodeproj \
             -scheme Meshtastic \
-            -destination 'platform=iOS Simulator,name=iPhone 13,OS=15.5' \
+            -destination 'platform=iOS Simulator' \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \

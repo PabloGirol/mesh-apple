@@ -5,6 +5,7 @@
 //  Created by Jake Bordens on 9/17/25.
 //
 
+#if !MESHTASTIC_IOS15
 import Foundation
 import os.log
 import DatadogRUM
