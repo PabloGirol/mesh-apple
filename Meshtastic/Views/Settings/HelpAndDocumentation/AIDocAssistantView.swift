@@ -3,7 +3,6 @@
 import SwiftUI
 import OSLog
 import Foundation
-import NavigationStackShim
 #if canImport(FoundationModels)
 import FoundationModels
 #endif

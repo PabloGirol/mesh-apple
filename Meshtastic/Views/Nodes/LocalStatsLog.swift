@@ -10,7 +10,6 @@ import UIKit
 import OSLog
 import CoreData
 import DGCharts
-import NavigationStackShim
 
 struct LocalStatsLog: View {
 

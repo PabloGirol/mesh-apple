@@ -8,7 +8,6 @@
 import SwiftUI
 import MapKit
 import OSLog
-import NavigationStackShim
 
 struct LogDetail: View {
 

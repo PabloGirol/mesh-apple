@@ -11,7 +11,6 @@ import CoreLocation
 import Foundation
 import OSLog
 import MapKit
-import NavigationStackShim
 
 private struct MeshMapVisiblePositionState {
 	let positions: [PositionEntity]

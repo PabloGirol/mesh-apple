@@ -4,7 +4,6 @@ import OSLog
 import SwiftUI
 import Foundation
 import MapKit
-import NavigationStackShim
 import UIKit
 
 struct DeviceOnboarding: View {

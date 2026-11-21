@@ -8,7 +8,6 @@ import SwiftUI
 import CoreData
 import OSLog
 import MeshtasticProtobufs
-import NavigationStackShim
 
 struct SaveChannelLinkData: Identifiable {
 	let id = UUID()

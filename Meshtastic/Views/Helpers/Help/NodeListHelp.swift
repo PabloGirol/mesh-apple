@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import NavigationStackShim
 
 struct NodeListHelp: View {
 	var body: some View {

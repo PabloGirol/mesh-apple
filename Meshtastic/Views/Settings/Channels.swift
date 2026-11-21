@@ -8,7 +8,6 @@
 import CoreData
 import MapKit
 import MeshtasticProtobufs
-import NavigationStackShim
 import OSLog
 import SwiftUI
 

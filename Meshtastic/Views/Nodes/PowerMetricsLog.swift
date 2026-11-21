@@ -9,7 +9,6 @@ import Foundation
 import SwiftUI
 import OSLog
 import DGCharts
-import NavigationStackShim
 
 struct PowerMetricsLog: View {
 

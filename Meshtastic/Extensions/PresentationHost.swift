@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import NavigationStackShim
 
 /// Where a screen is shown. In a window, sheets, alerts and confirmation dialogs work as usual.
 /// On a fixed panel inside the visionOS cinema tent (an immersive space) none of them ever

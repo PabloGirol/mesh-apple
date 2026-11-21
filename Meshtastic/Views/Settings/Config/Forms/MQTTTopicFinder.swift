@@ -7,7 +7,6 @@
 
 import CoreLocation
 import MeshtasticProtobufs
-import NavigationStackShim
 import SwiftUI
 
 /// Listens to the broker for a minute and lists the root topics heard near the user: the geocoded

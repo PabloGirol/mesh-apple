@@ -12,7 +12,6 @@ import CoreLocation
 import CoreBluetooth
 import MeshtasticProtobufs
 import OSLog
-import NavigationStackShim
 
 struct Connect: View {
 	

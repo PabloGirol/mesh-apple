@@ -8,7 +8,6 @@
 import SwiftUI
 import CoreData
 import OSLog
-import NavigationStackShim
 
 struct Messages: View {
 

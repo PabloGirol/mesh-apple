@@ -7,7 +7,6 @@
 
 import SwiftUI
 import OSLog
-import NavigationStackShim
 
 struct UF2MassStorageView: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager

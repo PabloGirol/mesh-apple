@@ -11,7 +11,6 @@
 import SwiftUI
 import MeshtasticProtobufs
 import OSLog
-import NavigationStackShim
 
 struct ImportDeviceProfileView: View {
 	@EnvironmentObject private var accessoryManager: AccessoryManager

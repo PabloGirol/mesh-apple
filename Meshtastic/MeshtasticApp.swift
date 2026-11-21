@@ -235,6 +235,7 @@ struct MeshtasticAppleApp: App {
 				}
 			}
 		}
+	#endif
 	}
 
 	/// Runs the work the app owes at backgrounding — the main-context save, then the

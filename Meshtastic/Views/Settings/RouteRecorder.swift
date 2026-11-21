@@ -11,7 +11,6 @@ import MapKit
 import CoreLocation
 import CoreMotion
 import OSLog
-import NavigationStackShim
 
 struct RouteRecorder: View {
 

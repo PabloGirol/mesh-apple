@@ -21,7 +21,6 @@ import CryptoKit
 import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
-import NavigationStackShim
 
 struct FactoryEraseView: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager

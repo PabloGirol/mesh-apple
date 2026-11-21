@@ -7,7 +7,6 @@
 
 import SwiftUI
 import OSLog
-import NavigationStackShim
 
 /// Settings screen showing all node backups with total storage usage and swipe-to-delete.
 struct BackupManagement: View {

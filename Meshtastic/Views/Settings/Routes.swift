@@ -9,7 +9,6 @@ import SwiftUI
 import CoreData
 import MapKit
 import OSLog
-import NavigationStackShim
 
 struct Routes: View {
 

@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import NavigationStackShim
 
 // MARK: - Network Row
 

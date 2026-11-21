@@ -11,7 +11,6 @@
 
 import CoreData
 import SwiftUI
-import NavigationStackShim
 
 /// Which radio to set up; presenting one of these opens the flow.
 struct RadioSetupRequest: Identifiable {

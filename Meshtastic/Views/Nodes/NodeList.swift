@@ -9,7 +9,6 @@ import CoreLocation
 import OSLog
 import CoreData
 import Foundation
-import NavigationStackShim
 
 struct NodeList: View {
 	@Environment(\.managedObjectContext) private var context

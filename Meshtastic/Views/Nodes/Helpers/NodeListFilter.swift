@@ -7,7 +7,6 @@
 
 import Foundation
 import SwiftUI
-import NavigationStackShim
 
 struct NodeListFilter: View {
 	@State var editMode = EditMode.active

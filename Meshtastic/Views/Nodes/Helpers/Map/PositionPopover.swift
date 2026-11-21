@@ -7,7 +7,6 @@
 
 import SwiftUI
 import MapKit
-import NavigationStackShim
 
 struct PositionPopover: View {
 

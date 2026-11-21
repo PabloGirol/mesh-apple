@@ -1,5 +1,4 @@
 import SwiftUI
-import NavigationStackShim
 
 struct AppIconOption: Identifiable, Equatable {
 	let id: String

@@ -144,7 +144,6 @@ struct CompatNavigationPath {
 // MARK: - Type Aliases for Easy Migration
 
 /// Use `NavigationStack` instead of `NavigationStack` in your code.
-/// Add `import NavigationStackShim` or just use the type directly.
 @available(iOS 15.0, *)
 typealias CompatNavigationStackAlias = CompatNavigationStack
 
