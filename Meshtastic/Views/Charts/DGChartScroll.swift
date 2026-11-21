@@ -3,33 +3,11 @@
 //  Meshtastic
 //
 //  Scroll, zoom, and pan configuration for DGCharts SwiftUI wrappers
+//  DGChartScrollConfig protocol and DGDefaultScrollConfig are defined in DGChartsProtocols
 //
 
 import SwiftUI
 import DGCharts
-
-// MARK: - Scroll/Zoom Configuration
-
-/// Configuration for chart scrolling, zooming, and panning
-public protocol DGChartScrollConfig {
-    var scaleXEnabled: Bool { get }
-    var scaleYEnabled: Bool { get }
-    var dragEnabled: Bool { get }
-    var dragXEnabled: Bool { get }
-    var dragYEnabled: Bool { get }
-    var pinchZoomEnabled: Bool { get }
-    var doubleTapToZoomEnabled: Bool { get }
-    var highlightPerDragEnabled: Bool { get }
-    var minScaleX: CGFloat { get }
-    var maxScaleX: CGFloat { get }
-    var minScaleY: CGFloat { get }
-    var maxScaleY: CGFloat { get }
-    var visibleXRange: ClosedRange<Double>? { get }
-    var visibleYRange: ClosedRange<Double>? { get }
-    var viewportJobs: [DGChartViewportJob] { get }
-}
-
-// Default implementation in DGChartsProtocols.swift
 
 // MARK: - Viewport Job
 
@@ -209,8 +187,7 @@ public extension DGDefaultScrollConfig {
 
     func viewportJobs(_ jobs: [DGChartViewportJob]) -> DGDefaultScrollConfig {
         var copy = self
-        // Note: This would need a property addition to DGDefaultScrollConfig
-        // For now, jobs are applied programmatically
+        copy.viewportJobs = jobs
         return copy
     }
 }
@@ -331,6 +308,7 @@ public final class DGChartViewportController: ObservableObject {
 
 private struct DGChartViewportControllerKey: EnvironmentKey {
     static let defaultValue: DGChartViewportController = DGChartViewportController()
+    typealias Value = DGChartViewportController
 }
 
 public extension EnvironmentValues {

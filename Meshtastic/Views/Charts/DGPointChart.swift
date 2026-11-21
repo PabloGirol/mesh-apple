@@ -11,7 +11,7 @@ import DGCharts
 // MARK: - Point Chart Data Set
 
 /// Data set for point/scatter charts
-public struct DGPointChartDataSet<Point: DGChartDataPoint>: DGChartDataSet {
+public struct DGPointChartDataSet<Point: DGChartDataPoint> {
     public let id: String
     public let label: String
     public var data: [Point]
@@ -408,7 +408,7 @@ public struct DGPointChart<Point: DGChartDataPoint>: UIViewRepresentable {
 
 // MARK: - Custom Scatter Shape Renderer
 
-private class CustomScatterShapeRenderer: NSObject, IShapeRenderer {
+private class CustomScatterShapeRenderer: NSObject, ShapeRenderer {
     let renderer: (CGContext, CGRect, CGSize) -> Void
 
     init(renderer: @escaping (CGContext, CGRect, CGSize) -> Void) {
@@ -552,31 +552,3 @@ public extension DGPointChart where Point == DGChartCategoryPoint<Double> {
     }
 }
 
-// MARK: - Axis Value Formatters
-
-private class DefaultAxisValueFormatter: NSObject, AxisValueFormatter {
-    let block: (Double) -> String
-    init(block: @escaping (Double) -> String) { self.block = block }
-    func stringForValue(_ value: Double, axis: AxisBase?) -> String { block(value) }
-}
-
-private class DateAxisValueFormatter: NSObject, AxisValueFormatter {
-    let dateFormatter: DateFormatter
-    init(dateFormat: String) {
-        dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = dateFormat
-    }
-    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
-        dateFormatter.string(from: Date(timeIntervalSince1970: value))
-    }
-}
-
-private class IndexAxisValueFormatter: NSObject, AxisValueFormatter {
-    let values: [String]
-    init(values: [String]) { self.values = values }
-    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
-        let index = Int(value)
-        guard index >= 0 && index < values.count else { return "" }
-        return values[index]
-    }
-}

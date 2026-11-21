@@ -11,7 +11,7 @@ import DGCharts
 // MARK: - Line Chart Data Set
 
 /// Data set for line charts
-public struct DGLineChartDataSet<Point: DGChartDataPoint>: DGChartDataSet {
+public struct DGLineChartDataSet<Point: DGChartDataPoint> {
     public let id: String
     public let label: String
     public var data: [Point]
@@ -57,25 +57,6 @@ public struct DGLineChartDataSet<Point: DGChartDataPoint>: DGChartDataSet {
         self.fillColor = fillColor
         self.fillGradient = fillGradient
         self.interpolationMethod = interpolationMethod
-    }
-}
-
-/// Interpolation methods matching Swift Charts
-public enum DGChartInterpolationMethod: Int {
-    case linear = 0
-    case stepped = 1
-    case curved = 2
-    case cubicBezier = 3
-    case catmullRom = 4
-
-    func toDGChartMode() -> LineChartDataSet.Mode {
-        switch self {
-        case .linear: return .linear
-        case .stepped: return .stepped
-        case .curved: return .cubicBezier
-        case .cubicBezier: return .cubicBezier
-        case .catmullRom: return .cubicBezier // DGCharts uses cubicBezier for smooth
-        }
     }
 }
 
@@ -254,7 +235,7 @@ public struct DGLineChart<Point: DGChartDataPoint>: UIViewRepresentable {
         }
 
         if let formatter = config.valueFormatter {
-            axis.valueFormatter = DefaultAxisValueFormatter(block: formatter)
+            axis.valueFormatter = CustomAxisValueFormatter(block: formatter)
         } else if config.scale == .date, let dateFormat = config.dateFormat {
             axis.valueFormatter = DateAxisValueFormatter(dateFormat: dateFormat)
         } else if config.scale == .category {
@@ -462,42 +443,6 @@ public struct DGLineChart<Point: DGChartDataPoint>: UIViewRepresentable {
     }
 }
 
-// MARK: - Chart Gesture
-
-public enum ChartGesture {
-    case scale(scaleX: CGFloat, scaleY: CGFloat)
-    case pan(dX: CGFloat, dY: CGFloat)
-}
-
-// MARK: - Axis Value Formatters
-
-private class DefaultAxisValueFormatter: NSObject, AxisValueFormatter {
-    let block: (Double) -> String
-    init(block: @escaping (Double) -> String) { self.block = block }
-    func stringForValue(_ value: Double, axis: AxisBase?) -> String { block(value) }
-}
-
-private class DateAxisValueFormatter: NSObject, AxisValueFormatter {
-    let dateFormatter: DateFormatter
-    init(dateFormat: String) {
-        dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = dateFormat
-    }
-    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
-        dateFormatter.string(from: Date(timeIntervalSince1970: value))
-    }
-}
-
-private class IndexAxisValueFormatter: NSObject, AxisValueFormatter {
-    let values: [String]
-    init(values: [String]) { self.values = values }
-    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
-        let index = Int(value)
-        guard index >= 0 && index < values.count else { return "" }
-        return values[index]
-    }
-}
-
 // MARK: - SwiftUI Modifiers
 
 public extension DGLineChart {
@@ -603,3 +548,43 @@ public extension DGLineChart where Point == DGChartCategoryPoint<Double> {
         self.init(dataSets: [dataSet])
     }
 }
+
+// MARK: - Axis Value Formatters (private)
+
+private class DefaultAxisValueFormatter: NSObject, AxisValueFormatter {
+    let block: (Double) -> String
+    init(block: @escaping (Double) -> String) { self.block = block }
+    func stringForValue(_ value: Double, axis: AxisBase?) -> String { block(value) }
+}
+
+private class DateAxisValueFormatter: NSObject, AxisValueFormatter {
+    let dateFormatter: DateFormatter
+    init(dateFormat: String) {
+        dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = dateFormat
+    }
+    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
+        dateFormatter.string(from: Date(timeIntervalSince1970: value))
+    }
+}
+
+private class IndexAxisValueFormatter: NSObject, AxisValueFormatter {
+    let values: [String]
+    init(values: [String]) { self.values = values }
+    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
+        let index = Int(value)
+        guard index >= 0 && index < values.count else { return "" }
+        return values[index]
+    }
+}
+
+private class DefaultFillFormatter: NSObject, FillFormatter {
+    let block: (ChartDataSetBase, ChartDataProvider) -> CGFloat
+    init(block: @escaping (ChartDataSetBase, ChartDataProvider) -> CGFloat) {
+        self.block = block
+    }
+    func getFillLinePosition(dataSet: ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
+        block(dataSet, dataProvider)
+    }
+}
+

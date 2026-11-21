@@ -21,7 +21,7 @@ public enum DGCombinedChartType: Int {
 }
 
 /// Data set for combined charts - supports multiple chart types
-public struct DGCombinedChartDataSet<Point: DGChartDataPoint>: DGChartDataSet {
+public struct DGCombinedChartDataSet<Point: DGChartDataPoint> {
     public let id: String
     public let label: String
     public var data: [Point]
@@ -735,7 +735,7 @@ public struct DGCombinedChart<Point: DGChartDataPoint>: UIViewRepresentable {
 
 // MARK: - Custom Scatter Shape Renderer
 
-private class CustomScatterShapeRenderer: NSObject, IShapeRenderer {
+private class CustomScatterShapeRenderer: NSObject, ShapeRenderer {
     let renderer: (CGContext, CGRect, CGSize) -> Void
 
     init(renderer: @escaping (CGContext, CGRect, CGSize) -> Void) {
@@ -861,7 +861,7 @@ public extension DGCombinedChart where Point == DGChartPoint<Double, Double> {
     }
 }
 
-// MARK: - Axis Value Formatters
+// MARK: - Axis Value Formatters (private)
 
 private class DefaultAxisValueFormatter: NSObject, AxisValueFormatter {
     let block: (Double) -> String
@@ -891,11 +891,12 @@ private class IndexAxisValueFormatter: NSObject, AxisValueFormatter {
 }
 
 private class DefaultFillFormatter: NSObject, FillFormatter {
-    let block: (LineChartDataSet, LineChartDataProvider) -> CGFloat
-    init(block: @escaping (LineChartDataSet, LineChartDataProvider) -> CGFloat) {
+    let block: (ChartDataSetBase, ChartDataProvider) -> CGFloat
+    init(block: @escaping (ChartDataSetBase, ChartDataProvider) -> CGFloat) {
         self.block = block
     }
-    func getFillLinePosition(dataSet: LineChartDataSet, dataProvider: LineChartDataProvider) -> CGFloat {
-        return block(dataSet, dataProvider)
+    func getFillLinePosition(dataSet: ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
+        block(dataSet, dataProvider)
     }
 }
+

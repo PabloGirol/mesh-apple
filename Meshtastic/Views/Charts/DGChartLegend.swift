@@ -3,51 +3,34 @@
 //  Meshtastic
 //
 //  Legend configuration and modifiers for DGCharts SwiftUI wrappers
+//  Uses protocols and types from DGChartsProtocols
 //
 
 import SwiftUI
 import DGCharts
 
-// MARK: - Legend Position
-
-/// Position of legend in the chart
-public enum DGChartLegendPosition {
-    case top
-    case bottom
-    case left
-    case right
-    case topLeft
-    case topRight
-    case bottomLeft
-    case bottomRight
-    case insideTopLeft
-    case insideTopRight
-    case insideBottomLeft
-    case insideBottomRight
-    case automatic
-}
-
 // MARK: - Legend Configuration Builder
 
+/// Uses concrete DGDefaultLegendConfig type since result builders don't work with protocols
 @resultBuilder
 public struct DGChartLegendConfigBuilder {
-    public static func buildBlock(_ components: DGChartLegendConfig...) -> [DGChartLegendConfig] {
+    public static func buildBlock(_ components: DGDefaultLegendConfig...) -> [DGDefaultLegendConfig] {
         components
     }
 
-    public static func buildOptional(_ component: [DGChartLegendConfig]?) -> [DGChartLegendConfig] {
+    public static func buildOptional(_ component: [DGDefaultLegendConfig]?) -> [DGDefaultLegendConfig] {
         component ?? []
     }
 
-    public static func buildEither(first component: [DGChartLegendConfig]) -> [DGChartLegendConfig] {
+    public static func buildEither(first component: [DGDefaultLegendConfig]) -> [DGDefaultLegendConfig] {
         component
     }
 
-    public static func buildEither(second component: [DGChartLegendConfig]) -> [DGChartLegendConfig] {
+    public static func buildEither(second component: [DGDefaultLegendConfig]) -> [DGDefaultLegendConfig] {
         component
     }
 
-    public static func buildArray(_ components: [[DGChartLegendConfig]]) -> [DGChartLegendConfig] {
+    public static func buildArray(_ components: [[DGDefaultLegendConfig]]) -> [DGDefaultLegendConfig] {
         components.flatMap { $0 }
     }
 }
@@ -73,7 +56,7 @@ public extension View {
         DGChartLegendModifier(self, legendConfig: config)
     }
 
-    func chartLegend(@DGChartLegendConfigBuilder _ config: () -> DGChartLegendConfig) -> some View {
+    func chartLegend(_ config: @escaping () -> DGChartLegendConfig) -> some View {
         chartLegend(config())
     }
 

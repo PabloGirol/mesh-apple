@@ -3,10 +3,12 @@
 //  Meshtastic
 //
 //  SwiftUI wrapper protocols for DGCharts that replicate Swift Charts API surface
+//  Uses actual DGCharts 5.1.0 types - no duplicate type definitions
 //
 
 import SwiftUI
 import DGCharts
+import UIKit
 
 // MARK: - Chart Data Protocols
 
@@ -90,17 +92,37 @@ public enum DGChartSymbol: Equatable {
     case diamond
     case cross
     case plus
+    case none
     case custom((CGContext, CGRect, CGSize) -> Void)
 
     public static func == (lhs: DGChartSymbol, rhs: DGChartSymbol) -> Bool {
         switch (lhs, rhs) {
         case (.circle, .circle), (.square, .square), (.triangle, .triangle),
-             (.diamond, .diamond), (.cross, .cross), (.plus, .plus):
+             (.diamond, .diamond), (.cross, .cross), (.plus, .plus), (.none, .none):
             return true
         case (.custom, .custom):
             return false // Can't compare closures
         default:
             return false
+        }
+    }
+}
+
+/// Interpolation methods for line/area charts
+public enum DGChartInterpolationMethod: String, CaseIterable {
+    case linear
+    case curved
+    case stepped
+    case steppedCenter
+    case steppedEnd
+
+    func toDGChartMode() -> LineChartDataSet.Mode {
+        switch self {
+        case .linear: return .linear
+        case .curved: return .cubicBezier
+        case .stepped: return .stepped
+        case .steppedCenter: return .stepped
+        case .steppedEnd: return .stepped
         }
     }
 }
@@ -145,7 +167,7 @@ public protocol DGChartAxisConfig {
     var granularity: Double? { get }
 }
 
-/// Default axis configuration
+// Default axis configuration
 public struct DGDefaultAxisConfig: DGChartAxisConfig {
     public var position: DGChartAxisPosition = .automatic
     public var scale: DGChartAxisScale = .linear
@@ -185,6 +207,7 @@ public enum DGChartLegendPosition {
     case insideTopRight
     case insideBottomLeft
     case insideBottomRight
+    case automatic
 }
 
 /// Legend configuration
@@ -232,7 +255,7 @@ public enum DGChartLegendForm: Int {
     case none = 0, empty = 1, defaultForm = 2, square = 3, circle = 4, line = 5
 }
 
-/// Default legend configuration
+// Default legend configuration
 public struct DGDefaultLegendConfig: DGChartLegendConfig {
     public var enabled: Bool = true
     public var position: DGChartLegendPosition = .bottom
@@ -282,7 +305,12 @@ public protocol DGChartSelectionConfig {
     var highlighter: DGChartHighlighter? { get }
 }
 
-/// Default selection configuration
+/// Custom highlighter protocol - uses actual DGCharts ChartDataSetBase
+public protocol DGChartHighlighter {
+    func getHighlight(x: Double, y: Double, dataSets: [ChartDataSetBase]) -> Highlight?
+}
+
+// Default selection configuration
 public struct DGDefaultSelectionConfig: DGChartSelectionConfig {
     public var mode: DGChartSelectionMode = .single
     public var highlightColor: UIColor = .systemBlue
@@ -295,9 +323,12 @@ public struct DGDefaultSelectionConfig: DGChartSelectionConfig {
     public init() {}
 }
 
-/// Custom highlighter protocol
-public protocol DGChartHighlighter {
-    func getHighlight(x: Double, y: Double, dataSets: [IChartDataSet]) -> Highlight?
+// MARK: - Chart Gesture
+
+/// Chart gesture types for interaction callbacks
+public enum ChartGesture: Equatable {
+    case scale(scaleX: CGFloat, scaleY: CGFloat)
+    case pan(dX: CGFloat, dY: CGFloat)
 }
 
 // MARK: - Scroll/Zoom Protocols
@@ -318,9 +349,10 @@ public protocol DGChartScrollConfig {
     var maxScaleY: CGFloat { get }
     var visibleXRange: ClosedRange<Double>? { get }
     var visibleYRange: ClosedRange<Double>? { get }
+    var viewportJobs: [DGChartViewportJob] { get }
 }
 
-/// Default scroll configuration
+// Default scroll configuration
 public struct DGDefaultScrollConfig: DGChartScrollConfig {
     public var scaleXEnabled: Bool = true
     public var scaleYEnabled: Bool = true
@@ -336,6 +368,7 @@ public struct DGDefaultScrollConfig: DGChartScrollConfig {
     public var maxScaleY: CGFloat = 10000
     public var visibleXRange: ClosedRange<Double>? = nil
     public var visibleYRange: ClosedRange<Double>? = nil
+    public var viewportJobs: [DGChartViewportJob] = []
 
     public init() {}
 }
@@ -425,7 +458,7 @@ public enum DGChartEasingFunction {
     }
 }
 
-/// Default animation configuration
+// Default animation configuration
 public struct DGDefaultAnimationConfig: DGChartAnimationConfig {
     public var enabled: Bool = true
     public var duration: TimeInterval = 1.0
@@ -434,124 +467,36 @@ public struct DGDefaultAnimationConfig: DGChartAnimationConfig {
     public init() {}
 }
 
-// MARK: - Color/Gradient Mapping
+// MARK: - Chart Gesture
 
-/// Color scheme for charts
-public protocol DGChartColorScheme {
-    func color(for index: Int, total: Int) -> UIColor
-    func gradient(for index: Int, total: Int) -> CGGradient?
+/// Chart gesture types for interaction callbacks
+public enum ChartGesture: Equatable {
+    case scale(scaleX: CGFloat, scaleY: CGFloat)
+    case pan(dX: CGFloat, dY: CGFloat)
+    case pinch(scale: CGFloat, velocity: CGFloat)
+    case doubleTap(location: CGPoint)
+    case longPress(location: CGPoint)
+    case drag(startLocation: CGPoint, currentLocation: CGPoint)
 }
 
-/// Default color scheme using system colors
-public struct DGDefaultColorScheme: DGChartColorScheme {
-    private let colors: [UIColor] = [
-        .systemBlue, .systemGreen, .systemOrange, .systemRed,
-        .systemPurple, .systemPink, .systemTeal, .systemIndigo,
-        .systemYellow, .systemBrown, .systemCyan, .systemMint
-    ]
+// MARK: - Fill Formatter Protocol (matches DGCharts FillFormatter)
 
-    public func color(for index: Int, total: Int) -> UIColor {
-        colors[index % colors.count]
-    }
-
-    public func gradient(for index: Int, total: Int) -> CGGradient? {
-        let color = self.color(for: index, total: total)
-        let colors = [color.withAlphaComponent(0.8).cgColor, color.withAlphaComponent(0.1).cgColor]
-        let locations: [CGFloat] = [0.0, 1.0]
-        return CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: locations)
-    }
+/// Protocol for fill formatter - matches DGCharts FillFormatter
+/// Uses actual DGCharts ChartDataSetBase and ChartDataProvider
+public protocol DGChartFillFormatter {
+    func getFillLinePosition(dataSet: ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat
 }
 
-/// Categorical color scheme
-public struct DGCategoricalColorScheme: DGChartColorScheme {
-    private let colors: [UIColor]
+/// Default fill formatter implementation
+public struct DGDefaultFillFormatter: DGChartFillFormatter {
+    private let block: (ChartDataSetBase, ChartDataProvider) -> CGFloat
 
-    public init(colors: [UIColor]) {
-        self.colors = colors
+    public init(block: @escaping (ChartDataSetBase, ChartDataProvider) -> CGFloat) {
+        self.block = block
     }
 
-    public func color(for index: Int, total: Int) -> UIColor {
-        colors[index % colors.count]
-    }
-
-    public func gradient(for index: Int, total: Int) -> CGGradient? {
-        let color = self.color(for: index, total: total)
-        let colors = [color.withAlphaComponent(0.8).cgColor, color.withAlphaComponent(0.1).cgColor]
-        let locations: [CGFloat] = [0.0, 1.0]
-        return CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: locations)
-    }
-}
-
-/// Sequential color scheme
-public struct DGSequentialColorScheme: DGChartColorScheme {
-    private let startColor: UIColor
-    private let endColor: UIColor
-    private let steps: Int
-
-    public init(startColor: UIColor, endColor: UIColor, steps: Int = 12) {
-        self.startColor = startColor
-        self.endColor = endColor
-        self.steps = steps
-    }
-
-    public func color(for index: Int, total: Int) -> UIColor {
-        let clampedIndex = min(max(index, 0), steps - 1)
-        let progress = CGFloat(clampedIndex) / CGFloat(max(steps - 1, 1))
-        return interpolate(from: startColor, to: endColor, progress: progress)
-    }
-
-    public func gradient(for index: Int, total: Int) -> CGGradient? {
-        let color = self.color(for: index, total: total)
-        let colors = [color.withAlphaComponent(0.8).cgColor, color.withAlphaComponent(0.1).cgColor]
-        let locations: [CGFloat] = [0.0, 1.0]
-        return CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: locations)
-    }
-
-    private func interpolate(from: UIColor, to: UIColor, progress: CGFloat) -> UIColor {
-        var fromR: CGFloat = 0, fromG: CGFloat = 0, fromB: CGFloat = 0, fromA: CGFloat = 0
-        var toR: CGFloat = 0, toG: CGFloat = 0, toB: CGFloat = 0, toA: CGFloat = 0
-
-        from.getRed(&fromR, green: &fromG, blue: &fromB, alpha: &fromA)
-        to.getRed(&toR, green: &toG, blue: &toB, alpha: &toA)
-
-        let r = fromR + (toR - fromR) * progress
-        let g = fromG + (toG - fromG) * progress
-        let b = fromB + (toB - fromB) * progress
-        let a = fromA + (toA - fromA) * progress
-
-        return UIColor(red: r, green: g, blue: b, alpha: a)
-    }
-}
-
-/// Diverging color scheme
-public struct DGDivergingColorScheme: DGChartColorScheme {
-    private let negativeColor: UIColor
-    private let neutralColor: UIColor
-    private let positiveColor: UIColor
-
-    public init(negative: UIColor, neutral: UIColor, positive: UIColor) {
-        self.negativeColor = negative
-        self.neutralColor = neutral
-        self.positiveColor = positive
-    }
-
-    public func color(for index: Int, total: Int) -> UIColor {
-        // For diverging, we map based on value sign, not index
-        // This is used differently - see DGChartDataSet for usage
-        if index < total / 2 {
-            return negativeColor
-        } else if index == total / 2 && total % 2 == 1 {
-            return neutralColor
-        } else {
-            return positiveColor
-        }
-    }
-
-    public func gradient(for index: Int, total: Int) -> CGGradient? {
-        let color = self.color(for: index, total: total)
-        let colors = [color.withAlphaComponent(0.8).cgColor, color.withAlphaComponent(0.1).cgColor]
-        let locations: [CGFloat] = [0.0, 1.0]
-        return CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: locations)
+    public func getFillLinePosition(dataSet: ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
+        block(dataSet, dataProvider)
     }
 }
 
@@ -595,6 +540,22 @@ public protocol DGChartView: View {
     func updateChartView(_ chartView: ChartViewBase)
 }
 
+// MARK: - Color/Gradient Mapping
+
+/// Color scheme for charts
+/// Concrete implementations are in DGChartColor.swift
+public protocol DGChartColorScheme {
+    func color(for index: Int, total: Int) -> UIColor
+    func gradient(for index: Int, total: Int) -> CGGradient?
+}
+
+// Note: DGDefaultColorScheme is defined in DGChartColor.swift to avoid duplicates
+// Re-export color schemes from DGChartColor.swift
+public typealias DGCategoricalColorScheme = DGChartColor.DGCategoricalColorScheme
+public typealias DGSequentialColorScheme = DGChartColor.DGSequentialColorScheme
+public typealias DGDivergingColorScheme = DGChartColor.DGDivergingColorScheme
+public typealias DGSemanticColorScheme = DGChartColor.DGSemanticColorScheme
+
 // MARK: - Chart View Base
 
 /// Base class for DGCharts views wrapped in SwiftUI
@@ -614,5 +575,34 @@ open class DGChartViewBase: ChartViewBase {
         noDataText = "No data available"
         noDataTextColor = .secondaryLabel
         noDataFont = .systemFont(ofSize: 14)
+    }
+}
+
+// MARK: - Axis Value Formatters (private implementations)
+
+private class DefaultAxisValueFormatter: NSObject, AxisValueFormatter {
+    let block: (Double) -> String
+    init(block: @escaping (Double) -> String) { self.block = block }
+    func stringForValue(_ value: Double, axis: AxisBase?) -> String { block(value) }
+}
+
+private class DateAxisValueFormatter: NSObject, AxisValueFormatter {
+    let dateFormatter: DateFormatter
+    init(dateFormat: String) {
+        dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = dateFormat
+    }
+    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
+        dateFormatter.string(from: Date(timeIntervalSince1970: value))
+    }
+}
+
+private class IndexAxisValueFormatter: NSObject, AxisValueFormatter {
+    let values: [String]
+    init(values: [String]) { self.values = values }
+    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
+        let index = Int(value)
+        guard index >= 0 && index < values.count else { return "" }
+        return values[index]
     }
 }

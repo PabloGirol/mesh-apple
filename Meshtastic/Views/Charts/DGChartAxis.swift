@@ -3,31 +3,11 @@
 //  Meshtastic
 //
 //  Axis configuration and modifiers for DGCharts SwiftUI wrappers
+//  Uses protocols and types from DGChartsProtocols
 //
 
 import SwiftUI
 import DGCharts
-
-// MARK: - Axis Mark Position
-
-/// Position of axis marks - mirrors Swift Charts AxisMarkPosition
-public enum DGChartAxisMarkPosition {
-    case automatic
-    case leading
-    case trailing
-    case center
-}
-
-// MARK: - Axis Scale
-
-/// Scale type for axis
-public enum DGChartAxisScale {
-    case linear
-    case log
-    case date
-    case category
-    case time // Alias for date
-}
 
 // MARK: - Axis Value Formatter
 
@@ -91,44 +71,43 @@ public struct DGChartIndexAxisValueFormatter: DGChartAxisValueFormatter {
 /// Measurement axis value formatter
 public struct DGChartMeasurementAxisValueFormatter<Unit: Dimension>: DGChartAxisValueFormatter {
     let unit: Unit
-    let measurementFormatter: MeasurementFormatter
+    let numberFormatter: NumberFormatter
 
-    public init(unit: Unit, numberFormatStyle: MeasurementFormatter.UnitWidth = .wide, locale: Locale = .current) {
+    public init(unit: Unit, numberFormatter: NumberFormatter = NumberFormatter(), locale: Locale = .current) {
         self.unit = unit
-        measurementFormatter = MeasurementFormatter()
-        measurementFormatter.unitOptions = .providedUnit
-        measurementFormatter.unitStyle = numberFormatStyle
-        measurementFormatter.locale = locale
+        self.numberFormatter = numberFormatter
+        self.numberFormatter.locale = locale
     }
 
     public func stringForValue(_ value: Double, axis: AxisBase?) -> String {
         let measurement = Measurement(value: value, unit: unit)
-        return measurementFormatter.string(from: measurement)
+        return numberFormatter.string(from: NSNumber(value: measurement.value)) ?? "\(measurement.value)"
     }
 }
 
 // MARK: - Axis Configuration Builder
 
 /// Builder for creating axis configurations fluently
+/// Uses concrete DGDefaultAxisConfig type since result builders don't work with protocols
 @resultBuilder
 public struct DGChartAxisConfigBuilder {
-    public static func buildBlock(_ components: DGChartAxisConfig...) -> [DGChartAxisConfig] {
+    public static func buildBlock(_ components: DGDefaultAxisConfig...) -> [DGDefaultAxisConfig] {
         components
     }
 
-    public static func buildOptional(_ component: [DGChartAxisConfig]?) -> [DGChartAxisConfig] {
+    public static func buildOptional(_ component: [DGDefaultAxisConfig]?) -> [DGDefaultAxisConfig] {
         component ?? []
     }
 
-    public static func buildEither(first component: [DGChartAxisConfig]) -> [DGChartAxisConfig] {
+    public static func buildEither(first component: [DGDefaultAxisConfig]) -> [DGDefaultAxisConfig] {
         component
     }
 
-    public static func buildEither(second component: [DGChartAxisConfig]) -> [DGChartAxisConfig] {
+    public static func buildEither(second component: [DGDefaultAxisConfig]) -> [DGDefaultAxisConfig] {
         component
     }
 
-    public static func buildArray(_ components: [[DGChartAxisConfig]]) -> [DGChartAxisConfig] {
+    public static func buildArray(_ components: [[DGDefaultAxisConfig]]) -> [DGDefaultAxisConfig] {
         components.flatMap { $0 }
     }
 }
@@ -166,11 +145,11 @@ public extension View {
         DGChartAxisModifier(self, yAxisConfig: config)
     }
 
-    func chartXAxis(@DGChartAxisConfigBuilder _ config: () -> DGChartAxisConfig) -> some View {
+    func chartXAxis(_ config: @escaping () -> DGChartAxisConfig) -> some View {
         chartXAxis(config())
     }
 
-    func chartYAxis(@DGChartAxisConfigBuilder _ config: () -> DGChartAxisConfig) -> some View {
+    func chartYAxis(_ config: @escaping () -> DGChartAxisConfig) -> some View {
         chartYAxis(config())
     }
 }

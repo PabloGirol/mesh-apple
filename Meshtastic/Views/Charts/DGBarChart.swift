@@ -11,7 +11,7 @@ import DGCharts
 // MARK: - Bar Chart Data Set
 
 /// Data set for bar charts
-public struct DGBarChartDataSet<Point: DGChartDataPoint>: DGChartDataSet {
+public struct DGBarChartDataSet<Point: DGChartDataPoint> {
     public let id: String
     public let label: String
     public var data: [Point]
@@ -551,31 +551,3 @@ public extension DGBarChart where Point == DGChartCategoryPoint<Double> {
     }
 }
 
-// MARK: - Axis Value Formatters (reused from DGLineChart)
-
-private class DefaultAxisValueFormatter: NSObject, AxisValueFormatter {
-    let block: (Double) -> String
-    init(block: @escaping (Double) -> String) { self.block = block }
-    func stringForValue(_ value: Double, axis: AxisBase?) -> String { block(value) }
-}
-
-private class DateAxisValueFormatter: NSObject, AxisValueFormatter {
-    let dateFormatter: DateFormatter
-    init(dateFormat: String) {
-        dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = dateFormat
-    }
-    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
-        dateFormatter.string(from: Date(timeIntervalSince1970: value))
-    }
-}
-
-private class IndexAxisValueFormatter: NSObject, AxisValueFormatter {
-    let values: [String]
-    init(values: [String]) { self.values = values }
-    func stringForValue(_ value: Double, axis: AxisBase?) -> String {
-        let index = Int(value)
-        guard index >= 0 && index < values.count else { return "" }
-        return values[index]
-    }
-}

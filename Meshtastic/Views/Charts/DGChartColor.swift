@@ -3,18 +3,11 @@
 //  Meshtastic
 //
 //  Color and gradient mapping for DGCharts SwiftUI wrappers
+//  DGChartColorScheme protocol is defined in DGChartsProtocols
 //
 
 import SwiftUI
 import DGCharts
-
-// MARK: - Color Scheme Protocol
-
-/// Protocol for chart color schemes
-public protocol DGChartColorScheme {
-    func color(for index: Int, total: Int) -> UIColor
-    func gradient(for index: Int, total: Int) -> CGGradient?
-}
 
 // MARK: - Default Color Schemes
 
@@ -450,9 +443,7 @@ public struct DGChartColorPalette {
 // MARK: - SwiftUI Color Extensions
 
 public extension Color {
-    func toUIColor() -> UIColor { UIColor(self) }
-
-    func toCGColor() -> CGColor { self.toUIColor().cgColor }
+    func toCGColor() -> CGColor { UIColor(self).cgColor }
 }
 
 public extension UIColor {

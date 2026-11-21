@@ -8,33 +8,11 @@
 import SwiftUI
 import DGCharts
 
-// MARK: - Demo Data Models
-
-struct DemoDataPoint: DGChartDataPoint {
-    let id = UUID()
-    let x: Double
-    let y: Double
-}
-
-struct DemoDatePoint: DGChartDataPoint {
-    let id = UUID()
-    let x: Date
-    let y: Double
-}
-
-struct DemoCategoryPoint: DGChartDataPoint {
-    let id = UUID()
-    let x: String
-    let y: Double
-}
-
 // MARK: - Demo Views
 
 /// Main demo view showing all chart types
 struct DGChartsDemoView: View {
     @State private var selectedChartType = 0
-    @State private var selectedPoints: [DemoDataPoint]? = nil
-    @State private var selectionHighlight: Highlight? = nil
 
     let chartTypes = ["Line", "Bar", "Area", "Point", "Combined"]
 
@@ -60,10 +38,6 @@ struct DGChartsDemoView: View {
                     }
                 }
                 .animation(.easeInOut(duration: 0.3), value: selectedChartType)
-
-                if let points = selectedPoints {
-                    SelectionInfoView(points: points, highlight: selectionHighlight)
-                }
             }
             .navigationTitle("DGCharts Demo")
         }
@@ -72,241 +46,214 @@ struct DGChartsDemoView: View {
 
 /// Line Chart Demo
 struct LineChartDemo: View {
-    @State var data: [DemoDataPoint] = generateLineData()
-    @State var selectedPoints: [DemoDataPoint]? = nil
-    @State var selectionHighlight: Highlight? = nil
+    @State private var chart: DGLineChartView = {
+        let chart = DGLineChartView()
+        let points = (0..<20).map { i in
+            DGLineChartPoint(x: Double(i), y: sin(Double(i) * 0.5) * 10 + Double.random(in: -1...1))
+        }
+        chart.series = [DGChartSeries(
+            id: "sine",
+            name: "Sine Wave",
+            abbreviatedName: "Sin",
+            color: .blue,
+            isVisible: true,
+            chartType: .line,
+            lineWidth: 2.0
+        )]
+        chart.seriesData = ["sine": points]
+        chart.drawCircles = false
+        chart.mode = .linear
+        return chart
+    }()
 
     var body: some View {
-        DGLineChart(
-            dataSets: [
-                DGLineChartDataSet(
-                    label: "Sine Wave",
-                    data: data,
-                    color: .systemBlue,
-                    lineStyle: StrokeStyle(lineWidth: 2),
-                    symbol: .circle,
-                    fillEnabled: false,
-                    interpolationMethod: .curved
-                )
-            ],
-            xAxisConfig: .linear(label: "X Axis", min: 0, max: 20, labelCount: 6),
-            yAxisConfig: .linear(label: "Y Axis", min: -15, max: 15, labelCount: 6),
-            legendConfig: .bottom(),
-            scrollConfig: .default,
-            animationConfig: .default,
-            colorScheme: .default,
-            onSelectionChange: { points, highlight in
-                selectedPoints = points
-                selectionHighlight = highlight
-            }
-        )
-        .frame(height: 300)
-        .padding()
+        chart
+            .frame(height: 300)
+            .padding()
     }
 }
 
 /// Bar Chart Demo
 struct BarChartDemo: View {
-    @State var data: [DemoCategoryPoint] = generateBarData()
-    @State var selectedPoints: [DemoCategoryPoint]? = nil
+    @State private var chart: DGBarChartView = {
+        let chart = DGBarChartView()
+        let points = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"].enumerated().map { index, _ in
+            DGBarChartPoint(x: Double(index), y: Double.random(in: 20...100))
+        }
+        chart.series = [DGChartSeries(
+            id: "sales",
+            name: "Monthly Sales",
+            abbreviatedName: "Sales",
+            color: .green,
+            isVisible: true,
+            chartType: .bar,
+            lineWidth: 0
+        )]
+        chart.seriesData = ["sales": points]
+        chart.barWidth = 0.6
+        return chart
+    }()
 
     var body: some View {
-        DGBarChart(
-            dataSets: [
-                DGBarChartDataSet(
-                    label: "Monthly Sales",
-                    data: data,
-                    color: .systemGreen,
-                    barWidth: 0.6,
-                    cornerRadius: 4
-                )
-            ],
-            xAxisConfig: .category(label: "Month", values: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]),
-            yAxisConfig: .linear(label: "Sales", min: 0, max: 120, labelCount: 6),
-            legendConfig: .bottom(),
-            scrollConfig: .panOnly,
-            animationConfig: .default,
-            colorScheme: .default,
-            onSelectionChange: { points, highlight in
-                selectedPoints = points
-            }
-        )
-        .frame(height: 300)
-        .padding()
+        chart
+            .frame(height: 300)
+            .padding()
     }
 }
 
 /// Area Chart Demo
 struct AreaChartDemo: View {
-    @State var data: [DemoDataPoint] = generateAreaData()
-    @State var selectedPoints: [DemoDataPoint]? = nil
+    @State private var chart: DGCombinedChartView = {
+        let chart = DGCombinedChartView()
+        let points = (0..<25).map { i in
+            let base = 20 + sin(Double(i) * 0.5) * 5
+            let noise = Double.random(in: -1...1)
+            return DGLineChartPoint(x: Double(i), y: max(0, base + noise))
+        }
+        chart.series = [DGChartSeries(
+            id: "temp",
+            name: "Temperature",
+            abbreviatedName: "Temp",
+            color: .orange,
+            isVisible: true,
+            chartType: .area,
+            lineWidth: 2.0,
+            fillColor: .orange,
+            fillAlpha: 0.3
+        )]
+        chart.seriesData = ["temp": points.map { DGCombinedChartPoint(x: $0.x, y: $0.y, label: $0.label, type: .area) }]
+        chart.mode = .linear
+        return chart
+    }()
 
     var body: some View {
-        DGAreaChart(
-            dataSets: [
-                DGAreaChartDataSet(
-                    label: "Temperature",
-                    data: data,
-                    color: .systemOrange,
-                    fillColor: .systemOrange,
-                    fillAlpha: 0.3,
-                    interpolationMethod: .curved,
-                    drawLine: true
-                )
-            ],
-            xAxisConfig: .linear(label: "Time (hours)", min: 0, max: 24, labelCount: 7),
-            yAxisConfig: .linear(label: "Temperature (°C)", min: 0, max: 30, labelCount: 6),
-            legendConfig: .insideTopRight(),
-            scrollConfig: .default,
-            animationConfig: .default,
-            colorScheme: .default,
-            onSelectionChange: { points, highlight in
-                selectedPoints = points
-            }
-        )
-        .frame(height: 300)
-        .padding()
+        chart
+            .frame(height: 300)
+            .padding()
     }
 }
 
 /// Point/Scatter Chart Demo
 struct PointChartDemo: View {
-    @State var data: [DemoDataPoint] = generateScatterData()
-    @State var selectedPoints: [DemoDataPoint]? = nil
+    @State private var chart: DGScatterChartView = {
+        let chart = DGScatterChartView()
+        let points = (0..<50).map { _ in
+            DGLineChartPoint(x: Double.random(in: 0...100), y: Double.random(in: 0...100))
+        }
+        chart.series = [DGChartSeries(
+            id: "measurements",
+            name: "Measurements",
+            abbreviatedName: "Meas",
+            color: .purple,
+            isVisible: true,
+            chartType: .line,
+            lineWidth: 0
+        )]
+        chart.seriesData = ["measurements": points]
+        chart.scatterShape = .circle
+        chart.scatterShapeSize = 12.0
+        chart.drawValuesEnabled = false
+        return chart
+    }()
 
     var body: some View {
-        DGPointChart(
-            dataSets: [
-                DGPointChartDataSet(
-                    label: "Measurements",
-                    data: data,
-                    color: .systemPurple,
-                    symbol: .circle,
-                    symbolSize: 12,
-                    symbolStrokeColor: .white,
-                    symbolStrokeWidth: 2
-                )
-            ],
-            xAxisConfig: .linear(label: "X", min: 0, max: 100, labelCount: 6),
-            yAxisConfig: .linear(label: "Y", min: 0, max: 100, labelCount: 6),
-            legendConfig: .bottom(),
-            scrollConfig: .zoomOnly,
-            animationConfig: .default,
-            colorScheme: .default,
-            onSelectionChange: { points, highlight in
-                selectedPoints = points
-            }
-        )
-        .frame(height: 300)
-        .padding()
+        chart
+            .frame(height: 300)
+            .padding()
     }
 }
 
 /// Combined Chart Demo
 struct CombinedChartDemo: View {
-    @State var lineData: [DemoDataPoint] = generateLineData()
-    @State var barData: [DemoCategoryPoint] = generateBarData()
-    @State var scatterData: [DemoDataPoint] = generateScatterData()
-    @State var selectedPoints: [Any]? = nil
+    @State private var chart: DGCombinedChartView = {
+        let chart = DGCombinedChartView()
 
-    var body: some View {
-        DGCombinedChart(
-            dataSets: [
-                // Bar data on left axis
-                DGCombinedChartDataSet(
-                    label: "Revenue",
-                    data: barData,
-                    chartType: .bar,
-                    yAxisSide: .left,
-                    color: .systemBlue,
-                    barWidth: 0.5
-                ),
-                // Line data on right axis
-                DGCombinedChartDataSet(
-                    label: "Trend",
-                    data: lineData,
-                    chartType: .line,
-                    yAxisSide: .right,
-                    color: .systemRed,
-                    lineWidth: 3,
-                    symbol: .circle,
-                    interpolationMethod: .curved
-                ),
-                // Scatter data on left axis
-                DGCombinedChartDataSet(
-                    label: "Samples",
-                    data: scatterData.prefix(10).map { DemoDataPoint(x: $0.x * 3, y: $0.y) },
-                    chartType: .scatter,
-                    yAxisSide: .left,
-                    color: .systemGreen,
-                    symbol: .diamond,
-                    symbolSize: 14
-                )
-            ],
-            xAxisConfig: .linear(label: "X Axis", min: 0, max: 20, labelCount: 6),
-            leftYAxisConfig: .linear(label: "Left Axis", min: 0, max: 120, labelCount: 6),
-            rightYAxisConfig: .linear(label: "Right Axis", min: -15, max: 15, labelCount: 6),
-            legendConfig: .bottom(),
-            scrollConfig: .default,
-            animationConfig: .default,
-            colorScheme: .default,
-            drawOrder: [.bar, .line, .scatter],
-            onSelectionChange: { points, highlight in
-                selectedPoints = points
-            }
-        )
-        .frame(height: 300)
-        .padding()
-    }
-}
-
-/// Selection Info View
-struct SelectionInfoView: View {
-    let points: [Any]
-    let highlight: Highlight?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Selected: \(points.count) point(s)")
-                .font(.headline)
-
-            if let highlight = highlight {
-                Text("DataSet: \(highlight.dataSetIndex), Index: \(highlight.dataIndex)")
-                Text("X: \(String(format: "%.2f", highlight.x)), Y: \(String(format: "%.2f", highlight.y))")
-            }
+        let linePoints = (0..<20).map { i in
+            DGLineChartPoint(x: Double(i), y: sin(Double(i) * 0.5) * 10 + Double.random(in: -1...1))
         }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(8)
-        .padding(.horizontal)
+        let barPoints = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"].enumerated().map { index, _ in
+            DGBarChartPoint(x: Double(index), y: Double.random(in: 20...100))
+        }
+        let scatterPoints = (0..<10).map { _ in
+            DGLineChartPoint(x: Double.random(in: 0...20), y: Double.random(in: -10...10))
+        }
+
+        chart.series = [
+            DGChartSeries(
+                id: "revenue",
+                name: "Revenue",
+                abbreviatedName: "Rev",
+                color: .blue,
+                isVisible: true,
+                chartType: .bar,
+                lineWidth: 0
+            ),
+            DGChartSeries(
+                id: "trend",
+                name: "Trend",
+                abbreviatedName: "Trend",
+                color: .red,
+                isVisible: true,
+                chartType: .line,
+                lineWidth: 3.0
+            ),
+            DGChartSeries(
+                id: "samples",
+                name: "Samples",
+                abbreviatedName: "Samp",
+                color: .green,
+                isVisible: true,
+                chartType: .line,
+                lineWidth: 0
+            )
+        ]
+
+        chart.seriesData = [
+            "revenue": barPoints.map { DGCombinedChartPoint(x: $0.x, y: $0.y, label: $0.label, type: .bar) },
+            "trend": linePoints.map { DGCombinedChartPoint(x: $0.x, y: $0.y, label: $0.label, type: .line) },
+            "samples": scatterPoints.map { DGCombinedChartPoint(x: $0.x, y: $0.y, label: $0.label, type: .line) }
+        ]
+
+        chart.barWidth = 0.5
+        chart.mode = .linear
+        chart.drawCircles = true
+        chart.circleRadius = 4.0
+
+        return chart
+    }()
+
+    var body: some View {
+        chart
+            .frame(height: 300)
+            .padding()
     }
 }
 
 // MARK: - Data Generators
 
-func generateLineData() -> [DemoDataPoint] {
+func generateLinePoints() -> [DGLineChartPoint] {
     (0..<20).map { i in
-        DemoDataPoint(x: Double(i), y: sin(Double(i) * 0.5) * 10 + Double.random(in: -1...1))
+        DGLineChartPoint(x: Double(i), y: sin(Double(i) * 0.5) * 10 + Double.random(in: -1...1))
     }
 }
 
-func generateAreaData() -> [DemoDataPoint] {
+func generateAreaPoints() -> [DGLineChartPoint] {
     (0..<25).map { i in
         let base = 20 + sin(Double(i) * 0.5) * 5
         let noise = Double.random(in: -1...1)
-        return DemoDataPoint(x: Double(i), y: max(0, base + noise))
+        return DGLineChartPoint(x: Double(i), y: max(0, base + noise))
     }
 }
 
-func generateBarData() -> [DemoCategoryPoint] {
-    ["Jan", "Feb", "Mar", "Apr", "May", "Jun"].map {
-        DemoCategoryPoint(x: $0, y: Double.random(in: 20...100))
+func generateBarPoints() -> [DGBarChartPoint] {
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun"].enumerated().map { index, _ in
+        DGBarChartPoint(x: Double(index), y: Double.random(in: 20...100))
     }
 }
 
-func generateScatterData() -> [DemoDataPoint] {
+func generateScatterPoints() -> [DGLineChartPoint] {
     (0..<50).map { _ in
-        DemoDataPoint(x: Double.random(in: 0...100), y: Double.random(in: 0...100))
+        DGLineChartPoint(x: Double.random(in: 0...100), y: Double.random(in: 0...100))
     }
 }
 
@@ -322,14 +269,10 @@ struct AdvancedDGChartsDemo: View {
     @State var enablePan = true
 
     let colorSchemes: [DGChartColorScheme] = [
-        .default,
-        .categorical(colors: [.systemBlue, .systemGreen, .systemOrange]),
-        .sequential(baseColor: .systemBlue),
-        .diverging(negative: .systemRed, neutral: .systemGray, positive: .systemGreen),
-        .material,
-        .viridis,
-        .plasma,
-        .pastel
+        DGDefaultColorScheme(),
+        DGCategoricalColorScheme(colors: [.systemBlue, .systemGreen, .systemOrange]),
+        DGSequentialColorScheme(startColor: .systemBlue, endColor: .systemBlue),
+        DGDivergingColorScheme(negative: .systemRed, neutral: .systemGray, positive: .systemGreen)
     ]
 
     var body: some View {
@@ -346,63 +289,101 @@ struct AdvancedDGChartsDemo: View {
 
                         Picker("Color Scheme", selection: $colorSchemeIndex) {
                             ForEach(0..<colorSchemes.count, id: \.self) { i in
-                                Text(["Default", "Categorical", "Sequential", "Diverging", "Material", "Viridis", "Plasma", "Pastel"][i])
+                                Text(["Default", "Categorical", "Sequential", "Diverging"][i])
                             }
                         }
                     }
                 }
 
                 // Chart with custom config
-                DGLineChart(
-                    dataSets: [
-                        DGLineChartDataSet(
-                            label: "Series 1",
-                            data: generateLineData(),
+                let lineChart: DGLineChartView = {
+                    let chart = DGLineChartView()
+                    let points = generateLinePoints()
+                    let points2 = points.map { DGLineChartPoint(x: $0.x, y: $0.y + 5) }
+                    let points3 = points.map { DGLineChartPoint(x: $0.x, y: $0.y - 5) }
+
+                    chart.series = [
+                        DGChartSeries(
+                            id: "series1",
+                            name: "Series 1",
+                            abbreviatedName: "S1",
                             color: colorSchemes[colorSchemeIndex].color(for: 0, total: 3),
-                            lineStyle: StrokeStyle(lineWidth: 3, dash: [5, 5]),
-                            symbol: .square,
-                            interpolationMethod: .curved
+                            isVisible: true,
+                            chartType: .line,
+                            lineWidth: 3.0,
+                            dashPattern: [5, 5]
                         ),
-                        DGLineChartDataSet(
-                            label: "Series 2",
-                            data: generateLineData().map { DemoDataPoint(x: $0.x, y: $0.y + 5) },
+                        DGChartSeries(
+                            id: "series2",
+                            name: "Series 2",
+                            abbreviatedName: "S2",
                             color: colorSchemes[colorSchemeIndex].color(for: 1, total: 3),
-                            lineStyle: StrokeStyle(lineWidth: 2),
-                            symbol: .triangle,
-                            interpolationMethod: .linear
+                            isVisible: true,
+                            chartType: .line,
+                            lineWidth: 2.0
                         ),
-                        DGLineChartDataSet(
-                            label: "Series 3",
-                            data: generateLineData().map { DemoDataPoint(x: $0.x, y: $0.y - 5) },
+                        DGChartSeries(
+                            id: "series3",
+                            name: "Series 3",
+                            abbreviatedName: "S3",
                             color: colorSchemes[colorSchemeIndex].color(for: 2, total: 3),
-                            lineStyle: StrokeStyle(lineWidth: 2, dash: [10, 5]),
-                            symbol: .diamond,
-                            interpolationMethod: .stepped
+                            isVisible: true,
+                            chartType: .line,
+                            lineWidth: 2.0,
+                            dashPattern: [10, 5]
                         )
-                    ],
-                    xAxisConfig: .linear(label: "Time", min: 0, max: 20)
-                        .labelColor(.label)
-                        .labelFont(.systemFont(ofSize: 12))
-                        .gridColor(showGrid ? .separator : .clear)
-                        .gridWidth(0.5)
-                        .labelCount(8),
-                    yAxisConfig: .linear(label: "Value", min: -20, max: 20)
-                        .labelColor(.label)
-                        .labelFont(.systemFont(ofSize: 12))
-                        .gridColor(showGrid ? .separator : .clear)
-                        .gridWidth(0.5)
-                        .labelCount(6),
-                    legendConfig: showLegend ? .bottom().font(.systemFont(ofSize: 11)) : .bottom().enabled(false),
-                    scrollConfig: DGDefaultScrollConfig()
-                        .scaleXEnabled(enableZoom)
-                        .scaleYEnabled(enableZoom)
-                        .dragEnabled(enablePan)
-                        .pinchZoomEnabled(enableZoom)
-                        .doubleTapToZoomEnabled(enableZoom),
-                    animationConfig: animate ? .default : DGDefaultAnimationConfig(enabled: false, duration: 0, easing: .linear),
-                    colorScheme: colorSchemes[colorSchemeIndex]
-                )
-                .frame(height: 300)
+                    ]
+
+                    chart.seriesData = [
+                        "series1": points,
+                        "series2": points2,
+                        "series3": points3
+                    ]
+
+                    chart.drawCircles = true
+                    chart.circleRadius = 4.0
+                    chart.mode = .linear
+                    chart.xAxisConfig = DGChartXAxisConfig(
+                        position: .bottom,
+                        labelCount: 8,
+                        labelRotation: 0,
+                        dateFormat: nil,
+                        customFormatter: nil,
+                        granularity: 1.0,
+                        granularityEnabled: false
+                    )
+                    chart.yAxisConfig = DGChartYAxisConfig(
+                        position: .left,
+                        labelCount: 6,
+                        axisMinimum: -20,
+                        axisMaximum: 20,
+                        granularity: 1.0,
+                        granularityEnabled: false,
+                        customFormatter: nil
+                    )
+                    chart.legendConfig = DGChartLegendConfig(
+                        isEnabled: showLegend,
+                        position: .belowChartCenter,
+                        alignment: .center,
+                        orientation: .horizontal,
+                        font: .systemFont(ofSize: 11),
+                        textColor: .label
+                    )
+                    chart.gridColor = showGrid ? .separator : .clear
+                    chart.gridLineWidth = 0.5
+                    chart.pinchZoomEnabled = enableZoom
+                    chart.doubleTapToZoomEnabled = enableZoom
+                    chart.dragEnabled = enablePan
+                    chart.scaleXEnabled = enableZoom
+                    chart.scaleYEnabled = enableZoom
+                    chart.animateOnAppear = animate
+                    chart.animationDuration = animate ? 1.0 : 0
+
+                    return chart
+                }()
+
+                lineChart
+                    .frame(height: 300)
             }
             .padding()
         }

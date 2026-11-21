@@ -3,103 +3,11 @@
 //  Meshtastic
 //
 //  Selection and interaction configuration for DGCharts SwiftUI wrappers
+//  Extends protocols from DGChartsProtocols with additional modifiers
 //
 
 import SwiftUI
 import DGCharts
-
-// MARK: - Selection Mode
-
-/// Selection/highlight mode for charts
-public enum DGChartSelectionMode {
-    case none
-    case single
-    case multiple
-    case nearestX
-    case nearestY
-    case nearestXY
-    case xRange
-    case yRange
-}
-
-// MARK: - Selection Configuration
-
-/// Configuration for chart selection/highlighting
-public protocol DGChartSelectionConfig {
-    var mode: DGChartSelectionMode { get }
-    var highlightColor: UIColor { get }
-    var highlightLineWidth: CGFloat { get }
-    var highlightLineDashPattern: [CGFloat]? { get }
-    var drawHorizontalHighlightIndicator: Bool { get }
-    var drawVerticalHighlightIndicator: Bool { get }
-    var highlighter: DGChartHighlighter? { get }
-    var selectionChanged: (([ChartDataEntry]?, Highlight?) -> Void)? { get }
-}
-
-// Default implementation provided in DGChartsProtocols.swift
-
-// MARK: - Highlighter Protocol
-
-/// Custom highlighter for advanced selection logic
-public protocol DGChartHighlighter {
-    func getHighlight(x: Double, y: Double, dataSets: [IChartDataSet]) -> Highlight?
-}
-
-/// Default highlighter implementation
-public struct DGChartDefaultHighlighter: DGChartHighlighter {
-    public init() {}
-
-    public func getHighlight(x: Double, y: Double, dataSets: [IChartDataSet]) -> Highlight? {
-        // Use default DGCharts highlighter logic
-        return nil
-    }
-}
-
-/// Nearest X highlighter
-public struct DGChartNearestXHighlighter: DGChartHighlighter {
-    public init() {}
-
-    public func getHighlight(x: Double, y: Double, dataSets: [IChartDataSet]) -> Highlight? {
-        var closestHighlight: Highlight?
-        var closestDistance: Double = .greatestFiniteMagnitude
-
-        for dataSet in dataSets {
-            for i in 0..<dataSet.entryCount {
-                guard let entry = dataSet.entryForIndex(i) else { continue }
-                let distance = abs(entry.x - x)
-                if distance < closestDistance {
-                    closestDistance = distance
-                    closestHighlight = Highlight(x: entry.x, y: entry.y, dataSetIndex: 0, dataIndex: i, axis: .left)
-                }
-            }
-        }
-
-        return closestHighlight
-    }
-}
-
-/// Nearest Y highlighter
-public struct DGChartNearestYHighlighter: DGChartHighlighter {
-    public init() {}
-
-    public func getHighlight(x: Double, y: Double, dataSets: [IChartDataSet]) -> Highlight? {
-        var closestHighlight: Highlight?
-        var closestDistance: Double = .greatestFiniteMagnitude
-
-        for dataSet in dataSets {
-            for i in 0..<dataSet.entryCount {
-                guard let entry = dataSet.entryForIndex(i) else { continue }
-                let distance = abs(entry.y - y)
-                if distance < closestDistance {
-                    closestDistance = distance
-                    closestHighlight = Highlight(x: entry.x, y: entry.y, dataSetIndex: 0, dataIndex: i, axis: .left)
-                }
-            }
-        }
-
-        return closestHighlight
-    }
-}
 
 // MARK: - Selection Modifiers
 
@@ -187,29 +95,6 @@ public struct DGChartSelectionInfo<Point: DGChartDataPoint> {
     public let yValue: Double
 }
 
-/// Selection gesture recognizer for custom interaction
-public struct DGChartSelectionGesture: ViewModifier {
-    let onSelectionChange: (DGChartSelectionInfo<Any>?) -> Void
-
-    public func body(content: Content) -> some View {
-        // This is a marker modifier - actual implementation is in chart views
-        content
-    }
-}
-
-public extension View {
-    func onChartSelectionChange<Point: DGChartDataPoint>(
-        _ callback: @escaping (DGChartSelectionInfo<Point>?) -> Void
-    ) -> some View {
-        modifier(DGChartSelectionGesture { info in
-            // Type erasure for the modifier
-            if let typedInfo = info as? DGChartSelectionInfo<Point> {
-                callback(typedInfo)
-            }
-        })
-    }
-}
-
 // MARK: - Highlight View
 
 /// View for displaying highlight information (tooltip, callout, etc.)
@@ -257,6 +142,7 @@ public final class DGChartSelectionState: ObservableObject {
 
 private struct DGChartSelectionStateKey: EnvironmentKey {
     static let defaultValue: DGChartSelectionState = DGChartSelectionState()
+    typealias Value = DGChartSelectionState
 }
 
 public extension EnvironmentValues {

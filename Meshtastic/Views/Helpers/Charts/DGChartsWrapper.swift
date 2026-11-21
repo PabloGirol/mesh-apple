@@ -9,16 +9,10 @@ import SwiftUI
 import DGCharts
 import UIKit
 
-// MARK: - DGCharts Data Entry Protocols
-
-/// Protocol for data points that can be plotted on DGCharts
-public protocol DGChartDataPoint {
-    var x: Double { get }
-    var y: Double { get }
-}
+// MARK: - Chart Data Points
 
 /// Simple data point for line/area charts
-public struct DGLineChartPoint: DGChartDataPoint, Identifiable {
+public struct DGLineChartPoint: Identifiable {
     public let id = UUID()
     public let x: Double
     public let y: Double
@@ -32,7 +26,7 @@ public struct DGLineChartPoint: DGChartDataPoint, Identifiable {
 }
 
 /// Data point for bar charts
-public struct DGBarChartPoint: DGChartDataPoint, Identifiable {
+public struct DGBarChartPoint: Identifiable {
     public let id = UUID()
     public let x: Double
     public let y: Double
@@ -46,7 +40,7 @@ public struct DGBarChartPoint: DGChartDataPoint, Identifiable {
 }
 
 /// Data point for combined charts (line + bar, etc.)
-public struct DGCombinedChartPoint: DGChartDataPoint, Identifiable {
+public struct DGCombinedChartPoint: Identifiable {
     public let id = UUID()
     public let x: Double
     public let y: Double
@@ -239,7 +233,7 @@ public struct DGRuleMark {
     public init(
         position: Double,
         axis: Axis,
-        color: Color = .red,
+        color: Color = .primary,
         lineWidth: CGFloat = 1.0,
         dashPattern: [CGFloat]? = nil,
         label: String? = nil
@@ -315,12 +309,12 @@ public protocol DGChartViewRepresentable: UIViewRepresentable {
 // MARK: - Base Chart View
 
 /// Base class for all DGCharts SwiftUI wrappers
-public class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
+open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
     public typealias UIViewType = ChartViewType
 
     // Data
     public var series: [DGChartSeries] = []
-    public var seriesData: [String: [DGChartDataPoint]] = [:]
+    public var seriesData: [String: [Any]] = [:]
 
     // Configuration
     public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
@@ -611,6 +605,7 @@ public class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable 
 
 // MARK: - Custom Value Formatters
 
+/// Custom axis value formatter using a closure
 private class CustomAxisValueFormatter: NSObject, AxisValueFormatter {
     let block: (Double) -> String
 
@@ -623,6 +618,7 @@ private class CustomAxisValueFormatter: NSObject, AxisValueFormatter {
     }
 }
 
+/// Date-based axis value formatter
 private class DateAxisValueFormatter: NSObject, AxisValueFormatter {
     let formatter: DateFormatter
 
@@ -639,42 +635,8 @@ private class DateAxisValueFormatter: NSObject, AxisValueFormatter {
 // MARK: - Line Chart View
 
 /// SwiftUI wrapper for DGCharts LineChartView
-public struct DGLineChartView: DGChartViewRepresentable {
+public final class DGLineChartView: DGBaseChartView<LineChartView>, DGChartViewRepresentable {
     public typealias ChartType = LineChartView
-
-    // Data
-    public var series: [DGChartSeries] = []
-    public var seriesData: [String: [DGLineChartPoint]] = [:]
-
-    // Configuration
-    public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
-    public var yAxisConfig: DGChartYAxisConfig = DGChartYAxisConfig()
-    public var legendConfig: DGChartLegendConfig = DGChartLegendConfig()
-    public var ruleMarks: [DGRuleMark] = []
-
-    // Interaction
-    public var selection: Binding<DGChartSelection?>?
-    public var onSelectionChanged: ((DGChartSelection?) -> Void)?
-    public var pinchZoomEnabled: Bool = true
-    public var doubleTapToZoomEnabled: Bool = true
-    public var dragEnabled: Bool = true
-    public var scaleXEnabled: Bool = true
-    public var scaleYEnabled: Bool = true
-
-    // Scrolling
-    public var isScrollableHorizontal: Bool = false
-    public var visibleXRange: Double?
-
-    // Appearance
-    public var backgroundColor: UIColor = .systemBackground
-    public var gridColor: UIColor = .systemGray4
-    public var gridLineWidth: CGFloat = 0.5
-    public var drawGridBackground: Bool = false
-
-    // Animation
-    public var animateOnAppear: Bool = true
-    public var animationDuration: TimeInterval = 1.0
-    public var easingOption: ChartEasingOption = .easeInOutQuad
 
     // Line specific
     public var drawCircles: Bool = false
@@ -686,20 +648,22 @@ public struct DGLineChartView: DGChartViewRepresentable {
     public var fillAlpha: CGFloat = 0.3
     public var gradientPositions: [CGFloat]? = nil
 
-    public init() {}
+    public override init() {
+        super.init()
+    }
 
-    public func makeChartView(context: Context) -> LineChartView {
+    public override func makeChartView(context: Context) -> LineChartView {
         let chartView = LineChartView()
         chartView.delegate = context.coordinator.delegate
         return chartView
     }
 
-    public func updateChartView(_ chartView: LineChartView, context: Context) {
+    public override func updateChartView(_ chartView: LineChartView, context: Context) {
         // Update data
         var dataSets: [LineChartDataSet] = []
 
         for seriesItem in series where seriesItem.isVisible {
-            guard let points = seriesData[seriesItem.id], !points.isEmpty else { continue }
+            guard let points = seriesData[seriesItem.id] as? [DGLineChartPoint], !points.isEmpty else { continue }
 
             let entries = points.map { point in
                 ChartDataEntry(x: point.x, y: point.y, data: point.label as Any?)
@@ -743,119 +707,37 @@ public struct DGLineChartView: DGChartViewRepresentable {
         data.setDrawValues(false)
         chartView.data = data
 
-        // Update axes
-        updateXAxis(chartView)
-        updateYAxis(chartView)
-
-        // Update legend
-        updateLegend(chartView)
-
-        // Update rule marks
-        updateRuleMarks(chartView)
-
-        // Update interaction
-        updateInteraction(chartView)
-
-        // Update scrolling
-        updateScrolling(chartView)
-
-        // Update appearance
-        updateAppearance(chartView)
-
-        // Animate
-        if animateOnAppear && context.transaction.animation != nil {
-            chartView.animate(xAxisDuration: animationDuration, yAxisDuration: animationDuration, easingOption: easingOption)
-        }
-    }
-
-    public func makeUIView(context: Context) -> LineChartView {
-        let chartView = makeChartView(context: context)
-
-        let delegate = DGChartInteractionDelegate()
-        delegate.onSelectionChanged = { [weak self] selection in
-            self?.selection?.wrappedValue = selection
-            self?.onSelectionChanged?(selection)
-        }
-        delegate.onNothingSelected = { [weak self] in
-            self?.selection?.wrappedValue = nil
-        }
-        chartView.delegate = delegate
-        context.coordinator.delegate = delegate
-
-        return chartView
-    }
-
-    public func updateUIView(_ uiView: LineChartView, context: Context) {
-        updateChartView(uiView, context: context)
-    }
-
-    public func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    public class Coordinator {
-        var delegate: DGChartInteractionDelegate?
+        // Call base class update methods for common configuration
+        super.updateChartView(chartView, context: context)
     }
 }
 
 // MARK: - Bar Chart View
 
 /// SwiftUI wrapper for DGCharts BarChartView
-public struct DGBarChartView: DGChartViewRepresentable {
+public final class DGBarChartView: DGBaseChartView<BarChartView>, DGChartViewRepresentable {
     public typealias ChartType = BarChartView
-
-    // Data
-    public var series: [DGChartSeries] = []
-    public var seriesData: [String: [DGBarChartPoint]] = [:]
-
-    // Configuration
-    public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
-    public var yAxisConfig: DGChartYAxisConfig = DGChartYAxisConfig()
-    public var legendConfig: DGChartLegendConfig = DGChartLegendConfig()
-    public var ruleMarks: [DGRuleMark] = []
-
-    // Interaction
-    public var selection: Binding<DGChartSelection?>?
-    public var onSelectionChanged: ((DGChartSelection?) -> Void)?
-    public var pinchZoomEnabled: Bool = true
-    public var doubleTapToZoomEnabled: Bool = true
-    public var dragEnabled: Bool = true
-    public var scaleXEnabled: Bool = true
-    public var scaleYEnabled: Bool = true
-
-    // Scrolling
-    public var isScrollableHorizontal: Bool = false
-    public var visibleXRange: Double?
-
-    // Appearance
-    public var backgroundColor: UIColor = .systemBackground
-    public var gridColor: UIColor = .systemGray4
-    public var gridLineWidth: CGFloat = 0.5
-    public var drawGridBackground: Bool = false
-
-    // Animation
-    public var animateOnAppear: Bool = true
-    public var animationDuration: TimeInterval = 1.0
-    public var easingOption: ChartEasingOption = .easeInOutQuad
 
     // Bar specific
     public var barWidth: CGFloat = 0.8
     public var groupSpace: CGFloat = 0.1
     public var drawValueAboveBar: Bool = false
 
-    public init() {}
+    public override init() {
+        super.init()
+    }
 
-    public func makeChartView(context: Context) -> BarChartView {
+    public override func makeChartView(context: Context) -> BarChartView {
         let chartView = BarChartView()
         chartView.delegate = context.coordinator.delegate
         return chartView
     }
 
-    public func updateChartView(_ chartView: BarChartView, context: Context) {
+    public override func updateChartView(_ chartView: BarChartView, context: Context) {
         var dataSets: [BarChartDataSet] = []
 
         for seriesItem in series where seriesItem.isVisible {
-            guard let points = seriesData[seriesItem.id], !points.isEmpty else { continue }
+            guard let points = seriesData[seriesItem.id] as? [DGBarChartPoint], !points.isEmpty else { continue }
 
             let entries = points.map { point in
                 BarChartDataEntry(x: point.x, y: point.y, data: point.label as Any?)
@@ -881,100 +763,16 @@ public struct DGBarChartView: DGChartViewRepresentable {
 
         chartView.data = data
 
-        // Update axes
-        updateXAxis(chartView)
-        updateYAxis(chartView)
-
-        // Update legend
-        updateLegend(chartView)
-
-        // Update rule marks
-        updateRuleMarks(chartView)
-
-        // Update interaction
-        updateInteraction(chartView)
-
-        // Update scrolling
-        updateScrolling(chartView)
-
-        // Update appearance
-        updateAppearance(chartView)
-
-        // Animate
-        if animateOnAppear && context.transaction.animation != nil {
-            chartView.animate(xAxisDuration: animationDuration, yAxisDuration: animationDuration, easingOption: easingOption)
-        }
-    }
-
-    public func makeUIView(context: Context) -> BarChartView {
-        let chartView = makeChartView(context: context)
-
-        let delegate = DGChartInteractionDelegate()
-        delegate.onSelectionChanged = { [weak self] selection in
-            self?.selection?.wrappedValue = selection
-            self?.onSelectionChanged?(selection)
-        }
-        delegate.onNothingSelected = { [weak self] in
-            self?.selection?.wrappedValue = nil
-        }
-        chartView.delegate = delegate
-        context.coordinator.delegate = delegate
-
-        return chartView
-    }
-
-    public func updateUIView(_ uiView: BarChartView, context: Context) {
-        updateChartView(uiView, context: context)
-    }
-
-    public func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    public class Coordinator {
-        var delegate: DGChartInteractionDelegate?
+        // Call base class update methods for common configuration
+        super.updateChartView(chartView, context: context)
     }
 }
 
 // MARK: - Combined Chart View (Line + Bar + Area)
 
 /// SwiftUI wrapper for DGCharts CombinedChartView - supports multiple chart types in one view
-public struct DGCombinedChartView: DGChartViewRepresentable {
+public final class DGCombinedChartView: DGBaseChartView<CombinedChartView>, DGChartViewRepresentable {
     public typealias ChartType = CombinedChartView
-
-    // Data
-    public var series: [DGChartSeries] = []
-    public var seriesData: [String: [DGCombinedChartPoint]] = [:]
-
-    // Configuration
-    public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
-    public var yAxisConfig: DGChartYAxisConfig = DGChartYAxisConfig()
-    public var legendConfig: DGChartLegendConfig = DGChartLegendConfig()
-    public var ruleMarks: [DGRuleMark] = []
-
-    // Interaction
-    public var selection: Binding<DGChartSelection?>?
-    public var onSelectionChanged: ((DGChartSelection?) -> Void)?
-    public var pinchZoomEnabled: Bool = true
-    public var doubleTapToZoomEnabled: Bool = true
-    public var dragEnabled: Bool = true
-    public var scaleXEnabled: Bool = true
-    public var scaleYEnabled: Bool = true
-
-    // Scrolling
-    public var isScrollableHorizontal: Bool = false
-    public var visibleXRange: Double?
-
-    // Appearance
-    public var backgroundColor: UIColor = .systemBackground
-    public var gridColor: UIColor = .systemGray4
-    public var gridLineWidth: CGFloat = 0.5
-    public var drawGridBackground: Bool = false
-
-    // Animation
-    public var animateOnAppear: Bool = true
-    public var animationDuration: TimeInterval = 1.0
-    public var easingOption: ChartEasingOption = .easeInOutQuad
 
     // Line specific
     public var drawCircles: Bool = false
@@ -987,9 +785,11 @@ public struct DGCombinedChartView: DGChartViewRepresentable {
     public var barWidth: CGFloat = 0.8
     public var groupSpace: CGFloat = 0.1
 
-    public init() {}
+    public override init() {
+        super.init()
+    }
 
-    public func makeChartView(context: Context) -> CombinedChartView {
+    public override func makeChartView(context: Context) -> CombinedChartView {
         let chartView = CombinedChartView()
         chartView.delegate = context.coordinator.delegate
         // Order of drawing: bar, bubble, line, candle, scatter, area
@@ -997,13 +797,13 @@ public struct DGCombinedChartView: DGChartViewRepresentable {
         return chartView
     }
 
-    public func updateChartView(_ chartView: CombinedChartView, context: Context) {
+    public override func updateChartView(_ chartView: CombinedChartView, context: Context) {
         var lineDataSets: [LineChartDataSet] = []
         var barDataSets: [BarChartDataSet] = []
         var areaDataSets: [LineChartDataSet] = [] // Area uses LineChartDataSet with fill
 
         for seriesItem in series where seriesItem.isVisible {
-            guard let points = seriesData[seriesItem.id], !points.isEmpty else { continue }
+            guard let points = seriesData[seriesItem.id] as? [DGCombinedChartPoint], !points.isEmpty else { continue }
 
             switch seriesItem.chartType {
             case .line:
@@ -1082,119 +882,37 @@ public struct DGCombinedChartView: DGChartViewRepresentable {
 
         chartView.data = data
 
-        // Update axes
-        updateXAxis(chartView)
-        updateYAxis(chartView)
-
-        // Update legend
-        updateLegend(chartView)
-
-        // Update rule marks
-        updateRuleMarks(chartView)
-
-        // Update interaction
-        updateInteraction(chartView)
-
-        // Update scrolling
-        updateScrolling(chartView)
-
-        // Update appearance
-        updateAppearance(chartView)
-
-        // Animate
-        if animateOnAppear && context.transaction.animation != nil {
-            chartView.animate(xAxisDuration: animationDuration, yAxisDuration: animationDuration, easingOption: easingOption)
-        }
-    }
-
-    public func makeUIView(context: Context) -> CombinedChartView {
-        let chartView = makeChartView(context: context)
-
-        let delegate = DGChartInteractionDelegate()
-        delegate.onSelectionChanged = { [weak self] selection in
-            self?.selection?.wrappedValue = selection
-            self?.onSelectionChanged?(selection)
-        }
-        delegate.onNothingSelected = { [weak self] in
-            self?.selection?.wrappedValue = nil
-        }
-        chartView.delegate = delegate
-        context.coordinator.delegate = delegate
-
-        return chartView
-    }
-
-    public func updateUIView(_ uiView: CombinedChartView, context: Context) {
-        updateChartView(uiView, context: context)
-    }
-
-    public func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    public class Coordinator {
-        var delegate: DGChartInteractionDelegate?
+        // Call base class update methods for common configuration
+        super.updateChartView(chartView, context: context)
     }
 }
 
 // MARK: - Scatter/Point Chart View
 
 /// SwiftUI wrapper for DGCharts ScatterChartView
-public struct DGScatterChartView: DGChartViewRepresentable {
+public final class DGScatterChartView: DGBaseChartView<ScatterChartView>, DGChartViewRepresentable {
     public typealias ChartType = ScatterChartView
-
-    // Data
-    public var series: [DGChartSeries] = []
-    public var seriesData: [String: [DGLineChartPoint]] = [:] // Same as line chart points
-
-    // Configuration
-    public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
-    public var yAxisConfig: DGChartYAxisConfig = DGChartYAxisConfig()
-    public var legendConfig: DGChartLegendConfig = DGChartLegendConfig()
-    public var ruleMarks: [DGRuleMark] = []
-
-    // Interaction
-    public var selection: Binding<DGChartSelection?>?
-    public var onSelectionChanged: ((DGChartSelection?) -> Void)?
-    public var pinchZoomEnabled: Bool = true
-    public var doubleTapToZoomEnabled: Bool = true
-    public var dragEnabled: Bool = true
-    public var scaleXEnabled: Bool = true
-    public var scaleYEnabled: Bool = true
-
-    // Scrolling
-    public var isScrollableHorizontal: Bool = false
-    public var visibleXRange: Double?
-
-    // Appearance
-    public var backgroundColor: UIColor = .systemBackground
-    public var gridColor: UIColor = .systemGray4
-    public var gridLineWidth: CGFloat = 0.5
-    public var drawGridBackground: Bool = false
-
-    // Animation
-    public var animateOnAppear: Bool = true
-    public var animationDuration: TimeInterval = 1.0
-    public var easingOption: ChartEasingOption = .easeInOutQuad
 
     // Scatter specific
     public var scatterShape: ScatterChartDataSet.Shape = .circle
     public var scatterShapeSize: CGFloat = 8.0
     public var drawValuesEnabled: Bool = false
 
-    public init() {}
+    public override init() {
+        super.init()
+    }
 
-    public func makeChartView(context: Context) -> ScatterChartView {
+    public override func makeChartView(context: Context) -> ScatterChartView {
         let chartView = ScatterChartView()
         chartView.delegate = context.coordinator.delegate
         return chartView
     }
 
-    public func updateChartView(_ chartView: ScatterChartView, context: Context) {
+    public override func updateChartView(_ chartView: ScatterChartView, context: Context) {
         var dataSets: [ScatterChartDataSet] = []
 
         for seriesItem in series where seriesItem.isVisible {
-            guard let points = seriesData[seriesItem.id], !points.isEmpty else { continue }
+            guard let points = seriesData[seriesItem.id] as? [DGLineChartPoint], !points.isEmpty else { continue }
 
             let entries = points.map { point in
                 ChartDataEntry(x: point.x, y: point.y, data: point.label as Any?)
@@ -1215,69 +933,13 @@ public struct DGScatterChartView: DGChartViewRepresentable {
         data.setDrawValues(drawValuesEnabled)
         chartView.data = data
 
-        // Update axes
-        updateXAxis(chartView)
-        updateYAxis(chartView)
-
-        // Update legend
-        updateLegend(chartView)
-
-        // Update rule marks
-        updateRuleMarks(chartView)
-
-        // Update interaction
-        updateInteraction(chartView)
-
-        // Update scrolling
-        updateScrolling(chartView)
-
-        // Update appearance
-        updateAppearance(chartView)
-
-        // Animate
-        if animateOnAppear && context.transaction.animation != nil {
-            chartView.animate(xAxisDuration: animationDuration, yAxisDuration: animationDuration, easingOption: easingOption)
-        }
-    }
-
-    public func makeUIView(context: Context) -> ScatterChartView {
-        let chartView = makeChartView(context: context)
-
-        let delegate = DGChartInteractionDelegate()
-        delegate.onSelectionChanged = { [weak self] selection in
-            self?.selection?.wrappedValue = selection
-            self?.onSelectionChanged?(selection)
-        }
-        delegate.onNothingSelected = { [weak self] in
-            self?.selection?.wrappedValue = nil
-        }
-        chartView.delegate = delegate
-        context.coordinator.delegate = delegate
-
-        return chartView
-    }
-
-    public func updateUIView(_ uiView: ScatterChartView, context: Context) {
-        updateChartView(uiView, context: context)
-    }
-
-    public func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    public class Coordinator {
-        var delegate: DGChartInteractionDelegate?
+        // Call base class update methods for common configuration
+        super.updateChartView(chartView, context: context)
     }
 }
 
 // MARK: - Convenience Extensions
 
-extension Color {
-    /// Convert SwiftUI Color to UIColor
-    func toUIColor() -> UIColor {
-        UIColor(self)
-    }
-}
 
 // Helper for creating date-based x values
 public func dateToChartX(_ date: Date) -> Double {

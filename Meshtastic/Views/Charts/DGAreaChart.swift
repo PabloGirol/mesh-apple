@@ -10,8 +10,8 @@ import DGCharts
 
 // MARK: - Area Chart Data Set
 
-/// Data set for area charts (line with fill)
-public struct DGAreaChartDataSet<Point: DGChartDataPoint>: DGChartDataSet {
+/// Data set for area charts (line with fill) - uses concrete types to avoid protocol associatedtype issues
+public struct DGAreaChartDataSet<Point: DGChartDataPoint> {
     public let id: String
     public let label: String
     public var data: [Point]
@@ -592,7 +592,7 @@ public extension DGAreaChart where Point == DGChartCategoryPoint<Double> {
     }
 }
 
-// MARK: - Axis Value Formatters
+// MARK: - Axis Value Formatters (private)
 
 private class DefaultAxisValueFormatter: NSObject, AxisValueFormatter {
     let block: (Double) -> String
@@ -622,11 +622,13 @@ private class IndexAxisValueFormatter: NSObject, AxisValueFormatter {
 }
 
 private class DefaultFillFormatter: NSObject, FillFormatter {
-    let block: (LineChartDataSet, LineChartDataProvider) -> CGFloat
-    init(block: @escaping (LineChartDataSet, LineChartDataProvider) -> CGFloat) {
+    let block: (ChartDataSetBase, ChartDataProvider) -> CGFloat
+    init(block: @escaping (ChartDataSetBase, ChartDataProvider) -> CGFloat) {
         self.block = block
     }
-    func getFillLinePosition(dataSet: LineChartDataSet, dataProvider: LineChartDataProvider) -> CGFloat {
-        return block(dataSet, dataProvider)
+    func getFillLinePosition(dataSet: ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
+        block(dataSet, dataProvider)
     }
 }
+
+
