@@ -11,38 +11,45 @@ import DGCharts
 // MARK: - Public API Exports
 
 // Protocols & Base Types (from DGChartsProtocols)
-public typealias DGChartDataPoint = DGChartDataPoint
-public typealias DGChartDatePoint = DGChartDatePoint
-public typealias DGChartCategoryPoint = DGChartCategoryPoint
-public typealias DGLineStyle = DGLineStyle
-public typealias DGMarkStyle = DGMarkStyle
-public typealias DGChartSymbol = DGChartSymbol
-public typealias DGChartAxisConfig = DGChartAxisConfig
-public typealias DGDefaultAxisConfig = DGDefaultAxisConfig
-public typealias DGChartAxisPosition = DGChartAxisPosition
-public typealias DGChartAxisScale = DGChartAxisScale
-public typealias DGChartLegendConfig = DGChartLegendConfig
-public typealias DGDefaultLegendConfig = DGDefaultLegendConfig
-public typealias DGChartLegendPosition = DGChartLegendPosition
-public typealias DGChartSelectionConfig = DGChartSelectionConfig
-public typealias DGDefaultSelectionConfig = DGDefaultSelectionConfig
-public typealias DGChartSelectionMode = DGChartSelectionMode
-public typealias DGChartScrollConfig = DGChartScrollConfig
-public typealias DGDefaultScrollConfig = DGDefaultScrollConfig
-public typealias DGChartAnimationConfig = DGChartAnimationConfig
-public typealias DGDefaultAnimationConfig = DGDefaultAnimationConfig
-public typealias DGChartEasingFunction = DGChartEasingFunction
-public typealias DGChartColorScheme = DGChartColorScheme
-public typealias DGDefaultColorScheme = DGDefaultColorScheme
-public typealias DGCategoricalColorScheme = DGCategoricalColorScheme
-public typealias DGSequentialColorScheme = DGSequentialColorScheme
-public typealias DGDivergingColorScheme = DGDivergingColorScheme
-public typealias DGChartDataSet = DGChartDataSet
-public typealias DGChartView = DGChartView
-public typealias DGChartFillFormatter = DGChartFillFormatter
-public typealias DGDefaultFillFormatter = DGDefaultFillFormatter
-public typealias DGChartHighlighter = DGChartHighlighter
-public typealias DGChartViewBase = DGChartViewBase
+public typealias DGChartDataPoint = DGChartsProtocols.DGChartDataPoint
+public typealias DGChartPoint = DGChartsProtocols.DGChartPoint
+public typealias DGChartDatePoint = DGChartsProtocols.DGChartDatePoint
+public typealias DGChartCategoryPoint = DGChartsProtocols.DGChartCategoryPoint
+public typealias DGLineStyle = DGChartsProtocols.DGLineStyle
+public typealias DGMarkStyle = DGChartsProtocols.DGMarkStyle
+public typealias DGChartSymbol = DGChartsProtocols.DGChartSymbol
+public typealias DGChartInterpolationMethod = DGChartsProtocols.DGChartInterpolationMethod
+public typealias DGChartAxisConfig = DGChartsProtocols.DGChartAxisConfig
+public typealias DGDefaultAxisConfig = DGChartsProtocols.DGDefaultAxisConfig
+public typealias DGChartAxisPosition = DGChartsProtocols.DGChartAxisPosition
+public typealias DGChartAxisScale = DGChartsProtocols.DGChartAxisScale
+public typealias DGChartLegendConfig = DGChartsProtocols.DGChartLegendConfig
+public typealias DGDefaultLegendConfig = DGChartsProtocols.DGDefaultLegendConfig
+public typealias DGChartLegendPosition = DGChartsProtocols.DGChartLegendPosition
+public typealias DGChartSelectionConfig = DGChartsProtocols.DGChartSelectionConfig
+public typealias DGDefaultSelectionConfig = DGChartsProtocols.DGDefaultSelectionConfig
+public typealias DGChartSelectionMode = DGChartsProtocols.DGChartSelectionMode
+public typealias DGChartScrollConfig = DGChartsProtocols.DGChartScrollConfig
+public typealias DGDefaultScrollConfig = DGChartsProtocols.DGDefaultScrollConfig
+public typealias DGChartAnimationConfig = DGChartsProtocols.DGChartAnimationConfig
+public typealias DGDefaultAnimationConfig = DGChartsProtocols.DGDefaultAnimationConfig
+public typealias DGChartEasingFunction = DGChartsProtocols.DGChartEasingFunction
+public typealias DGChartColorScheme = DGChartsProtocols.DGChartColorScheme
+public typealias DGDefaultColorScheme = DGChartsProtocols.DGDefaultColorScheme
+public typealias DGCategoricalColorScheme = DGChartsProtocols.DGCategoricalColorScheme
+public typealias DGSequentialColorScheme = DGChartsProtocols.DGSequentialColorScheme
+public typealias DGDivergingColorScheme = DGChartsProtocols.DGDivergingColorScheme
+public typealias DGSemanticColorScheme = DGChartsProtocols.DGSemanticColorScheme
+public typealias DGChartDataSet = DGChartsProtocols.DGChartDataSet
+public typealias DGChartView = DGChartsProtocols.DGChartView
+public typealias ChartGesture = DGChartsProtocols.ChartGesture
+public typealias DGChartFillFormatter = DGChartsProtocols.DGChartFillFormatter
+public typealias DGDefaultFillFormatter = DGChartsProtocols.DGDefaultFillFormatter
+public typealias DGChartHighlighter = DGChartsProtocols.DGChartHighlighter
+public typealias DGChartViewBase = DGChartsProtocols.DGChartViewBase
+
+// Chart Views (from local implementations in Views/Charts - types are defined in this module)
+// These types are already accessible; no typealias needed
 
 // Chart Views (from DGChartsWrapper in Helpers/Charts - using actual DGCharts UIView types)
 public typealias DGLineChartView = DGChartsWrapper.DGLineChartView
@@ -62,129 +69,86 @@ public typealias DGChartInteractionDelegate = DGChartsWrapper.DGChartInteraction
 public typealias DGChartXAxisConfig = DGChartsWrapper.DGChartXAxisConfig
 public typealias DGChartYAxisConfig = DGChartsWrapper.DGChartYAxisConfig
 public typealias DGRuleMark = DGChartsWrapper.DGRuleMark
-public typealias DGChartLegendConfig = DGChartsWrapper.DGChartLegendConfig
 
-// Swift Charts-like API (from DGChartsSwiftUI)
-public typealias LineChartView = DGChartsSwiftUI.LineChartView
-public typealias BarChartView = DGChartsSwiftUI.BarChartView
-public typealias CombinedChartView = DGChartsSwiftUI.CombinedChartView
-public typealias ChartSeriesData = DGChartsSwiftUI.ChartSeriesData
-public typealias ChartDataPoint = DGChartsSwiftUI.ChartDataPoint
-public typealias LineMark = DGChartsSwiftUI.LineMark
-public typealias PointMark = DGChartsSwiftUI.PointMark
-public typealias RuleMark = DGChartsSwiftUI.RuleMark
-public typealias AreaMark = DGChartsSwiftUI.AreaMark
-public typealias BarMark = DGChartsSwiftUI.BarMark
-public typealias PlottableValue = DGChartsSwiftUI.PlottableValue
-public typealias Plottable = DGChartsSwiftUI.Plottable
-public typealias MarkDimension = DGChartsSwiftUI.MarkDimension
-public typealias ChartContentBuilder = DGChartsSwiftUI.ChartContentBuilder
-public typealias ChartContent = DGChartsSwiftUI.ChartContent
-public typealias Chart = DGChartsSwiftUI.Chart
+// Axis (from DGChartAxis)
+public typealias DGChartAxisMarkPosition = DGChartAxisMarkPosition
+public typealias DGChartAxisScaleType = DGChartAxisScale
+public typealias DGChartAxisValueFormatter = DGChartAxisValueFormatter
+public typealias DGChartClosureAxisValueFormatter = DGChartClosureAxisValueFormatter
+public typealias DGChartDateAxisValueFormatter = DGChartDateAxisValueFormatter
+public typealias DGChartIndexAxisValueFormatter = DGChartIndexAxisValueFormatter
+public typealias DGChartMeasurementAxisValueFormatter = DGChartMeasurementAxisValueFormatter
+
+// Legend (from DGChartLegend)
+public typealias DGChartLegendEntry = DGChartLegendEntry
+public typealias DGChartCustomLegendRenderer = DGChartCustomLegendRenderer
+public typealias DGChartDefaultLegendRenderer = DGChartDefaultLegendRenderer
+
+// Selection (from DGChartSelection)
+public typealias DGChartDefaultHighlighter = DGChartDefaultHighlighter
+public typealias DGChartNearestXHighlighter = DGChartNearestXHighlighter
+public typealias DGChartNearestYHighlighter = DGChartNearestYHighlighter
+public typealias DGChartSelectionInfo = DGChartSelectionInfo
+public typealias DGChartSelectionState = DGChartSelectionState
+
+// Scroll (from DGChartScroll)
+public typealias DGChartViewportJob = DGChartViewportJob
+public typealias DGChartViewportJobType = DGChartViewportJobType
+public typealias DGChartViewportController = DGChartViewportController
+
+// Color (from DGChartColor)
+public typealias DGChartForegroundStyle = DGChartForegroundStyle
+public typealias DGChartLinearGradient = DGChartLinearGradient
+public typealias DGChartRadialGradient = DGChartRadialGradient
+public typealias DGChartColorPalette = DGChartColorPalette
 
 // MARK: - Convenience Functions
 
-/// Create a line chart with simple data points
-public func makeLineChart(
-    _ points: [DGLineChartPoint],
+/// Create a line chart with simple data
+public func DGLineChart<Point: DGChartDataPoint>(
+    _ data: [Point],
     label: String = "Series",
-    color: Color = .blue,
-    lineWidth: CGFloat = 2.0
-) -> DGLineChartView {
-    let chart = DGLineChartView()
-    chart.series = [DGChartSeries(
-        id: UUID().uuidString,
-        name: label,
-        abbreviatedName: String(label.prefix(3)),
-        color: color,
-        isVisible: true,
-        chartType: .line,
-        lineWidth: lineWidth
-    )]
-    chart.seriesData = [chart.series[0].id: points]
-    return chart
+    color: UIColor = .systemBlue
+) -> DGLineChart<Point> {
+    DGLineChart(data, label: label, color: color)
 }
 
-/// Create a bar chart with simple data points
-public func makeBarChart(
-    _ points: [DGBarChartPoint],
+/// Create a bar chart with simple data
+public func DGBarChart<Point: DGChartDataPoint>(
+    _ data: [Point],
     label: String = "Series",
-    color: Color = .blue,
-    barWidth: CGFloat = 0.8
-) -> DGBarChartView {
-    let chart = DGBarChartView()
-    chart.series = [DGChartSeries(
-        id: UUID().uuidString,
-        name: label,
-        abbreviatedName: String(label.prefix(3)),
-        color: color,
-        isVisible: true,
-        chartType: .bar,
-        lineWidth: 0
-    )]
-    chart.seriesData = [chart.series[0].id: points]
-    chart.barWidth = barWidth
-    return chart
+    color: UIColor = .systemBlue
+) -> DGBarChart<Point> {
+    DGBarChart(data, label: label, color: color)
 }
 
-/// Create an area chart with simple data points
-public func makeAreaChart(
-    _ points: [DGLineChartPoint],
+/// Create an area chart with simple data
+public func DGAreaChart<Point: DGChartDataPoint>(
+    _ data: [Point],
     label: String = "Series",
-    color: Color = .blue,
-    lineWidth: CGFloat = 2.0,
-    fillColor: Color? = nil,
+    color: UIColor = .systemBlue,
+    fillColor: UIColor? = nil,
     fillAlpha: CGFloat = 0.3
-) -> DGCombinedChartView {
-    let chart = DGCombinedChartView()
-    chart.series = [DGChartSeries(
-        id: UUID().uuidString,
-        name: label,
-        abbreviatedName: String(label.prefix(3)),
-        color: color,
-        isVisible: true,
-        chartType: .area,
-        lineWidth: lineWidth,
-        fillColor: fillColor,
-        fillAlpha: fillAlpha
-    )]
-    chart.seriesData = [chart.series[0].id: points.map { DGCombinedChartPoint(x: $0.x, y: $0.y, label: $0.label, type: .area) }]
-    return chart
+) -> DGAreaChart<Point> {
+    DGAreaChart(data, label: label, color: color, fillColor: fillColor, fillAlpha: fillAlpha)
 }
 
-/// Create a point/scatter chart with simple data points
-public func makePointChart(
-    _ points: [DGLineChartPoint],
+/// Create a point/scatter chart with simple data
+public func DGPointChart<Point: DGChartDataPoint>(
+    _ data: [Point],
     label: String = "Series",
-    color: Color = .blue,
-    scatterShape: ScatterChartDataSet.Shape = .circle,
-    scatterShapeSize: CGFloat = 8.0
-) -> DGScatterChartView {
-    let chart = DGScatterChartView()
-    chart.series = [DGChartSeries(
-        id: UUID().uuidString,
-        name: label,
-        abbreviatedName: String(label.prefix(3)),
-        color: color,
-        isVisible: true,
-        chartType: .line,
-        lineWidth: 0
-    )]
-    chart.seriesData = [chart.series[0].id: points]
-    chart.scatterShape = scatterShape
-    chart.scatterShapeSize = scatterShapeSize
-    return chart
+    color: UIColor = .systemBlue,
+    symbol: DGChartSymbol = .circle,
+    symbolSize: CGFloat = 10
+) -> DGPointChart<Point> {
+    DGPointChart(data, label: label, color: color, symbol: symbol, symbolSize: symbolSize)
 }
 
 /// Create a combined chart with multiple data sets
-public func makeCombinedChart(
-    series: [DGChartSeries],
-    seriesData: [String: [DGCombinedChartPoint]]
-) -> DGCombinedChartView {
-    let chart = DGCombinedChartView()
-    chart.series = series
-    chart.seriesData = seriesData
-    return chart
+public func DGCombinedChart<Point: DGChartDataPoint>(
+    _ dataSets: [DGCombinedChartDataSet<Point>]
+) -> DGCombinedChart<Point> {
+    DGCombinedChart(dataSets: dataSets)
 }
 
 // MARK: - Chart Container
@@ -215,33 +179,33 @@ public struct DGChartContainer<Content: View>: View {
 
 #if DEBUG
 public struct DGChartsPreview {
-    public static var sampleLineData: [DGLineChartPoint] {
+    public static var sampleLineData: [DGChartPoint<Double, Double>] {
         (0..<20).map { i in
-            DGLineChartPoint(x: Double(i), y: sin(Double(i) * 0.5) * 10 + Double.random(in: -1...1))
+            DGChartPoint(x: Double(i), y: sin(Double(i) * 0.5) * 10 + Double.random(in: -1...1))
         }
     }
 
-    public static var sampleDateData: [DGLineChartPoint] {
+    public static var sampleDateData: [DGChartDatePoint<Double>] {
         let calendar = Calendar.current
         let now = Date()
         return (0..<30).map { i in
-            DGLineChartPoint(
-                x: calendar.date(byAdding: .day, value: -i, to: now)!.timeIntervalSince1970,
+            DGChartDatePoint(
+                x: calendar.date(byAdding: .day, value: -i, to: now)!,
                 y: Double.random(in: 10...100)
             )
         }.reversed()
     }
 
-    public static var sampleCategoryData: [DGBarChartPoint] {
-        ["Jan", "Feb", "Mar", "Apr", "May", "Jun"].enumerated().map { index, name in
-            DGBarChartPoint(x: Double(index), y: Double.random(in: 10...100))
+    public static var sampleCategoryData: [DGChartCategoryPoint<Double>] {
+        ["Jan", "Feb", "Mar", "Apr", "May", "Jun"].map {
+            DGChartCategoryPoint(x: $0, y: Double.random(in: 10...100))
         }
     }
 
-    public static var sampleMultiSeriesData: [[DGLineChartPoint]] {
+    public static var sampleMultiSeriesData: [[DGChartPoint<Double, Double>]] {
         (0..<3).map { series in
             (0..<20).map { i in
-                DGLineChartPoint(
+                DGChartPoint(
                     x: Double(i),
                     y: sin(Double(i) * 0.5 + Double(series)) * 10 + Double(series) * 5
                 )

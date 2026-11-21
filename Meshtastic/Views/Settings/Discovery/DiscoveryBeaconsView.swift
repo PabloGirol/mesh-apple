@@ -130,4 +130,3 @@ struct DiscoveryBeaconsView: View {
 			Logger.data.error("🚫 Failed to delete passive beacon: \(error.localizedDescription, privacy: .public)")
 		}
 	}
-}

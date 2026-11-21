@@ -90,7 +90,6 @@ extension View {
 		self.buttonStyle(.glass)
 		#endif
 	}
-}
 
 /// How a scroll dismisses the keyboard. Our own type because SwiftUI's `ScrollDismissesKeyboardMode`
 /// doesn't exist on visionOS, where there is no on-screen keyboard to dismiss.

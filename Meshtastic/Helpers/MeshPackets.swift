@@ -92,10 +92,11 @@ actor MeshPackets {
         request.includesPendingChanges = false
         return request
     }
-}
 
-/// Generate markdown links from detected addresses, phone numbers, and URLs in a message.
-fileprivate func generateMessageMarkdown(message: String) -> String {
+    // MARK: - Static Helpers
+
+    /// Generate markdown links from detected addresses, phone numbers, and URLs in a message.
+    static func generateMessageMarkdown(message: String) -> String {
 	guard !message.isEmoji() else { return message }
 	let types: NSTextCheckingResult.CheckingType = [.address, .link, .phoneNumber]
 	guard let detector = try? NSDataDetector(types: types.rawValue) else {
@@ -137,115 +138,115 @@ fileprivate func generateMessageMarkdown(message: String) -> String {
 		messageWithMarkdown.replaceSubrange(range, with: replacement)
 	}
 	return messageWithMarkdown
-}
+    }
 
-private struct TelemetryPruneKey: Hashable {
-	let nodeNum: Int64
-	let metricsType: Int32
-}
+    private struct TelemetryPruneKey: Hashable {
+        let nodeNum: Int64
+        let metricsType: Int32
+    }
 
-/// Always the current shared container. Computed (not cached) so that after a data clear
-/// recreates the container, the next `recreateShared()` rebuilds the actor on the new one
-/// rather than a stale, torn-down container. Only read on the main actor (recreateShared and
-/// the initial `_shared` are both reached from @MainActor code).
-private static var _container: NSPersistentContainer {
-	MainActor.assumeIsolated { CoreDataStackImpl.shared.container }
-}
+    /// Always the current shared container. Computed (not cached) so that after a data clear
+    /// recreates the container, the next `recreateShared()` rebuilds the actor on the new one
+    /// rather than a stale, torn-down container. Only read on the main actor (recreateShared and
+    /// the initial `_shared` are both reached from @MainActor code).
+    private static var _container: NSPersistentContainer {
+        MainActor.assumeIsolated { CoreDataStackImpl.shared.container }
+    }
 
-/// The current shared instance. Access via `MeshPackets.shared`.
-/// Periodically recreated to release accumulated ModelContext memory.
-nonisolated private static var _shared: MeshPackets = MeshPackets(modelContainer: _container)
-private static let _lock = NSLock()
+    /// The current shared instance. Access via `MeshPackets.shared`.
+    /// Periodically recreated to release accumulated ModelContext memory.
+    nonisolated private static var _shared: MeshPackets = MeshPackets(modelContainer: _container)
+    private static let _lock = NSLock()
 
-/// Staged automatic channel refreshes, keyed by node number. Deliberately static rather
-/// than actor state: `recreateShared()` swaps the shared instance to release memory, and a
-/// stage tied to the retired instance would silently orphan an in-flight refresh. Static
-/// storage makes recreation orthogonal — the successor actor stages into and commits from
-/// the same map. The lock covers the two executors that touch it: this actor (staging
-/// incoming channel frames) and the main actor (begin/commit/discard from AccessoryManager).
-nonisolated private static var channelRefreshStages: [Int64: ChannelRefreshStage] = [:]
-private static let channelRefreshStagesLock = NSLock()
+    /// Staged automatic channel refreshes, keyed by node number. Deliberately static rather
+    /// than actor state: `recreateShared()` swaps the shared instance to release memory, and a
+    /// stage tied to the retired instance would silently orphan an in-flight refresh. Static
+    /// storage makes recreation orthogonal — the successor actor stages into and commits from
+    /// the same map. The lock covers the two executors that touch it: this actor (staging
+    /// incoming channel frames) and the main actor (begin/commit/discard from AccessoryManager).
+    nonisolated private static var channelRefreshStages: [Int64: ChannelRefreshStage] = [:]
+    private static let channelRefreshStagesLock = NSLock()
 
-	// Main-thread views read node/user/position entities during body evaluation, and a
-	// cap eviction on this actor cascades all of them away — the invalid-entity trap
-	// that tops the crash reports (Settings, node detail, node list rows). Evictions
-	// wait for the app to background; while foregrounded only a doubled cap applies,
-	// so a device that never backgrounds (a wall display) still stays bounded.
-	nonisolated private static var _appIsActive = true
-	private static let appActiveLock = NSLock()
-	nonisolated static var appIsActive: Bool {
-		get { appActiveLock.withLock { _appIsActive } }
-		set { appActiveLock.withLock { _appIsActive = newValue } }
-	}
-	/// Background maintenance passes are numbered, and only the newest one's expiry counts.
-	///
-	/// Backgrounding twice in quick succession leaves two passes in flight. With a single
-	/// shared flag the older one's expiration handler would stop the newer pass, and the
-	/// older one finishing would clear the newer one's expiry — each pass would be steering
-	/// the other. A pass takes a number from `beginMaintenance()` and hands it back to
-	/// `expireMaintenance(_:)`; a stale number is ignored, and starting a pass supersedes any
-	/// earlier expiry without anyone having to clear it.
-	nonisolated private static var _maintenanceGeneration = 0
-	nonisolated private static var _expiredGeneration = -1
+    // Main-thread views read node/user/position entities during body evaluation, and a
+    // cap eviction on this actor cascades all of them away — the invalid-entity trap
+    // that tops the crash reports (Settings, node detail, node list rows). Evictions
+    // wait for the app to background; while foregrounded only a doubled cap applies,
+    // so a device that never backgrounds (a wall display) still stays bounded.
+    nonisolated private static var _appIsActive = true
+    private static let appActiveLock = NSLock()
+    nonisolated static var appIsActive: Bool {
+        get { appActiveLock.withLock { _appIsActive } }
+        set { appActiveLock.withLock { _appIsActive = newValue } }
+    }
+    /// Background maintenance passes are numbered, and only the newest one's expiry counts.
+    ///
+    /// Backgrounding twice in quick succession leaves two passes in flight. With a single
+    /// shared flag the older one's expiration handler would stop the newer pass, and the
+    /// older one finishing would clear the newer one's expiry — each pass would be steering
+    /// the other. A pass takes a number from `beginMaintenance()` and hands it back to
+    /// `expireMaintenance(_:)`; a stale number is ignored, and starting a pass supersedes any
+    /// earlier expiry without anyone having to clear it.
+    nonisolated private static var _maintenanceGeneration = 0
+    nonisolated private static var _expiredGeneration = -1
 
-	/// Starts a maintenance pass and returns the number its expiration handler must quote.
-	@discardableResult
-	nonisolated static func beginMaintenance() -> Int {
-		appActiveLock.withLock {
-			_maintenanceGeneration += 1
-			return _maintenanceGeneration
-		}
-	}
+    /// Starts a maintenance pass and returns the number its expiration handler must quote.
+    @discardableResult
+    nonisolated static func beginMaintenance() -> Int {
+        appActiveLock.withLock {
+            _maintenanceGeneration += 1
+            return _maintenanceGeneration
+        }
+    }
 
-	/// Records that iOS is about to reclaim the assertion covering pass `generation`. Ignored
-	/// if a later pass has already started, since that pass has its own grant.
-	nonisolated static func expireMaintenance(_ generation: Int) {
-		appActiveLock.withLock {
-			if generation == _maintenanceGeneration { _expiredGeneration = generation }
-		}
-	}
+    /// Records that iOS is about to reclaim the assertion covering pass `generation`. Ignored
+    /// if a later pass has already started, since that pass has its own grant.
+    nonisolated static func expireMaintenance(_ generation: Int) {
+        appActiveLock.withLock {
+            if generation == _maintenanceGeneration { _expiredGeneration = generation }
+        }
+    }
 
-	/// True when the pass currently running has been told its time is up. The chunked
-	/// eviction checks this between chunks and stops on a committed boundary, rather than
-	/// being killed mid-pass for CPU.
-	nonisolated static var backgroundTimeExpired: Bool {
-		appActiveLock.withLock { _expiredGeneration == _maintenanceGeneration }
-	}
+    /// True when the pass currently running has been told its time is up. The chunked
+    /// eviction checks this between chunks and stops on a committed boundary, rather than
+    /// being killed mid-pass for CPU.
+    nonisolated static var backgroundTimeExpired: Bool {
+        appActiveLock.withLock { _expiredGeneration == _maintenanceGeneration }
+    }
 
-	static var shared: MeshPackets {
-		_lock.lock()
-		defer { _lock.unlock() }
-		return _shared
-	}
+    static var shared: MeshPackets {
+        _lock.lock()
+        defer { _lock.unlock() }
+        return _shared
+    }
 
-	/// Discards the current actor and creates a fresh one with a new ModelContext.
-	/// Call after DB retrieval completes or periodically to release accumulated memory.
-	static func recreateShared() {
-		_lock.lock()
-		let previous = _shared
-		_shared = MeshPackets(modelContainer: _container)
-		_lock.unlock()
-		// Invalidate the retired instance. In-flight tasks that captured `MeshPackets.shared`
-		// before the swap (a debounced save, a late packet for the previous radio) still hold
-		// the old actor, whose context is bound to the old container — which points at the SAME
-		// on-disk store as the new one. Letting those writes land after a device-switch
-		// clearDatabase resurrects the previous radio's rows (nodes bleeding across devices)
-		// and can trip reused-rowid "destroyed by ModelContext.reset" traps.
-		Task { await previous.invalidate() }
-		Logger.data.info("♻️ [MeshPackets] Recreated shared instance to release ModelContext memory")
-	}
+    /// Discards the current actor and creates a fresh one with a new ModelContext.
+    /// Call after DB retrieval completes or periodically to release accumulated memory.
+    static func recreateShared() {
+        _lock.lock()
+        let previous = _shared
+        _shared = MeshPackets(modelContainer: _container)
+        _lock.unlock()
+        // Invalidate the retired instance. In-flight tasks that captured `MeshPackets.shared`
+        // before the swap (a debounced save, a late packet for the previous radio) still hold
+        // the old actor, whose context is bound to the old container — which points at the SAME
+        // on-disk store as the new one. Letting those writes land after a device-switch
+        // clearDatabase resurrects the previous radio's rows (nodes bleeding across devices)
+        // and can trip reused-rowid "destroyed by ModelContext.reset" traps.
+        Task { await previous.invalidate() }
+        Logger.data.info("♻️ [MeshPackets] Recreated shared instance to release ModelContext memory")
+    }
 
-	// MARK: - Save Helpers
+    // MARK: - Save Helpers
 
-	/// Set when this instance has been replaced by `recreateShared()`. A retired instance must
-	/// never persist again — see `recreateShared()`.
-	private var invalidated = false
+    /// Set when this instance has been replaced by `recreateShared()`. A retired instance must
+    /// never persist again — see `recreateShared()`.
+    private var invalidated = false
 
-	func invalidate() {
-		invalidated = true
-		debounceSaveTask?.cancel()
-		debounceSaveTask = nil
-	}
+    func invalidate() {
+        invalidated = true
+        debounceSaveTask?.cancel()
+        debounceSaveTask = nil
+    }
 
 
 	/// Saves any pending changes in the model context. Call once at the end of each

@@ -432,6 +432,7 @@ struct MeshtasticAppleApp: App {
 				.environmentObject(lockdownCoordinator)
 		}
 		.immersionStyle(selection: $cinemaImmersion, in: .progressive(0.4...1.0, initialAmount: 1.0), .full)
+		}
 		#endif
 	}
 }
