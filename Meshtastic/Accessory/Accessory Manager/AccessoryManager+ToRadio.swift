@@ -4,6 +4,7 @@
 //
 //  Created by Jake Bordens on 7/18/25.
 //
+// swiftlint:disable file_length
 
 import Foundation
 import MeshtasticProtobufs
