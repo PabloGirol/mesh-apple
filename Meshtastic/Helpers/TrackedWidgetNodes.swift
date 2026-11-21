@@ -11,6 +11,7 @@
 
 import Foundation
 import OSLog
+#if !MESHTASTIC_IOS15
 import WidgetKit
 
 @MainActor
@@ -63,3 +64,4 @@ final class TrackedWidgetNodes: ObservableObject {
 		reading = nil
 	}
 }
+#endif

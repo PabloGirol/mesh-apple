@@ -5,7 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 10/17/26.
 //
 
-#if os(iOS) && !targetEnvironment(macCatalyst)
+#if os(iOS) && !targetEnvironment(macCatalyst) && !MESHTASTIC_IOS15
 import SwiftUI
 
 /// The Connect screen's Widgets row: what's running or added, and a tap to

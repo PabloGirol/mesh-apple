@@ -5,6 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 9/15/23.
 //
 import SwiftUI
+#if !MESHTASTIC_IOS15
 import TipKit
 
 struct MessagesTip: Tip {
@@ -26,3 +27,4 @@ struct MessagesTip: Tip {
 	   Tips.MaxDisplayCount(3)
    }
 }
+#endif

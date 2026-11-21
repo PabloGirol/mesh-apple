@@ -28,7 +28,7 @@ struct Connect: View {
 	@State private var firmwareUpdateNotice: FirmwareUpdateNotice?
 	@State var showSecurityVersionNag = false
 	@ObservedObject private var liveActivities = MeshLiveActivityManager.shared
-#if os(iOS) && !targetEnvironment(macCatalyst)
+#if os(iOS) && !targetEnvironment(macCatalyst) && !MESHTASTIC_IOS15
 	@ObservedObject private var widgetInventory = WidgetInventory.shared
 #endif
 	@ObservedObject var manualConnections = ManualConnectionList.shared

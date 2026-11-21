@@ -283,8 +283,11 @@ struct NFCWriteButton: View {
 				// Styling lives here rather than at each call site so every share
 				// surface presents the same affordance and hit target (§5).
 				.buttonStyle(.bordered)
-				.buttonBorderShape(.capsule)
-				.controlSize(.large)
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view
+						.buttonBorderShape(.capsule)
+						.controlSize(.large)
+				}
 				Text(caption)
 					.font(.caption)
 					.foregroundStyle(.secondary)

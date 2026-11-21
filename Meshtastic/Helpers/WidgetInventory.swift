@@ -65,18 +65,20 @@ final class WidgetInventory: ObservableObject {
 	/// Reads the current configurations again; cheap, and iOS has no change
 	/// notification, so call it when the sheet or the app comes forward.
 	func refresh() {
-		WidgetCenter.shared.getCurrentConfigurations { result in
-			Task { @MainActor in
-				switch result {
-				case .success(let infos):
-					var byKind: [String: Set<WidgetFamily>] = [:]
-					for info in infos {
-						byKind[info.kind, default: []].insert(info.family)
+		if #available(iOS 16.0, *) {
+			WidgetCenter.shared.getCurrentConfigurations { result in
+				Task { @MainActor in
+					switch result {
+					case .success(let infos):
+						var byKind: [String: Set<WidgetFamily>] = [:]
+						for info in infos {
+							byKind[info.kind, default: []].insert(info.family)
+						}
+						self.families = byKind
+						self.addedWidgetCount = infos.count
+					case .failure(let error):
+						Logger.services.debug("🧩 Widget configurations unavailable: \(error.localizedDescription, privacy: .public)")
 					}
-					self.families = byKind
-					self.addedWidgetCount = infos.count
-				case .failure(let error):
-					Logger.services.debug("🧩 Widget configurations unavailable: \(error.localizedDescription, privacy: .public)")
 				}
 			}
 		}

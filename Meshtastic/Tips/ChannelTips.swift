@@ -5,6 +5,7 @@
  //  Copyright(c) Garth Vander Houwen 8/31/23.
  //
  import SwiftUI
+#if !MESHTASTIC_IOS15
 import TipKit
 
  struct ShareChannelsTip: Tip {
@@ -66,3 +67,4 @@ struct AdminChannelTip: Tip {
 	   Tips.MaxDisplayCount(3)
    }
 }
+#endif

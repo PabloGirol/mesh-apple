@@ -5,6 +5,7 @@
 //  Created by Garth Vander Houwen on 6/19/25.
 //
 import SwiftUI
+#if !MESHTASTIC_IOS15
 import TipKit
 
 struct PersistentTip: TipViewStyle {
@@ -55,3 +56,4 @@ struct PersistentTip: TipViewStyle {
 		)
 	}
 }
+#endif

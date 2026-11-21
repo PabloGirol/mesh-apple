@@ -5,6 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 8/31/23.
 //
 import SwiftUI
+#if !MESHTASTIC_IOS15
 import TipKit
 
 struct ConnectionTip: Tip {
@@ -25,3 +26,4 @@ struct ConnectionTip: Tip {
 		Tips.IgnoresDisplayFrequency(true)
 	}
 }
+#endif

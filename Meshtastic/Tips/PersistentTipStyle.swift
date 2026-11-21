@@ -5,6 +5,7 @@
 //  Copyright(c) Garth Vander Houwen 2025.
 //
 import SwiftUI
+#if !MESHTASTIC_IOS15
 import TipKit
 
 struct PersistentTipStyle: TipViewStyle {
@@ -32,3 +33,4 @@ struct PersistentTipStyle: TipViewStyle {
 		.frame(maxWidth: .infinity, alignment: .leading)
 	}
 }
+#endif
