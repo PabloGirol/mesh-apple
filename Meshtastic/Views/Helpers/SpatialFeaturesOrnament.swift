@@ -11,12 +11,16 @@ import SwiftUI
 /// a button for each (the 3D map, the Hardware Showcase and the cinema), like the environment button other
 /// visionOS apps keep there.
 struct SpatialFeaturesOrnament: View {
-	@Environment(\.openWindow) private var openWindow
-	@Environment(\.dismissWindow) private var dismissWindow
-	@Environment(\.openImmersiveSpace) private var openImmersiveSpace
-	@Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
+	private let openWindow: OpenWindowAction = { _ in }
+	private let dismissWindow: DismissWindowAction = { _ in }
+	private let openImmersiveSpace: OpenImmersiveSpaceAction = { _ in
+		await MainActor.run { }
+	}
+	private let dismissImmersiveSpace: DismissImmersiveSpaceAction = {
+		await MainActor.run { }
+	}
+	private let supportsMultipleWindows: Bool = false
 	@EnvironmentObject private var appState: AppState
-	@Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
 
 	var body: some View {
 		// Nothing to open without more windows, so no empty glass either.

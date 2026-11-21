@@ -1,4 +1,5 @@
 import SwiftUI
+import NavigationStackShim
 
 struct AppIconOption: Identifiable, Equatable {
 	let id: String
@@ -17,7 +18,7 @@ struct AppIconPicker: View {
 	]
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			List {
 				Section(header: Text("Icons")) {
 					ForEach(Self.iconOptions) { icon in

@@ -3,7 +3,6 @@
 import SwiftUI
 import CoreData
 import OSLog
-import TipKit
 import MeshtasticProtobufs
 import WatchConnectivity
 import DatadogCore
@@ -158,9 +157,7 @@ struct MeshtasticAppleApp: App {
 #if DEBUG
 			// Show tips in development — but not during marketing screenshot capture, where TipKit
 			// popovers would clutter the shots.
-			if !CommandLine.arguments.contains("--marketing-capture") {
-				try? Tips.resetDatastore()
-			}
+			// TipKit is iOS 16+ only; no-op on iOS 15.
 #endif
 			if !UserDefaults.firstLaunch {
 				// If this is first launch, we will show onboarding screens which
@@ -183,7 +180,7 @@ struct MeshtasticAppleApp: App {
 				let manager = accessoryManager
 				Task {
 					// Give startup (container, transports, discovery) a beat to settle.
-					try? await Task.sleep(for: .seconds(2))
+					try? await Task.sleep(nanoseconds: 2_000_000_000)
 					Logger.services.info("🧪 [App] Auto-connecting to TCP device \(device.identifier, privacy: .public) (launch argument)")
 					try? await manager.connect(to: device)
 				}
@@ -196,7 +193,7 @@ struct MeshtasticAppleApp: App {
 				if parts.count == 4 {
 					let bounds = GeoBounds(minLon: parts[0], minLat: parts[1], maxLon: parts[2], maxLat: parts[3])
 					Task {
-						try? await Task.sleep(for: .seconds(2))
+						try? await Task.sleep(nanoseconds: 2_000_000_000)
 						OfflineMapManager.shared.loadIfNeeded()
 						OfflineMapManager.shared.startDownload(name: "Terrain", bounds: bounds, detail: .standard, includeBasemap: false, includeTerrain: true) { region in
 							Logger.services.info("🧪 [App] Terrain download \(region != nil ? "finished" : "failed", privacy: .public) (launch argument)")
@@ -212,7 +209,7 @@ struct MeshtasticAppleApp: App {
 				if parts.count == 4 {
 					let bounds = GeoBounds(minLon: parts[0], minLat: parts[1], maxLon: parts[2], maxLat: parts[3])
 					Task {
-						try? await Task.sleep(for: .seconds(2))
+						try? await Task.sleep(nanoseconds: 2_000_000_000)
 						let manager = OfflineMapManager.shared
 						manager.loadIfNeeded()
 						let replacing = manager.overlappingRegion(with: bounds)
@@ -228,7 +225,7 @@ struct MeshtasticAppleApp: App {
 			   arguments.indices.contains(flagIndex + 1) {
 				let url = URL(fileURLWithPath: arguments[flagIndex + 1])
 				Task {
-					try? await Task.sleep(for: .seconds(2))
+					try? await Task.sleep(nanoseconds: 2_000_000_000)
 					do {
 						let metadata = try await MapDataManager.shared.processUploadedFile(from: url)
 						Logger.services.info("🧪 [App] Imported map file with \(metadata.overlayCount, privacy: .public) overlays (launch argument)")
@@ -237,17 +234,6 @@ struct MeshtasticAppleApp: App {
 					}
 				}
 			}
-			#if os(visionOS)
-			// Simulator screenshots: open the spatial map volume without tapping through the map.
-			if arguments.contains("--meshtastic-open-spatial-map") {
-				let openWindow = openWindow
-				Task {
-					try? await Task.sleep(for: .seconds(3))
-					openWindow(id: SpatialMapScene.id, value: SpatialMapSceneKey.shared)
-				}
-			}
-			#endif
-#endif
 		}
 	}
 

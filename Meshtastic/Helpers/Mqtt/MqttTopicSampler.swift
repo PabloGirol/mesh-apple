@@ -1,9 +1,9 @@
 //
-//  MqttTopicSampler.swift
-//  Meshtastic
-//
-//  Copyright(c) Garth Vander Houwen 10/11/26.
-//
+ //  MqttTopicSampler.swift
+ //  Meshtastic
+ //
+ //  Copyright(c) Garth Vander Houwen 10/11/26.
+ //
 
 import CocoaMQTT
 import Foundation
@@ -15,7 +15,7 @@ import OSLog
 /// radio; nothing heard here reaches the radio. Main-actor so the published state, the deadline tasks
 /// and the delegate callbacks (`delegateQueue` is main) share one isolation.
 @MainActor
-final class MqttTopicSampler: NSObject, ObservableObject {
+final class MqttTopicSampler: NSObject {
 	enum Phase: Equatable {
 		case idle, connecting, subscribing, sampling, finished, failed(String)
 	}
@@ -75,12 +75,12 @@ final class MqttTopicSampler: NSObject, ObservableObject {
 		super.init()
 	}
 
-	@Published private(set) var phase: Phase = .idle
+	private(set) var phase: Phase = .idle
 	/// Snapshot of the tally, republished once a second while sampling and once on finish, so a burst
 	/// does not re-render the sheet per packet.
-	@Published private(set) var activity: [String: MqttTopicDiscovery.Activity] = [:]
-	@Published private(set) var secondsRemaining = 0
-	@Published private(set) var messageCount = 0
+	private(set) var activity: [String: MqttTopicDiscovery.Activity] = [:]
+	private(set) var secondsRemaining = 0
+	private(set) var messageCount = 0
 	private(set) var settings: Settings?
 	private(set) var filters: [String] = []
 	private(set) var regionTopic = ""
@@ -196,7 +196,7 @@ final class MqttTopicSampler: NSObject, ObservableObject {
 				self.activity = self.tally.activity
 				let wait = min(1, end.timeIntervalSinceNow)
 				if wait > 0 {
-					try? await Task.sleep(for: .seconds(wait))
+					try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
 				}
 				if Task.isCancelled { return }
 			}
@@ -278,7 +278,7 @@ final class MqttTopicSampler: NSObject, ObservableObject {
 	private func armDeadline(_ seconds: TimeInterval, _ onExpiry: @escaping @MainActor () -> Void) {
 		cancelDeadline()
 		deadline = Task { @MainActor in
-			try? await Task.sleep(for: .seconds(seconds))
+			try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
 			if Task.isCancelled { return }
 			onExpiry()
 		}
@@ -288,6 +288,52 @@ final class MqttTopicSampler: NSObject, ObservableObject {
 		deadline?.cancel()
 		deadline = nil
 	}
+}
+
+/// ObservableObject wrapper for MqttTopicSampler to avoid NSObject + ObservableObject multiple inheritance.
+@MainActor
+final class MqttTopicSamplerObservable: ObservableObject {
+	static let shared = MqttTopicSamplerObservable()
+
+	private let sampler = MqttTopicSampler()
+
+	var phase: MqttTopicSampler.Phase {
+		sampler.phase
+	}
+
+	var activity: [String: MqttTopicDiscovery.Activity] {
+		sampler.activity
+	}
+
+	var secondsRemaining: Int {
+		sampler.secondsRemaining
+	}
+
+	var messageCount: Int {
+		sampler.messageCount
+	}
+
+	var settings: MqttTopicSampler.Settings? {
+		sampler.settings
+	}
+
+	var filters: [String] {
+		sampler.filters
+	}
+
+	var regionTopic: String {
+		sampler.regionTopic
+	}
+
+	func start(settings: MqttTopicSampler.Settings, regionTopic: String) {
+		sampler.start(settings: settings, regionTopic: regionTopic)
+	}
+
+	func stop() {
+		sampler.stop()
+	}
+
+	private init() {}
 }
 
 /// The wrappers are `nonisolated` to satisfy the `@objc` protocol and hop back onto the main actor

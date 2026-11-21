@@ -7,9 +7,10 @@
 
 import SwiftUI
 import UIKit
-import Charts
 import OSLog
 import CoreData
+import DGCharts
+import NavigationStackShim
 
 struct LocalStatsLog: View {
 
@@ -62,7 +63,15 @@ struct LocalStatsLog: View {
 				}
 				tableView
 			} else if didLoad {
-				ContentUnavailableView("No Local Stats", systemImage: "waveform")
+				VStack(spacing: 16) {
+					Image(systemName: "waveform")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Local Stats")
+						.font(.title2)
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			}
 			buttonView
 		}
@@ -257,8 +266,11 @@ struct LocalStatsLog: View {
 					}
 				}
 				.buttonStyle(.bordered)
-				.buttonBorderShape(.capsule)
-				.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view
+						.buttonBorderShape(.capsule)
+						.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+				}
 				.hostedConfirmation(
 					"Are you sure?",
 					isPresented: $isPresentingClearLogConfirm,
@@ -284,8 +296,11 @@ struct LocalStatsLog: View {
 				systemImage: "arrow.clockwise"
 			)
 			.buttonStyle(.bordered)
-			.buttonBorderShape(.capsule)
-			.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+			.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+				view
+					.buttonBorderShape(.capsule)
+					.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+			}
 
 			if !localStats.isEmpty {
 				Button {
@@ -301,8 +316,11 @@ struct LocalStatsLog: View {
 				}
 				.hostedWindowOnly()
 				.buttonStyle(.bordered)
-				.buttonBorderShape(.capsule)
-				.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view
+						.buttonBorderShape(.capsule)
+						.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+				}
 			}
 		}
 		.frame(maxWidth: .infinity)
@@ -375,7 +393,7 @@ private extension LocalStatsLog {
 		refreshScheduled = true
 		refreshTask = Task { @MainActor in
 			defer { refreshScheduled = false }
-			try? await Task.sleep(for: .seconds(2))
+			try? await Task.sleep(nanoseconds: 2_000_000_000)
 			guard !Task.isCancelled else { return }
 			await refreshData()
 		}
@@ -545,8 +563,20 @@ private struct LocalStatsChart: View {
 		}
 		.onAppear {
 			resetToLatest()
+			// iOS 15 fallback for onChange(initial: true)
+			if let range = tickKey.dataRange {
+				xAxisTicks = LocalStatsChartTicks.ticks(
+					visible: tickKey.visible,
+					labelCount: tickKey.labelCount,
+					scrollPosition: tickKey.position,
+					dataRange: range,
+					timeZone: .current
+				)
+			} else {
+				xAxisTicks = []
+			}
 		}
-		.onChange(of: tickKey, initial: true) { _, key in
+		.onChange(of: tickKey) { _, key in
 			guard let range = key.dataRange else {
 				xAxisTicks = []
 				return
@@ -597,50 +627,95 @@ private struct LocalStatsChart: View {
 					.labelStyle(.iconOnly)
 			}
 			.buttonStyle(.bordered)
-			.buttonBorderShape(.capsule)
-			.controlSize(.small)
+			.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+				view
+					.buttonBorderShape(.capsule)
+					.controlSize(.small)
+			}
 			.accessibilityHint(String(localized: "Scrolls the chart to the newest reading", comment: "VoiceOver hint for the scroll-to-latest chart button"))
 		}
 	}
 
 	private var chart: some View {
-		Chart {
-			ForEach(readings) { point in
-				LineMark(
-					x: .value("Time", point.time),
-					y: .value("Noise Floor", Int(point.noiseFloor))
-				)
-				.foregroundStyle(Color.accentColor)
-				.interpolationMethod(.linear)
-			}
-			if readings.count == 1, let point = readings.first {
-				PointMark(
-					x: .value("Time", point.time),
-					y: .value("Noise Floor", Int(point.noiseFloor))
-				)
-				.foregroundStyle(Color.accentColor)
-			}
-			RuleMark(y: .value("Busy Floor (-85 dBm)", -85))
-				.lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-				.foregroundStyle(.red)
+		let chartData = readings.map { point in
+			ChartDataPoint.fromDate(point.time, value: Double(point.noiseFloor))
 		}
-		.chartXAxis {
-			AxisMarks(position: .bottom, values: xAxisTicks) { _ in
-				AxisGridLine()
-				AxisTick()
-				AxisValueLabel(format: xAxisFormat)
-			}
-		}
-		.chartYAxis {
-			AxisMarks(position: .leading)
-		}
-		.chartYScale(domain: yDomain)
-		.chartScrollableAxes(.horizontal)
-		.chartXVisibleDomain(length: visibleDuration)
-		.chartScrollPosition(x: $chartScrollPosition)
-		.chartLegend(.hidden)
-		.frame(height: horizontalSizeClass == .regular ? 320 : 240)
+
+		let seriesData = ChartSeriesData(
+			id: "noiseFloor",
+			name: "Noise Floor",
+			color: .accentColor,
+			chartType: .line,
+			points: chartData,
+			lineWidth: 2.0,
+			drawCircles: readings.count == 1
+		)
+
+		let ruleMarks = [
+			DGRuleMark(
+				position: -85,
+				axis: .y,
+				color: .red,
+				lineWidth: 1.0,
+				dashPattern: [5, 5],
+				label: "Busy Floor (-85 dBm)"
+			)
+		]
+
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .bottom,
+			labelCount: xAxisLabelCount,
+			dateFormat: dateFormatStringForDGCharts(visibleDuration),
+			customFormatter: nil,
+			granularity: 1,
+			granularityEnabled: false
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: 6,
+			axisMinimum: Double(yDomain.lowerBound),
+			axisMaximum: Double(yDomain.upperBound),
+			granularity: 10,
+			granularityEnabled: false
+		)
+
+		let legendConfig = DGChartLegendConfig(isEnabled: false)
+
+		return LineChartView(
+			data: [seriesData],
+			xAxisConfig: xAxisConfig,
+			yAxisConfig: yAxisConfig,
+			legendConfig: legendConfig,
+			ruleMarks: ruleMarks,
+			yDomain: Double(yDomain.lowerBound)...Double(yDomain.upperBound),
+			visibleXRange: visibleDuration,
+			scrollPosition: $chartScrollPosition,
+			isScrollable: true,
+			legendHidden: true,
+			frame: CGSize(width: 0, height: horizontalSizeClass == .regular ? 320 : 240),
+			selection: nil,
+			onSelectionChanged: nil,
+			backgroundColor: .systemBackground,
+			gridColor: .systemGray4,
+			gridLineWidth: 0.5,
+			drawCircles: readings.count == 1,
+			circleRadius: 4.0,
+			mode: .linear,
+			cubicIntensity: 0.2,
+			drawFilled: false,
+			fillAlpha: 0.3
+		)
 		.padding(.bottom, 8)
+	}
+
+	private func dateFormatStringForDGCharts(_ visibleDuration: TimeInterval) -> String {
+		let dayDuration = LocalStatsChartRange.day.duration ?? 24 * 60 * 60
+		let step = LocalStatsChartTicks.step(visible: visibleDuration, labelCount: xAxisLabelCount)
+		if step >= dayDuration {
+			return "MM/dd"
+		}
+		return "h:mm a"
 	}
 
 	private func visibleDuration(for range: LocalStatsChartRange) -> TimeInterval {

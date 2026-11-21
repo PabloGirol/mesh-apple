@@ -3,9 +3,9 @@
 //  Meshtastic
 //
 //  Default table configuration for the AirQualityMetricsLog view (issue #2040).
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import Charts
 import Foundation
 import SwiftUI
 

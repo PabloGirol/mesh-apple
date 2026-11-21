@@ -11,6 +11,7 @@
 //
 import SwiftUI
 import OSLog
+import NavigationStackShim
 
 struct LockdownSheet: View {
 
@@ -18,7 +19,7 @@ struct LockdownSheet: View {
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 
 	var body: some View {
-		NavigationStack {
+		CompatNavigationStack {
 			Group {
 				switch lockdown.state {
 				case .needsProvision:

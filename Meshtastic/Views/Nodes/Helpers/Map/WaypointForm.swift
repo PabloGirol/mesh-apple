@@ -82,11 +82,7 @@ struct WaypointForm: View {
 					HStack {
 						Text("Name")
 						Spacer()
-						TextField(
-							"Name",
-							text: $name,
-							axis: .vertical
-						)
+						TextField("Name", text: $name)
 						.foregroundColor(Color.gray)
 						.onChange(of: name) {
 							var totalBytes = name.utf8.count
@@ -101,11 +97,7 @@ struct WaypointForm: View {
 					HStack {
 						Text("Description")
 						Spacer()
-						TextField(
-							"Description",
-							text: $description,
-							axis: .vertical
-						)
+						TextField("Description", text: $description)
 						.foregroundColor(Color.gray)
 						.onChange(of: description) {
 							var totalBytes = description.utf8.count
@@ -209,7 +201,9 @@ struct WaypointForm: View {
 					}
 				}
 			}
-			.scrollContentBackground(.hidden)
+			.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+				view.scrollContentBackground(.hidden)
+			}
 			.dismissesKeyboardOnScroll()
 			HStack {
 				Button {
@@ -579,11 +573,14 @@ struct WaypointForm: View {
 				longitude = waypoint.mapCoordinate.longitude
 			}
 		}
-		.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.85)))
-		#if !targetEnvironment(macCatalyst)
-		.presentationDragIndicator(.visible)
-		#endif
-	}
+		.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+			view
+				.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.85)))
+				#if !targetEnvironment(macCatalyst)
+				.presentationDragIndicator(.visible)
+				#endif
+		}
+}
 	
 	/// Whether the geofence notification toggles are offered as an in-place, local-only
 	/// setting in the read-only view: a received waypoint (not authored by the connected

@@ -57,13 +57,13 @@ enum SwitchStress {
 		// Let launch settle, then wait (up to 30s) for two distinct TCP devices. Kick
 		// discovery every pass (idempotent): an auto-reconnect to the preferred device at
 		// launch stops discovery and clears the list before this first scan can run.
-		try? await Task.sleep(for: .seconds(5))
+		try? await Task.sleep(nanoseconds: 5_000_000_000)
 		var targets: [Device] = []
 		for _ in 0..<60 {
 			accessoryManager.startDiscovery()
 			targets = accessoryManager.devices.filter { $0.transportType == .tcp }
 			if targets.count >= 2 { break }
-			try? await Task.sleep(for: .milliseconds(500))
+			try? await Task.sleep(nanoseconds: 500_000_000)
 		}
 		guard targets.count >= 2 else {
 			Logger.services.error("🧪 [SwitchStress] ABORT: found \(targets.count, privacy: .public) TCP devices, need 2")
@@ -88,7 +88,7 @@ enum SwitchStress {
 				target = candidates.first(where: { $0.identifier != connectedIdentifier && $0.identifier != lastIdentifier })
 					?? candidates.first(where: { $0.identifier != connectedIdentifier })
 				if target != nil { break }
-				try? await Task.sleep(for: .milliseconds(500))
+				try? await Task.sleep(nanoseconds: 500_000_000)
 			}
 			guard let target else {
 				failures += 1
@@ -103,7 +103,7 @@ enum SwitchStress {
 			// Give the connect + node dump a window, then judge by connected identifier.
 			var landed = false
 			for _ in 0..<40 {
-				try? await Task.sleep(for: .milliseconds(500))
+				try? await Task.sleep(nanoseconds: 500_000_000)
 				if accessoryManager.isConnected,
 				   accessoryManager.activeConnection?.device.identifier == target.identifier {
 					landed = true
@@ -119,7 +119,7 @@ enum SwitchStress {
 				Logger.services.error("🧪 [SwitchStress] cycle \(cycle, privacy: .public): FAIL (isConnected=\(accessoryManager.isConnected, privacy: .public) connected=\(current, privacy: .public) wanted=\(target.identifier, privacy: .public))")
 			}
 			// Brief inter-cycle settle so the verdict isn't tangled with the next teardown.
-			try? await Task.sleep(for: .seconds(2))
+			try? await Task.sleep(nanoseconds: 2_000_000_000)
 		}
 		Logger.services.warning("🧪 [SwitchStress] DONE: \(passes, privacy: .public) pass / \(failures, privacy: .public) fail of \(cycles, privacy: .public)")
 	}

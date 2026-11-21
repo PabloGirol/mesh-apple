@@ -45,79 +45,87 @@ struct ChannelList: View {
 		let localeDateFormat = DateFormatter.dateFormat(fromTemplate: "yyMMdd", options: 0, locale: Locale.current)
 		let dateFormatString = (localeDateFormat ?? "MM/dd/YY")
 
-		NavigationLink(value: channel) {
-			let mostRecent = channel.mostRecentPrivateMessage
-			let hasMessages = mostRecent != nil
-			// `channel.unreadMessages` runs a FetchRequest; fetch once and reuse for both the
-			// indicator and its VoiceOver label instead of hitting Core Data twice per row.
-			let unreadCount = channel.unreadMessages
-			let hasUnreadMessages = hasMessages && (unreadCount > 0)
-			let lastMessageTime = Date(timeIntervalSince1970: TimeInterval(Int64((mostRecent?.messageTimestamp ?? 0 ))))
-			let lastMessageDay = Calendar.current.dateComponents([.day], from: lastMessageTime).day ?? 0
-			let currentDay = Calendar.current.dateComponents([.day], from: Date()).day ?? 0
+		NavigationLink(destination: ChannelMessageList(myInfo: myInfo, channel: channel)) {
+			channelRowContent(myInfo: myInfo, channel: channel)
+		}
+	}
 
-			ZStack {
-				Image(systemName: "circle.fill")
-					.opacity(hasUnreadMessages ? 1 : 0)
-					.font(.system(size: 10))
-					.foregroundColor(.accentColor)
-					.brightness(0.2)
-			}
-			.accessibilityHidden(!hasUnreadMessages)
-			.accessibilityLabel(String(localized: "\(unreadCount) unread", comment: "VoiceOver: number of unread messages in a channel"))
-			CircleText(text: String(channel.index), color: .accentFill)
+	@ViewBuilder
+	private func channelRowContent(
+		myInfo: MyInfoEntity,
+		channel: ChannelEntity
+	) -> some View {
+		let mostRecent = channel.mostRecentPrivateMessage
+		let hasMessages = mostRecent != nil
+		// `channel.unreadMessages` runs a FetchRequest; fetch once and reuse for both the
+		// indicator and its VoiceOver label instead of hitting Core Data twice per row.
+		let unreadCount = channel.unreadMessages
+		let hasUnreadMessages = hasMessages && (unreadCount > 0)
+		let lastMessageTime = Date(timeIntervalSince1970: TimeInterval(Int64((mostRecent?.messageTimestamp ?? 0 ))))
+		let lastMessageDay = Calendar.current.dateComponents([.day], from: lastMessageTime).day ?? 0
+		let currentDay = Calendar.current.dateComponents([.day], from: Date()).day ?? 0
+
+		ZStack {
+			Image(systemName: "circle.fill")
+				.opacity(hasUnreadMessages ? 1 : 0)
+				.font(.system(size: 10))
+				.foregroundColor(.accentColor)
 				.brightness(0.2)
+		}
+		.accessibilityHidden(!hasUnreadMessages)
+		.accessibilityLabel(String(localized: "\(unreadCount) unread", comment: "VoiceOver: number of unread messages in a channel"))
+		CircleText(text: String(channel.index), color: .accentFill)
+			.brightness(0.2)
 
-			VStack(alignment: .leading) {
-				HStack {
-					ChannelLock(channel: channel)
-					if channel.name?.isEmpty ?? false {
-						if channel.role == 1 {
-							Text(String(localized: "Primary Channel"))
-								.font(.headline)
-						} else {
-							Text(String(localized: "Channel \(channel.index)"))
-								.font(.headline)
-						}
+		VStack(alignment: .leading) {
+			HStack {
+				ChannelLock(channel: channel)
+				if channel.name?.isEmpty ?? false {
+					if channel.role == 1 {
+						Text(String(localized: "Primary Channel"))
+							.font(.headline)
 					} else {
-						Text(String(channel.name ?? String(localized: "Channel \(channel.index)")))
+						Text(String(localized: "Channel \(channel.index)"))
 							.font(.headline)
 					}
-
-					Spacer()
-
-					if hasMessages {
-
-						if lastMessageDay == currentDay {
-							Text(lastMessageTime, style: .time )
-								.font(.footnote)
-								.foregroundColor(.onSurfaceVariant)
-						} else if  lastMessageDay == (currentDay - 1) {
-							Text("Yesterday")
-								.font(.footnote)
-								.foregroundColor(.onSurfaceVariant)
-						} else if  lastMessageDay < (currentDay - 1) && lastMessageDay > (currentDay - 5) {
-							Text(lastMessageTime.formattedDate(format: dateFormatString))
-								.font(.footnote)
-								.foregroundColor(.onSurfaceVariant)
-						} else if lastMessageDay < (currentDay - 1800) {
-							Text(lastMessageTime.formattedDate(format: dateFormatString))
-								.font(.footnote)
-								.foregroundColor(.onSurfaceVariant)
-						}
-					}
-					if channel.mute {
-						Image(systemName: "bell.slash")
-							.accessibilityLabel(String(localized: "Muted", comment: "VoiceOver: channel notifications are muted"))
-					}
+				} else {
+					Text(String(channel.name ?? String(localized: "Channel \(channel.index)")))
+						.font(.headline)
 				}
 
+				Spacer()
+
 				if hasMessages {
-					HStack(alignment: .top) {
-						MessagePreviewText(mostRecent?.messagePayload ?? " ")
+
+					if lastMessageDay == currentDay {
+						Text(lastMessageTime, style: .time )
+							.font(.footnote)
+							.foregroundColor(.onSurfaceVariant)
+					} else if  lastMessageDay == (currentDay - 1) {
+						Text("Yesterday")
+							.font(.footnote)
+							.foregroundColor(.onSurfaceVariant)
+					} else if  lastMessageDay < (currentDay - 1) && lastMessageDay > (currentDay - 5) {
+						Text(lastMessageTime.formattedDate(format: dateFormatString))
+							.font(.footnote)
+							.foregroundColor(.onSurfaceVariant)
+					} else if lastMessageDay < (currentDay - 1800) {
+						Text(lastMessageTime.formattedDate(format: dateFormatString))
 							.font(.footnote)
 							.foregroundColor(.onSurfaceVariant)
 					}
+				}
+				if channel.mute {
+					Image(systemName: "bell.slash")
+						.accessibilityLabel(String(localized: "Muted", comment: "VoiceOver: channel notifications are muted"))
+				}
+			}
+
+			if hasMessages {
+				HStack(alignment: .top) {
+					MessagePreviewText(mostRecent?.messagePayload ?? " ")
+						.font(.footnote)
+						.foregroundColor(.onSurfaceVariant)
 				}
 			}
 		}
@@ -203,10 +211,6 @@ struct ChannelList: View {
 		.hostedSheet(isPresented: $showingHelp) {
 			ChannelsHelp()
 				.trackScreen(.channelsHelp)
-				.presentationDetents([.large])
-				#if !targetEnvironment(macCatalyst)
-				.presentationDragIndicator(.visible)
-				#endif
 		}
 		.safeAreaInset(edge: .bottom, alignment: .leading) {
 			HStack {
@@ -223,7 +227,9 @@ struct ChannelList: View {
 				.buttonStyle(.borderedProminent)
 				.accessibilityLabel(showingHelp ? String(localized: "Hide help", comment: "VoiceOver label for the help toggle button when help is showing") : String(localized: "Show help", comment: "VoiceOver label for the help toggle button when help is hidden"))
 			}
-			.controlSize(.regular)
+			.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+				view.controlSize(.regular)
+			}
 			.padding(5)
 		}
 		.padding(.bottom, 5)

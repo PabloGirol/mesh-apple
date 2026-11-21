@@ -14,6 +14,9 @@ import SwiftUI
 import OSLog
 import MeshtasticProtobufs
 
+// NavigationStackShim.CompatNavigationStack is available in this module for iOS 15+ compatibility.
+// Use CompatNavigationStack instead of NavigationStack in any SwiftUI views.
+
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -71,11 +74,11 @@ enum MarketingCapture {
 		applyAppearanceAndWindowSize()
 		Logger.data.info("📸 [Marketing] Capture starting (\(appearanceName, privacy: .public))")
 		// Let the first frame (appearance/size change + the seeded @Query views) settle first.
-		try? await Task.sleep(for: .milliseconds(2200))
+		try? await Task.sleep(nanoseconds: 2_200_000_000)
 
 		for step in makeSteps(router: router) {
 			step.navigate()
-			try? await Task.sleep(for: step.settle)
+			try? await Task.sleep(nanoseconds: UInt64(step.settle * 1_000_000_000))
 			if let image = snapshotKeyWindow() {
 				writePNG(image, name: step.name)
 				Logger.data.info("📸 [Marketing] Captured \(step.name, privacy: .public)")
@@ -83,17 +86,17 @@ enum MarketingCapture {
 				Logger.data.error("📸 [Marketing] Failed to snapshot \(step.name, privacy: .public)")
 			}
 			step.cleanup?()
-			try? await Task.sleep(for: .milliseconds(500)) // let any pop/dismiss animation finish
+			try? await Task.sleep(nanoseconds: 500_000_000) // let any pop/dismiss animation finish
 		}
 
 		Logger.data.info("📸 [Marketing] Capture complete — exiting")
-		try? await Task.sleep(for: .milliseconds(300))
+		try? await Task.sleep(nanoseconds: 300_000_000)
 		exit(0)
 	}
 
 	// MARK: Steps
 
-	/// Full-screen screens, root-level views captured before pushed views that share a NavigationStack.
+	/// Full-screen screens, root-level views captured before pushed views that share a CompatNavigationStack.
 	private static func makeSteps(router: Router) -> [CaptureStep] {
 		let nodeDetailNum = MarketingSeed.nodeNum(for: 4)  // U-District Solar (a favorite, rich telemetry)
 		let dmPartnerNum = MarketingSeed.nodeNum(for: 1)   // Ballard Beacon (the seeded DM thread partner)

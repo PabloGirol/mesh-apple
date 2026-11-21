@@ -26,7 +26,7 @@ struct RtttlConfig: View {
 			Section(header: Text("Options")) {
 				HStack {
 					Label("Ringtone", systemImage: "music.quarternote.3")
-					TextField("Ringtone Transfer Language", text: $ringtone, axis: .vertical)
+					TextField("Ringtone Transfer Language", text: $ringtone)
 						.foregroundColor(.gray)
 						.autocapitalization(.none)
 						.disableAutocorrection(true)
@@ -92,5 +92,5 @@ struct RtttlConfig: View {
 #Preview {
 	RtttlConfig(node: nil)
 		.environmentObject(AccessoryManager.shared)
-		.modelContainer(PersistenceController.preview.container)
+		.environment(\.managedObjectContext, CoreDataStackImpl.preview.context)
 }

@@ -24,12 +24,20 @@ enum AdminRequestTracker {
 		let sentAt: Date
 	}
 
-	private static let pending = OSAllocatedUnfairLock(initialState: [UInt32: Pending]())
+	/// Uses os_unfair_lock (available iOS 10+) for iOS 15 compatibility.
+	private static var pendingLock = os_unfair_lock()
+	private static var pendingState = [UInt32: Pending]()
+
+	private static func withPendingLock<T>(_ body: (inout [UInt32: Pending]) -> T) -> T {
+		os_unfair_lock_lock(&pendingLock)
+		defer { os_unfair_lock_unlock(&pendingLock) }
+		return body(&pendingState)
+	}
 
 	/// Records an outgoing packet if it is an admin message that asks for a reply.
 	static func recordIfAdminRequest(_ packet: MeshPacket, now: Date = .now) {
 		guard packet.decoded.portnum == .adminApp, packet.decoded.wantResponse, packet.id != 0 else { return }
-		pending.withLock { requests in
+		withPendingLock { requests in
 			requests = requests.filter { now.timeIntervalSince($0.value.sentAt) < lifetime }
 			if requests.count >= limit, let oldest = requests.min(by: { $0.value.sentAt < $1.value.sentAt }) {
 				requests.removeValue(forKey: oldest.key)
@@ -45,7 +53,7 @@ enum AdminRequestTracker {
 		let requestID = packet.decoded.requestID
 		guard requestID != 0, let connectedNodeNum, Int64(packet.to) == connectedNodeNum else { return false }
 		if Int64(packet.from) != connectedNodeNum && !packet.pkiEncrypted { return false }
-		return pending.withLock { requests in
+		return withPendingLock { requests in
 			guard let request = requests[requestID],
 				  request.destination == packet.from,
 				  now.timeIntervalSince(request.sentAt) < lifetime else { return false }

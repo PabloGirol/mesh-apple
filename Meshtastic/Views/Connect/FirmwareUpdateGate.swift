@@ -8,6 +8,7 @@
 import SwiftUI
 import CoreData
 import OSLog
+import NavigationStackShim
 
 /// Full-screen gate shown while the connected radio's firmware is below the minimum the app
 /// supports. The radio stays connected so the user can update it from here; the rest of the
@@ -19,7 +20,7 @@ struct FirmwareUpdateGate: View {
 	@State private var node: NodeInfoEntity?
 
 	var body: some View {
-		NavigationStack {
+		CompatNavigationStack {
 			Firmware(node: node)
 				.safeAreaInset(edge: .top) { header }
 				.navigationTitle("Update Your Firmware")

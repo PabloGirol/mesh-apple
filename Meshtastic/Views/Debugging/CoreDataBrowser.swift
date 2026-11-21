@@ -11,8 +11,8 @@ import SwiftDraw
 
 // MARK: - Fetch Helper
 
-/// Opens the existential `any NSManagedObject.Type` to call a generic fetch.
-private func fetchAll(of modelType: any NSManagedObject.Type, context: NSManagedObjectContext, limit: Int = 100) -> [any NSManagedObject] {
+/// Opens the existential `NSManagedObject.Type` to call a generic fetch.
+private func fetchAll(of modelType: NSManagedObject.Type, context: NSManagedObjectContext, limit: Int = 100) -> [NSManagedObject] {
     func _fetch<T: NSManagedObject>(_ type: T.Type) -> [any NSManagedObject] {
         let request = NSFetchRequest<T>(entityName: String(describing: type))
         request.fetchLimit = limit
@@ -22,7 +22,7 @@ private func fetchAll(of modelType: any NSManagedObject.Type, context: NSManaged
 }
 
 /// Returns the total count for a model type.
-private func fetchCount(of modelType: any NSManagedObject.Type, context: NSManagedObjectContext) -> Int {
+private func fetchCount(of modelType: NSManagedObject.Type, context: NSManagedObjectContext) -> Int {
     func _count<T: NSManagedObject>(_ type: T.Type) -> Int {
         let request = NSFetchRequest<T>(entityName: String(describing: type))
         return (try? context.count(for: request)) ?? 0
@@ -35,7 +35,7 @@ private func fetchCount(of modelType: any NSManagedObject.Type, context: NSManag
 struct CoreDataBrowser: View {
     @Environment(\.managedObjectContext) private var managedObjectContext
 
-    private var sortedModels: [(name: String, type: any NSManagedObject.Type)] {
+    private var sortedModels: [(name: String, type: NSManagedObject.Type)] {
         MeshtasticSchema.allModels.map { type in
             (name: String(describing: type), type: type)
         }.sorted { $0.name < $1.name }
@@ -87,7 +87,17 @@ struct DynamicEntityListView: View {
         .navigationTitle("\(entityName) (\(objects.count))")
         .overlay {
             if objects.isEmpty {
-                ContentUnavailableView("Table Empty", systemImage: "tray", description: Text("No records found for \(entityName)"))
+                VStack(spacing: 16) {
+                    Image(systemName: "tray")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    Text("Table Empty")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                    Text("No records found for \(entityName)")
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .onAppear {

@@ -11,15 +11,16 @@ import SwiftUI
 struct RadioSetupIntroPage: View {
 	let model: RadioSetupModel
 	let onNotNow: () -> Void
+	let onAdvance: () -> Void
 
 	var body: some View {
 		OnboardingPage(
 			title: String(localized: "Set Up Your Radio", comment: "Radio setup intro title"),
-			intro: AttributedString(localized: "A few settings get your radio talking on the mesh. You can change them later in Settings.", comment: "Radio setup intro"),
+			intro: AttributedString(String(localized: "A few settings get your radio talking on the mesh. You can change them later in Settings.", comment: "Radio setup intro")),
 			buttonTitle: String(localized: "Get started"),
 			secondaryButtonTitle: String(localized: "Not Now", comment: "Radio setup; closes the flow"),
 			secondaryAction: onNotNow,
-			action: { model.advance(from: .intro) }
+			action: onAdvance
 		) {
 			if let hardwareModelId = model.hardwareModelId {
 				DeviceHardwareImage(hwId: hardwareModelId)

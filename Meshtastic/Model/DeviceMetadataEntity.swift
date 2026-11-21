@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreData
+import MeshtasticProtobufs
 
 @objc(DeviceMetadataEntity)
 public class DeviceMetadataEntity: NSManagedObject {
@@ -78,7 +79,7 @@ public class DeviceMetadataEntity: NSManagedObject {
 		positionFlags = Int32(truncatingIfNeeded: metadata.positionFlags)
 		excludedModules = Int32(truncatingIfNeeded: metadata.excludedModules)
 		// Clear the display when it's absent so a downgrade doesn't leave a stale screen behind.
-		let display = metadata.hasDisplay ? metadata.display : DisplayInfo()
+		let display = metadata.hasDisplay ? metadata.display : MeshtasticProtobufs.DisplayInfo()
 		displayWidth = Int32(truncatingIfNeeded: display.width)
 		displayHeight = Int32(truncatingIfNeeded: display.height)
 		displayFormat = Int32(display.format.rawValue)

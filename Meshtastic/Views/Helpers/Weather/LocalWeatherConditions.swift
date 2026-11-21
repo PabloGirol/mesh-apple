@@ -48,7 +48,9 @@ struct LocalWeatherConditions: View {
 						    .frame(height: 10)
 					} placeholder: {
 						ProgressView()
-							.controlSize(.mini)
+							.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+								view.controlSize(.mini)
+							}
 					}
 					Link("Other data sources", destination: attributionLink ?? URL(string: "https://weather-data.apple.com/legal-attribution.html")!)
 						.font(.caption2)

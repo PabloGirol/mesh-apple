@@ -21,7 +21,17 @@ struct SettingsSearchResultsView: View {
 
 	var body: some View {
 		if results.isEmpty && docs.isEmpty {
-			ContentUnavailableView.search
+			VStack(spacing: 16) {
+				Image(systemName: "magnifyingglass")
+					.font(.system(size: 48))
+					.foregroundColor(.secondary)
+				Text("No Results")
+					.font(.title2)
+					.foregroundColor(.secondary)
+				Text("No settings or documentation match your search.")
+					.foregroundColor(.secondary)
+			}
+			.frame(maxWidth: .infinity, maxHeight: .infinity)
 		} else {
 			// compactMap drops sections with no matches rather than rendering empty
 			// headers, the same way the documentation browser filters its catalogue.
@@ -55,7 +65,7 @@ struct SettingsSearchResultsView: View {
 			if !docs.isEmpty {
 				Section(String(localized: "Help & Documentation", comment: "Search results section")) {
 					ForEach(docs) { page in
-						NavigationLink(value: SettingsNavigationState.helpDocs) {
+						NavigationLink(destination: DocBrowserView(initialSearch: "")) {
 							VStack(alignment: .leading, spacing: 2) {
 								Text(page.title)
 									.font(.body)

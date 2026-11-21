@@ -104,11 +104,17 @@ struct DocBrowserView: View {
 	var body: some View {
 		Group {
 			if pages.isEmpty {
-				ContentUnavailableView(
-					"Documentation Unavailable",
-					systemImage: "book.closed",
-					description: Text("The documentation bundle could not be loaded.")
-				)
+				VStack(spacing: 16) {
+					Image(systemName: "book.closed")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("Documentation Unavailable")
+						.font(.title2)
+						.foregroundColor(.secondary)
+					Text("The documentation bundle could not be loaded.")
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			} else {
 				VStack(spacing: 0) {
 					if let translationProgress {
@@ -165,7 +171,11 @@ struct DocBrowserView: View {
 		.navigationTitle(translatedNavigationTitle)
 		.navigationBarTitleDisplayMode(.large)
 		.askChirpyToolbar()
-		.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: translatedSearchPrompt)
+		if #available(iOS 16.0, *) {
+			.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: translatedSearchPrompt)
+		} else {
+			.searchable(text: $searchText, placement: .toolbar, prompt: translatedSearchPrompt)
+		}
 		.onAppear {
 			bundle.load()
 			if isUsingTranslatedFolder {

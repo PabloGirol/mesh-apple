@@ -28,18 +28,18 @@ final class DisplayMirrorSession: ObservableObject {
 	/// Whether the app has asked the radio to stream its screen.
 	private(set) var isStreaming = false
 	/// Who wants the stream now.
-	@ObservationIgnored private(set) var owners: Set<DisplayMirrorOwner> = []
+	private(set) var owners: Set<DisplayMirrorOwner> = []
 	/// What the radio was last told, so only a change is sent.
-	@ObservationIgnored var radioStreaming = false
+	var radioStreaming = false
 	/// Sends the on/off changes to the radio one at a time, in order.
-	@ObservationIgnored var commandTask: Task<Void, Never>?
+	var commandTask: Task<Void, Never>?
 
-	@ObservationIgnored private var assembler = DisplayFrameAssembler()
-	@ObservationIgnored private var lastFrame: DisplayMirrorFrame?
-	@ObservationIgnored private var palette: DisplayMirrorPalette?
-	@ObservationIgnored private var renderTask: Task<Void, Never>?
-	@ObservationIgnored private var renderPending = false
-	@ObservationIgnored private var renderGeneration = 0
+	private var assembler = DisplayFrameAssembler()
+	private var lastFrame: DisplayMirrorFrame?
+	private var palette: DisplayMirrorPalette?
+	private var renderTask: Task<Void, Never>?
+	private var renderPending = false
+	private var renderGeneration = 0
 
 	/// Starts a fresh stream; the radio answers with a frame straight away.
 	func begin() {

@@ -8,6 +8,7 @@
 import SwiftUI
 import OSLog
 import Network
+import NavigationStackShim
 
 struct ESP32OTAIntroSheet: View {
 	private enum Step {
@@ -35,7 +36,7 @@ struct ESP32OTAIntroSheet: View {
 	}
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			List {
 				Section {
 					VStack(alignment: .leading, spacing: 12) {

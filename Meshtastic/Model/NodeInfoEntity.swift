@@ -19,7 +19,7 @@ public class NodeInfoEntity: NSManagedObject {
 	@NSManaged public var hasBeenAdministered: Bool
 	@NSManaged public var hasXeddsaSigned: Bool
 	@NSManaged public var isKeyManuallyVerified: Bool
-	@NSManaged public var heardOnCurrentLora: Bool?
+	@NSManaged public var heardOnCurrentLora: Int16
 	@NSManaged public var hopsAway: Int32
 	@NSManaged public var id: Int64
 	@NSManaged public var ignored: Bool
@@ -27,7 +27,7 @@ public class NodeInfoEntity: NSManagedObject {
 	@NSManaged public var nodeStatus: String?
 	@NSManaged public var num: Int64
 	@NSManaged public var peripheralId: String?
-	@NSManaged public var powerChannelLabels: [String]
+	@NSManaged public var powerChannelLabels: Data
 	@NSManaged public var rssi: Int32
 	@NSManaged public var sessionExpiration: Date?
 	@NSManaged public var sessionPasskey: Data?
@@ -78,7 +78,7 @@ public class NodeInfoEntity: NSManagedObject {
 		self.hasBeenAdministered = false
 		self.hasXeddsaSigned = false
 		self.isKeyManuallyVerified = false
-		self.heardOnCurrentLora = nil
+		self.heardOnCurrentLora = -1
 		self.hopsAway = 0
 		self.id = 0
 		self.ignored = false
@@ -86,7 +86,7 @@ public class NodeInfoEntity: NSManagedObject {
 		self.nodeStatus = nil
 		self.num = 0
 		self.peripheralId = nil
-		self.powerChannelLabels = []
+		self.powerChannelLabels = Data()
 		self.rssi = 0
 		self.sessionExpiration = nil
 		self.sessionPasskey = nil

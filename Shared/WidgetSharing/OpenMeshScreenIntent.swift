@@ -12,6 +12,7 @@
 //  links, not the app's meshtastic:// scheme.
 //
 
+#if !MESHTASTIC_IOS15
 import AppIntents
 import Foundation
 
@@ -84,3 +85,4 @@ enum MeshScreenOpener {
 		}
 	}
 }
+#endif

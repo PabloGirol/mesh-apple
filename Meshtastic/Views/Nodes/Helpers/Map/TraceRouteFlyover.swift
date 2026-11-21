@@ -44,8 +44,7 @@ final class TraceRouteFlyover: ObservableObject {
 	private var holdUntil: CFTimeInterval = 0
 	private var savedCamera: MKMapCamera?
 	/// The map's basemap config from before the flyover, restored when it ends.
-	@available(iOS 16.0, *)
-	private var savedConfiguration: MKMapConfiguration?
+	private var savedConfiguration: Any?
 
 	/// Smoothed camera heading/altitude carried frame-to-frame (and across legs) so the camera eases
 	/// through corners and leg transitions instead of snapping.
@@ -94,6 +93,7 @@ final class TraceRouteFlyover: ObservableObject {
 		savedCamera = mapView.camera.copy() as? MKMapCamera
 
 		// Always fly over a 3D satellite basemap (realistic elevation), whatever the current layer is.
+		// preferredConfiguration is iOS 16+ only; on iOS 15 we don't save/restore the basemap
 		if #available(iOS 16.0, *) {
 			savedConfiguration = mapView.preferredConfiguration
 			mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
@@ -111,7 +111,12 @@ final class TraceRouteFlyover: ObservableObject {
 		displayLink?.invalidate()
 		displayLink = nil
 		if isFlying, let mapView {
-			if let savedConfiguration { mapView.preferredConfiguration = savedConfiguration }
+			// preferredConfiguration is iOS 16+ only; on iOS 15 we don't save/restore the basemap
+			if #available(iOS 16.0, *) {
+				if let savedConfiguration = savedConfiguration as? MKMapConfiguration {
+					mapView.preferredConfiguration = savedConfiguration
+				}
+			}
 			if restoreCamera, let savedCamera { mapView.setCamera(savedCamera, animated: true) }
 		}
 		savedConfiguration = nil

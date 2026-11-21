@@ -103,10 +103,10 @@ private struct DirectionWedge: View {
 		send(event)
 		repeatTask?.cancel()
 		repeatTask = Task { @MainActor in
-			try? await Task.sleep(for: DisplayInputMapping.repeatDelay)
+			try? await Task.sleep(nanoseconds: UInt64(DisplayInputMapping.repeatDelay * 1_000_000_000))
 			while !Task.isCancelled {
 				send(event)
-				try? await Task.sleep(for: DisplayInputMapping.repeatInterval)
+				try? await Task.sleep(nanoseconds: UInt64(DisplayInputMapping.repeatInterval * 1_000_000_000))
 			}
 		}
 	}

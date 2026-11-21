@@ -1,9 +1,9 @@
 //
-//  to.swift
-//  Meshtastic
-//
-//  Created by jake on 12/2/25.
-//
+ //  DFUModel.swift
+ //  Meshtastic
+ //
+ //  Created by jake on 12/2/25.
+ //
 
 import Foundation
 import NordicDFU
@@ -25,7 +25,7 @@ enum DFUUpdateState: Equatable {
 	}
 }
 
-class DFUViewModel: NSObject, ObservableObject {
+class DFUViewModel: NSObject {
     // MARK: - Published Properties (UI Binding)
     @Published var progress: Double = 0.0
     @Published var state: DFUUpdateState = .idle
@@ -34,44 +34,44 @@ class DFUViewModel: NSObject, ObservableObject {
 	/// this lands restarts discovery while NordicDFU still owns the peripheral.
 	@Published private(set) var didAbort = false
 	@Published var rotatingMessage: String = ""
-	
+
 	var lastRotatingMessageUpdate = Date.distantPast
 	var rotatingMessageIndex = -1
 	var rotatingMessages: [String] {
 		FirmwareUpdateTips.messages
 	}
-	
+
     // MARK: - DFU Controller
     private var dfuController: DFUServiceController?
-    
+
     // MARK: - Start DFU
     /// Call this function from your SwiftUI View
     /// - Parameters:
     ///   - peripheral: The CoreBluetooth device you are connected to
     ///   - zipFileUrl: The local URL of the Firmware Zip file
     func startDFU(peripheral: CBPeripheral, zipFileUrl: URL) {
-        
+
         guard let firmware = try? DFUFirmware(urlToZipFile: zipFileUrl) else {
 			Logger.services.error("NRF DFU: could not read the firmware zip")
             self.state = .error("Invalid Zip File")
             return
         }
-        
+
         // Setup the initiator
         let initiator = DFUServiceInitiator(queue: .main, delegateQueue: .main)
-	
+
 		initiator.forceScanningForNewAddressInLegacyDfu = true
 		initiator.dataObjectPreparationDelay = 0.4
 		initiator.enableUnsafeExperimentalButtonlessServiceInSecureDfu = true
 		initiator.forceDfu = false
 		initiator.disableResume = true
 		initiator.packetReceiptNotificationParameter = 8
-		
+
 		// Set self as delegate
         initiator.delegate = self
         initiator.progressDelegate = self
         initiator.logger = self // Optional: For debugging
-        
+
         // Start the process
         self.didAbort = false
         self.state = .uploading
@@ -79,17 +79,65 @@ class DFUViewModel: NSObject, ObservableObject {
 		self.dfuController = initiator.with(firmware: firmware)
 			.start(target: peripheral)
     }
-    
+
     // Abort function
     func abort() {
         _ = dfuController?.abort()
     }
 }
 
+/// ObservableObject wrapper for DFUViewModel to avoid NSObject + ObservableObject multiple inheritance.
+@MainActor
+final class DFUViewModelObservable: ObservableObject {
+	static let shared = DFUViewModelObservable()
+
+	private let viewModel = DFUViewModel()
+
+	var progress: Double {
+		get { viewModel.progress }
+		set { viewModel.progress = newValue }
+	}
+
+	var state: DFUUpdateState {
+		get { viewModel.state }
+		set { viewModel.state = newValue }
+	}
+
+	var statusMessage: String {
+		get { viewModel.statusMessage }
+		set { viewModel.statusMessage = newValue }
+	}
+
+	var didAbort: Bool {
+		get { viewModel.didAbort }
+		set { viewModel.didAbort = newValue }
+	}
+
+	var rotatingMessage: String {
+		get { viewModel.rotatingMessage }
+		set { viewModel.rotatingMessage = newValue }
+	}
+
+	var rotatingMessageIndex: Int {
+		get { viewModel.rotatingMessageIndex }
+		set { viewModel.rotatingMessageIndex = newValue }
+	}
+
+	func startDFU(peripheral: CBPeripheral, zipFileUrl: URL) {
+		viewModel.startDFU(peripheral: peripheral, zipFileUrl: zipFileUrl)
+	}
+
+	func abort() {
+		viewModel.abort()
+	}
+
+	private init() {}
+}
+
 // MARK: - DFU Service Delegate (State Changes)
 extension DFUViewModel: DFUServiceDelegate {
-	
-    func dfuStateDidChange(to state: DFUState) {
+
+	func dfuStateDidChange(to state: DFUState) {
 		// delegateQueue is .main, so we're already on the main thread
 		switch state {
 		case .starting:
@@ -117,20 +165,20 @@ extension DFUViewModel: DFUServiceDelegate {
 			self.statusMessage = state.description
 		}
 		Logger.services.info("NRF DFU State changed: \(state.description)")
-    }
-    
-    func dfuError(_ error: DFUError, didOccurWithMessage message: String) {
+	}
+
+	func dfuError(_ error: DFUError, didOccurWithMessage message: String) {
 		self.state = .error(message)
 		self.statusMessage = "Error: \(message)"
-    }
+	}
 }
 
 // MARK: - DFU Progress Delegate (Progress Bar)
 extension DFUViewModel: DFUProgressDelegate {
-    func dfuProgressDidChange(for part: Int, outOf totalParts: Int, to progress: Int, currentSpeedBytesPerSecond: Double, avgSpeedBytesPerSecond: Double) {
+	func dfuProgressDidChange(for part: Int, outOf totalParts: Int, to progress: Int, currentSpeedBytesPerSecond: Double, avgSpeedBytesPerSecond: Double) {
 		// Convert 0-100 Int to 0.0-1.0 Double for SwiftUI ProgressView
 		self.progress = Double(progress) / 100.0
-		
+
 		if self.lastRotatingMessageUpdate.timeIntervalSinceNow < -10 {
 			// Last message was 10 seconds ago. This ensures messages don't rotate too fast
 			self.lastRotatingMessageUpdate = Date()
@@ -143,7 +191,7 @@ extension DFUViewModel: DFUProgressDelegate {
 
 // MARK: - Logger Delegate (Optional)
 extension DFUViewModel: LoggerDelegate {
-    func logWith(_ level: LogLevel, message: String) {
+	func logWith(_ level: LogLevel, message: String) {
 		Logger.services.info("NRF DFU Log: \(message)")
-    }
+	}
 }

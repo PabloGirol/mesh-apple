@@ -1,9 +1,9 @@
 //
-//  PhoneConnectivityManager.swift
-//  Meshtastic Watch App
-//
-//  Copyright(c) Meshtastic 2025.
-//
+ //  PhoneConnectivityManager.swift
+ //  Meshtastic Watch App
+ //
+ //  Copyright(c) Meshtastic 2025.
+ //
 
 import Foundation
 import WatchConnectivity
@@ -14,7 +14,7 @@ import os
 /// The iOS app pushes node updates using `updateApplicationContext(_:)`.
 /// The watch can also request a refresh by sending a message.
 @MainActor
-final class PhoneConnectivityManager: NSObject, ObservableObject {
+final class PhoneConnectivityManager: NSObject {
 
 	// MARK: - Published state
 
@@ -93,6 +93,40 @@ final class PhoneConnectivityManager: NSObject, ObservableObject {
 			logger.error("Failed to decode nodes: \(error.localizedDescription, privacy: .public)")
 		}
 	}
+}
+
+/// ObservableObject wrapper for PhoneConnectivityManager to avoid NSObject + ObservableObject multiple inheritance.
+@MainActor
+final class PhoneConnectivityManagerObservable: ObservableObject {
+	static let shared = PhoneConnectivityManagerObservable()
+
+	private let manager = PhoneConnectivityManager()
+
+	var nodes: [UInt32: MeshNode] {
+		get { manager.nodes }
+		set { manager.nodes = newValue }
+	}
+
+	var isPhoneReachable: Bool {
+		get { manager.isPhoneReachable }
+		set { manager.isPhoneReachable = newValue }
+	}
+
+	var hasReceivedData: Bool {
+		get { manager.hasReceivedData }
+		set { manager.hasReceivedData = newValue }
+	}
+
+	var foxhuntTargets: Set<UInt32> {
+		get { manager.foxhuntTargets }
+		set { manager.foxhuntTargets = newValue }
+	}
+
+	func requestRefresh() {
+		manager.requestRefresh()
+	}
+
+	private init() {}
 }
 
 // MARK: - WCSessionDelegate

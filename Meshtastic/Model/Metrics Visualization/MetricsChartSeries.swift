@@ -3,18 +3,19 @@
 //  Meshtastic
 //
 //  Created by Jake Bordens on 12/11/24.
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import Charts
 import Foundation
 import SwiftUI
+import DGCharts
 
 // MetricsChartSeries stores metadata about an attribute in TelemetryEntity.
-// Given a keypath, this class holds information about how to render the attrbute in a
-// the chart.  MetricsChartSeries objects are collected in a MetricsSeriesList
-class MetricsChartSeries: ObservableObject {
+// Given a keypath, this class holds information about how to render the attribute in a
+// the chart. MetricsChartSeries objects are collected in a MetricsSeriesList
+class MetricsChartSeries: ObservableObject, Identifiable {
 
-	// Uniquely identify this column for presistance and iteration
+	// Uniquely identify this column for persistence and iteration
 	// Recommend using CoreData Attribute Name on TelemetryEntity
 	let id: String
 
@@ -31,131 +32,202 @@ class MetricsChartSeries: ObservableObject {
 	// Should this column appear in the chart
 	var visible: Bool
 
+	// Chart type for this series
+	let chartType: ChartSeriesType
+
+	// Line/bar styling
+	let lineWidth: CGFloat
+	let dashPattern: [CGFloat]?
+	let strokeStyle: StrokeStyle
+
+	// Fill styling (for area charts)
+	let fillColor: Color?
+	let fillAlpha: CGFloat
+
 	// A closure that will provide the foreground style given the data set and overall chart range
 	let foregroundStyle: (ClosedRange<Float>?) -> AnyShapeStyle?
 
-	// For drawing the lines in the chart
-	let strokeStyle: StrokeStyle
-	
-	// A closure that will provide the Chart Content for this series
-	let chartBodyClosure:
-		(MetricsChartSeries, ClosedRange<Float>?, TelemetryEntity) -> AnyChartContent?  // Closure to render the chart
-
-	// A closure that will privide the value of a TelemetryEntity for this series
+	// A closure that will provide the value of a TelemetryEntity for this series
 	// Possibly converted to the proper units
 	let valueClosure: (TelemetryEntity) -> Float?
 
 	// Used for scaling the Y-axis
 	let initialYAxisRange: ClosedRange<Float>?
-	let minumumYAxisSpan: Float?
+	let minimumYAxisSpan: Float?
+
+	// Chart series types supported
+	enum ChartSeriesType {
+		case line
+		case area
+		case bar
+		case point
+		case combinedLineArea // Line with area fill
+	}
+
 	// Main initializer
-	init<Value, ChartBody: ChartContent, ForegroundStyle: ShapeStyle>(
+	init<Value>(
 		id: String,
 		keyPath: KeyPath<TelemetryEntity, Value>,
 		name: String,
 		abbreviatedName: String,
 		unit: String? = nil,
 		initialYAxisRange: ClosedRange<Float>? = nil,
-		minumumYAxisSpan: Float? = nil,
-		conversion: ((Value) -> Value)? = nil,
+		minimumYAxisSpan: Float? = nil,
+		conversion: ((Value) -> Float)? = nil,
 		visible: Bool = true,
-		strokeStyle: StrokeStyle = StrokeStyle(lineWidth: 4),
-		foregroundStyle: @escaping ((ClosedRange<Float>?) -> ForegroundStyle?) = { _ in nil },
-		@ChartContentBuilder chartBody: @escaping (MetricsChartSeries, ClosedRange<Float>?, Date, Value) -> ChartBody?
+		chartType: ChartSeriesType = .line,
+		lineWidth: CGFloat = 2.0,
+		dashPattern: [CGFloat]? = nil,
+		fillColor: Color? = nil,
+		fillAlpha: CGFloat = 0.3,
+		foregroundStyle: @escaping ((ClosedRange<Float>?) -> AnyShapeStyle?) = { _ in nil },
+		valueExtractor: @escaping (TelemetryEntity) -> Float? = { _ in nil }
 	) {
 
-		// This works because TelemetryEntity is an @Model and conforms to PersistentModel
 		self.id = id
 		self.name = name
 		self.abbreviatedName = abbreviatedName
 		self.unit = unit
 		self.initialYAxisRange = initialYAxisRange
-		self.minumumYAxisSpan = minumumYAxisSpan
+		self.minimumYAxisSpan = minimumYAxisSpan
 		self.visible = visible
-		self.strokeStyle = strokeStyle
-		
+		self.chartType = chartType
+		self.lineWidth = lineWidth
+		self.dashPattern = dashPattern
+		self.fillColor = fillColor
+		self.fillAlpha = fillAlpha
+		self.strokeStyle = StrokeStyle(lineWidth: lineWidth, dash: dashPattern ?? [])
+
 		// By saving these closures, MetricsChartSeries can be type agnostic
-		// This is a less elegant form of type erasure, but doesn't require a new Any-type
 		self.foregroundStyle = { range in foregroundStyle(range).map({ AnyShapeStyle($0) }) }
-		self.chartBodyClosure = { series, range, entity in
-			guard let time = entity.time else { return nil }
-			let content = chartBody(series, range, time, entity[keyPath: keyPath])
-			// Per-mark VoiceOver descriptors, applied centrally so every telemetry series
-			// (AirQuality + Environment charts) becomes navigable with consistent phrasing.
-			let timeText = time.formatted(date: .abbreviated, time: .shortened)
-			let label = String(
-				localized: "\(series.name.localized) at \(timeText)",
-				comment: "VoiceOver label for a data point on a metrics chart. First value is the metric name, second is the timestamp."
-			)
-			let valueText: String
-			if let value = series.valueClosure(entity) {
-				let number = Double(value).formatted(.number.precision(.fractionLength(1)))
-				if let unit = series.unit, !unit.isEmpty {
-					valueText = "\(number) \(unit)"
-				} else {
-					valueText = number
-				}
-			} else {
-				valueText = String(localized: "No reading", comment: "VoiceOver value spoken when a metric data point has no reading.")
-			}
-			return AnyChartContent(
-				content
-					.accessibilityLabel(label)
-					.accessibilityValue(valueText)
-			)
-		}
-		self.valueClosure = { te in
-			if let conversion {
-				if let value = conversion(te[keyPath: keyPath]) as? (any Plottable) {
-					return value.floatValue ?? 0.0
-				}
-			} else {
-				if let value = te[keyPath: keyPath] as? (any Plottable) {
-					return value.floatValue
-				}
-			}
-			return nil
+		self.valueClosure = { entity in
+			return valueExtractor(entity)
 		}
 	}
 
-	// Return the value for this series attribute given a full row of telemetry data
-	func valueFor(_ te: TelemetryEntity) -> Float? {
-		return self.valueClosure(te)?.floatValue
+	// Convenience initializer for simple series
+	convenience init(
+		id: String,
+		keyPath: KeyPath<TelemetryEntity, Float?>,
+		name: String,
+		abbreviatedName: String,
+		unit: String? = nil,
+		initialYAxisRange: ClosedRange<Float>? = nil,
+		minimumYAxisSpan: Float? = nil,
+		visible: Bool = true,
+		chartType: ChartSeriesType = .line,
+		lineWidth: CGFloat = 2.0,
+		dashPattern: [CGFloat]? = nil,
+		fillColor: Color? = nil,
+		fillAlpha: CGFloat = 0.3,
+		foregroundStyle: @escaping ((ClosedRange<Float>?) -> AnyShapeStyle?) = { _ in nil }
+	) {
+		self.init(
+			id: id,
+			keyPath: keyPath,
+			name: name,
+			abbreviatedName: abbreviatedName,
+			unit: unit,
+			initialYAxisRange: initialYAxisRange,
+			minimumYAxisSpan: minimumYAxisSpan,
+			conversion: { $0 },
+			visible: visible,
+			chartType: chartType,
+			lineWidth: lineWidth,
+			dashPattern: dashPattern,
+			fillColor: fillColor,
+			fillAlpha: fillAlpha,
+			foregroundStyle: foregroundStyle,
+			valueExtractor: { entity in
+				return entity[keyPath: keyPath]
+			}
+		)
 	}
 
-	// Return the chart content for this series given a full row of telemetry data
-	func body<T>(_ te: TelemetryEntity, inChartRange chartRange: ClosedRange<T>? = nil) -> AnyChartContent? where T: BinaryFloatingPoint {
-		let range = chartRange.map { Float($0.lowerBound)...Float($0.upperBound) }
-		return chartBodyClosure(self, range, te)
+	// Get value for a telemetry entity
+	func valueFor(_ entity: TelemetryEntity) -> Float? {
+		return valueClosure(entity)
 	}
 }
 
-extension MetricsChartSeries: Identifiable, Hashable {
+// MARK: - DGCharts Series Data Conversion
 
-	static func == (lhs: MetricsChartSeries, rhs: MetricsChartSeries) -> Bool {
-		lhs.id == rhs.id
-	}
-
-	func hash(into hasher: inout Hasher) {
-		hasher.combine(id)
+extension MetricsChartSeries {
+	/// Convert this series configuration to a DGCharts ChartSeriesData
+	func toChartSeriesData(points: [ChartDataPoint]) -> ChartSeriesData {
+		return ChartSeriesData(
+			id: id,
+			name: name,
+			color: foregroundStyle(nil)?.resolve(in: EnvironmentValues()) ?? .primary,
+			chartType: chartType.toDGChartsType(),
+			points: points,
+			lineWidth: lineWidth,
+			dashPattern: dashPattern,
+			fillColor: fillColor,
+			fillAlpha: fillAlpha,
+			isVisible: visible
+		)
 	}
 }
 
-extension Plottable {
-	var floatValue: Float? {
-		if let integerValue = self.primitivePlottable as? any BinaryInteger {
-			return Float(integerValue)
-		} else if let floatingPointValue = self.primitivePlottable as? any BinaryFloatingPoint {
-			return Float(floatingPointValue)
+extension MetricsChartSeries.ChartSeriesType {
+	func toDGChartsType() -> ChartSeriesData.ChartType {
+		switch self {
+		case .line: return .line
+		case .area: return .area
+		case .bar: return .bar
+		case .point: return .point
+		case .combinedLineArea: return .area
 		}
-		return nil
 	}
-	var doubleValue: Double? {
-		if let integerValue = self.primitivePlottable as? any BinaryInteger {
-			return Double(integerValue)
-		} else if let floatingPointValue = self.primitivePlottable as? any BinaryFloatingPoint {
-			return Double(floatingPointValue)
-		}
-		return nil
+}
+
+// Extension to combine windspeed and direction into one attribute for rendering
+// for rendering on the chart.
+@objc class WindSpeedAndDirection: NSObject {
+
+	let windSpeed: Float
+	let windDirection: Int32?
+	init(windSpeed: Float, windDirection: Int32?) {
+		self.windSpeed = windSpeed
+		self.windDirection = windDirection
 	}
+
+	var primitivePlottable: Float { windSpeed }
+}
+
+@objc extension TelemetryEntity {
+	var windSpeedAndDirection: WindSpeedAndDirection? {
+		guard let windSpeed = self.windSpeed else { return nil }
+
+		return WindSpeedAndDirection(windSpeed: windSpeed, windDirection: self.windDirection)
+	}
+}
+
+// From: https://github.com/meshtastic/Meshtastic-Apple/pull/1013/commits/bc932567c742c8fa9fd30752237b10cb762c5ef3
+// Set up gradient stops relative to the scale of the temperature chart
+func generateStops(minTemp: Double, maxTemp: Double, tempUnit: UnitTemperature, opacity: Double) -> [Gradient.Stop] {
+	var gradientStops = [Gradient.Stop]()
+
+	let stopTargets: [(Double, Color)] = [
+		((tempUnit == .celsius ? 0 : 32), .blue),
+		((tempUnit == .celsius ? 20 : 68), .yellow),
+		((tempUnit == .celsius ? 30 : 86), .orange),
+		((tempUnit == .celsius ? 55 : 125), .red)
+	]
+	for (stopValue, color) in stopTargets {
+		let stopLocation = transform(stopValue, from: minTemp...maxTemp, to: 0...1)
+		gradientStops.append(Gradient.Stop(color: color.opacity(opacity), location: stopLocation))
+	}
+	return gradientStops
+}
+
+// Map inputRange to outputRange
+func transform<T: FloatingPoint>(_ input: T, from inputRange: ClosedRange<T>, to outputRange: ClosedRange<T>) -> T {
+	// need to determine what that value would be in (to.low, to.high)
+	// difference in output range / difference in input range = slope
+	let slope = (outputRange.upperBound - outputRange.lowerBound) / (inputRange.upperBound - inputRange.lowerBound)
+	// slope * normalized input + output lower
+	let output = slope * (input - inputRange.lowerBound) + outputRange.lowerBound
+	return output
 }

@@ -22,7 +22,7 @@ struct RXTXIndicatorWidget: View {
 			if !isPopoverOpen && accessoryManager.isConnected {
 				Task {
 					// TODO: replace with a heartbeat when the heartbeat works
-					try await Task.sleep(for: .seconds(0.5)) // little delay for user affordance
+					try await Task.sleep(nanoseconds: 500_000_000) // little delay for user affordance
 					if accessoryManager.checkIsVersionSupported(forVersion: "2.7.4") {
 						Logger.transport.debug("[RXTXIndicator] sending heartbeat (2.7.4+)")
 						try await accessoryManager.sendHeartbeat()

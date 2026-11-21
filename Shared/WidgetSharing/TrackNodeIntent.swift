@@ -9,6 +9,7 @@
 //  snapshot.
 //
 
+#if !MESHTASTIC_IOS15
 import AppIntents
 import Foundation
 
@@ -96,3 +97,4 @@ struct TrackNodeIntent: WidgetConfigurationIntent {
 	@Parameter(title: "Node")
 	var node: TrackedNodeEntity?
 }
+#endif

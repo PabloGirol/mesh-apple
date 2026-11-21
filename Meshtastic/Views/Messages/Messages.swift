@@ -8,7 +8,7 @@
 import SwiftUI
 import CoreData
 import OSLog
-import TipKit
+import NavigationStackShim
 
 struct Messages: View {
 
@@ -63,106 +63,30 @@ struct Messages: View {
 	}
 
 	var body: some View {
-		NavigationSplitView(columnVisibility: $columnVisibility) {
-			List(selection: sidebarSelection) {
-				NavigationLink(value: MessagesNavigationState.channels()) {
-					Spacer()
-					Label {
-						Text("Channels")
-							.badge(unreadChannelMessages)
-							.font(.title2)
-							.padding()
-					} icon: {
-						Image(systemName: "person.2")
-							.symbolRenderingMode(.hierarchical)
-							.foregroundColor(.accentColor)
-							.font(.title2)
-							.padding()
+		Group {
+			if #available(iOS 16.0, *) {
+				NavigationSplitView(columnVisibility: $columnVisibility) {
+					sidebarContent
+				} content: {
+					contentView
+				} detail: {
+					CompatNavigationStack {
+						detailContent
+							.navigationDestination(for: Int64.self) { nodeNum in
+								if let node = getNodeInfo(id: nodeNum, context: context) {
+									NodeDetail(node: node, nodeNum: nodeNum)
+										.trackScreen(.nodeDetail)
+								}
+							}
 					}
 				}
-				.alignmentGuide(.listRowSeparatorLeading) {
-					$0[.leading]
-				}
-				.accessibilityElement(children: .combine)
-				.accessibilityLabel(unreadChannelMessages > 0
-					? String(localized: "Channels, \(unreadChannelMessages) unread", comment: "VoiceOver: Channels section with unread message count")
-					: String(localized: "Channels", comment: "VoiceOver: Channels section"))
-				NavigationLink(value: MessagesNavigationState.directMessages()) {
-					Spacer()
-					Label {
-						Text("Direct Messages")
-							.badge(unreadDirectMessages)
-							.font(.title2)
-							.padding()
-					} icon: {
-						Image(systemName: "person")
-							.symbolRenderingMode(.hierarchical)
-							.foregroundColor(.accentColor)
-							.font(.title2)
-							.padding()
-					}
-				}
-				.alignmentGuide(.listRowSeparatorLeading) {
-					$0[.leading]
-				}
-				.accessibilityElement(children: .combine)
-				.accessibilityLabel(unreadDirectMessages > 0
-					? String(localized: "Direct Messages, \(unreadDirectMessages) unread", comment: "VoiceOver: Direct Messages section with unread message count")
-					: String(localized: "Direct Messages", comment: "VoiceOver: Direct Messages section"))
-				Spacer()
-				TipView(MessagesTip(), arrowEdge: .top)
-					.tipViewStyle(PersistentTipStyle())
-					.listRowSeparator(.hidden)
-				Spacer()
-					.listRowSeparator(.hidden)
-			}
-			.listStyle(.plain)
-			.navigationTitle("Messages")
-			.navigationBarTitleDisplayMode(.large)
-			.toolbar {
-				ToolbarItem(placement: .topBarLeading) {
-					MeshtasticLogo()
-				}
-			}
-		} content: {
-			switch router.messagesSection {
-			case .channels:
-				ChannelList(node: nodeBinding, channelSelection: $channelSelection)
-					// Removed navigationTitle and navigationBarTitleDisplayMode here.
-					// ChannelList.swift now handles this within its own NavigationStack.
-			case .directMessages:
-				UserList(node: nodeBinding, userSelection: $userSelection)
-					// Removed navigationTitle here. UserList will handle this.
-			case nil:
-				Text("Select a conversation type")
-			}
-		} detail: {
-			NavigationStack {
-				Group {
-					if let myInfo = node?.myInfo, let channelSelection {
-						ChannelMessageList(myInfo: myInfo, channel: channelSelection)
-							// Keep conversation state separate when the split view reuses its detail pane.
-							.id(channelSelection.objectID)
-							.trackScreen(.channelMessages)
-					} else if let userSelection {
-						UserMessageList(user: userSelection)
-							.id(userSelection.objectID)
-							.trackScreen(.directMessages)
-					} else if case .channels = router.messagesSection {
-						Text("Select a channel")
-					} else if case .directMessages = router.messagesSection {
-						Text("Select a conversation")
-					}
-				}
-				.navigationDestination(for: Int64.self) { nodeNum in
-					if let node = getNodeInfo(id: nodeNum, context: context) {
-						NodeDetail(node: node, nodeNum: nodeNum)
-							.trackScreen(.nodeDetail)
-					}
+				.navigationSplitViewStyle(.balanced)
+			} else {
+				CompatNavigationStack {
+					sidebarContent
 				}
 			}
 		}
-		.navigationSplitViewStyle(.balanced)
 		.onAppear {
 			// Handles the deep link set by `route(url:)` before this view began observing.
 			consumeDeepLink(router.messagesState)
@@ -177,6 +101,102 @@ struct Messages: View {
 				channelSelection = nil
 				userSelection = nil
 				revealSidebarForEmptySelection()
+			}
+		}
+	}
+
+	@ViewBuilder
+	private var sidebarContent: some View {
+		List {
+			NavigationLink(destination: ChannelList(node: nodeBinding, channelSelection: $channelSelection)) {
+				Spacer()
+				Label {
+					Text("Channels")
+						.badge(unreadChannelMessages)
+						.font(.title2)
+						.padding()
+				} icon: {
+					Image(systemName: "person.2")
+						.symbolRenderingMode(.hierarchical)
+						.foregroundColor(.accentColor)
+						.font(.title2)
+						.padding()
+				}
+			}
+			.alignmentGuide(.listRowSeparatorLeading) {
+				$0[.leading]
+			}
+			.accessibilityElement(children: .combine)
+			.accessibilityLabel(unreadChannelMessages > 0
+				? String(localized: "Channels, \(unreadChannelMessages) unread", comment: "VoiceOver: Channels section with unread message count")
+				: String(localized: "Channels", comment: "VoiceOver: Channels section"))
+			NavigationLink(destination: UserList(node: nodeBinding, userSelection: $userSelection)) {
+				Spacer()
+				Label {
+					Text("Direct Messages")
+						.badge(unreadDirectMessages)
+						.font(.title2)
+						.padding()
+				} icon: {
+					Image(systemName: "person")
+						.symbolRenderingMode(.hierarchical)
+						.foregroundColor(.accentColor)
+						.font(.title2)
+						.padding()
+				}
+			}
+			.alignmentGuide(.listRowSeparatorLeading) {
+				$0[.leading]
+			}
+			.accessibilityElement(children: .combine)
+			.accessibilityLabel(unreadDirectMessages > 0
+				? String(localized: "Direct Messages, \(unreadDirectMessages) unread", comment: "VoiceOver: Direct Messages section with unread message count")
+				: String(localized: "Direct Messages", comment: "VoiceOver: Direct Messages section"))
+			Spacer()
+			Spacer()
+				.listRowSeparator(.hidden)
+		}
+		.listStyle(.plain)
+		.navigationTitle("Messages")
+		.navigationBarTitleDisplayMode(.large)
+		.toolbar {
+			ToolbarItem(placement: .topBarLeading) {
+				MeshtasticLogo()
+			}
+		}
+	}
+
+	@ViewBuilder
+	private var contentView: some View {
+		switch router.messagesSection {
+		case .channels:
+			ChannelList(node: nodeBinding, channelSelection: $channelSelection)
+				// Removed navigationTitle and navigationBarTitleDisplayMode here.
+				// ChannelList.swift now handles this within its own NavigationStack.
+		case .directMessages:
+			UserList(node: nodeBinding, userSelection: $userSelection)
+				// Removed navigationTitle here. UserList will handle this.
+		case nil:
+			Text("Select a conversation type")
+		}
+	}
+
+	@ViewBuilder
+	private var detailContent: some View {
+		Group {
+			if let myInfo = node?.myInfo, let channelSelection {
+				ChannelMessageList(myInfo: myInfo, channel: channelSelection)
+					// Keep conversation state separate when the split view reuses its detail pane.
+					.id(channelSelection.objectID)
+					.trackScreen(.channelMessages)
+			} else if let userSelection {
+				UserMessageList(user: userSelection)
+					.id(userSelection.objectID)
+					.trackScreen(.directMessages)
+			} else if case .channels = router.messagesSection {
+				Text("Select a channel")
+			} else if case .directMessages = router.messagesSection {
+				Text("Select a conversation")
 			}
 		}
 	}

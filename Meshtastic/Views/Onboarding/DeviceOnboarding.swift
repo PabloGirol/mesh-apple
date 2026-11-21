@@ -4,6 +4,8 @@ import OSLog
 import SwiftUI
 import Foundation
 import MapKit
+import NavigationStackShim
+import UIKit
 
 struct DeviceOnboarding: View {
 	enum SetupGuide: Hashable {
@@ -29,7 +31,7 @@ struct DeviceOnboarding: View {
 
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@ObservedObject private var locationsHandler: LocationsHandler = .shared
-	@State var navigationPath: [SetupGuide] = []
+	@State private var currentStep: SetupGuide? = nil
 	@State var locationStatus = LocationsHandler.shared.manager.authorizationStatus
 	@AppStorage("provideLocation") private var provideLocation: Bool = false
 	@AppStorage("provideLocationInterval") private var provideLocationInterval: Int = 30
@@ -274,31 +276,54 @@ struct DeviceOnboarding: View {
 	}
 
 	var body: some View {
-		NavigationStack(path: $navigationPath) {
-			// The welcome page is the stack's root rather than a pushed destination, so it
-			// needs the name here; the rest get it below.
-			welcomeView
-				.padding(.top, 44)
-				.trackScreen(SetupGuide.welcome.screenName)
-				.navigationDestination(for: SetupGuide.self) { guide in
-					Group {
-						switch guide {
-						case .welcome:
-							welcomeView
-						case .notifications:
-							notificationView
-						case .location:
-							locationView
-						case .bluetooth:
-							bluetoothView
-						case .localNetwork:
-							localNetworkView
-						case .siri:
-							siriView
-						}
-					}
-					.trackScreen(guide.screenName)
-				}
+		// iOS 15: Use explicit NavigationLinks with a single currentStep state
+		CompatNavigationStack {
+			ZStack {
+				welcomeView
+					.padding(.top, 44)
+					.trackScreen(SetupGuide.welcome.screenName)
+					.opacity(currentStep == nil ? 1 : 0)
+
+				NavigationLink(
+					destination: notificationView.trackScreen(SetupGuide.notifications.screenName),
+					isActive: Binding(
+						get: { currentStep == .notifications },
+						set: { if !$0 { currentStep = nil } }
+					)
+				) { EmptyView() }
+
+				NavigationLink(
+					destination: locationView.trackScreen(SetupGuide.location.screenName),
+					isActive: Binding(
+						get: { currentStep == .location },
+						set: { if !$0 { currentStep = nil } }
+					)
+				) { EmptyView() }
+
+				NavigationLink(
+					destination: bluetoothView.trackScreen(SetupGuide.bluetooth.screenName),
+					isActive: Binding(
+						get: { currentStep == .bluetooth },
+						set: { if !$0 { currentStep = nil } }
+					)
+				) { EmptyView() }
+
+				NavigationLink(
+					destination: localNetworkView.trackScreen(SetupGuide.localNetwork.screenName),
+					isActive: Binding(
+						get: { currentStep == .localNetwork },
+						set: { if !$0 { currentStep = nil } }
+					)
+				) { EmptyView() }
+
+				NavigationLink(
+					destination: siriView.trackScreen(SetupGuide.siri.screenName),
+					isActive: Binding(
+						get: { currentStep == .siri },
+						set: { if !$0 { currentStep = nil } }
+					)
+				) { EmptyView() }
+			}
 		}
 		.interactiveDismissDisabled()
 		.toolbar(.hidden)
@@ -342,7 +367,7 @@ struct DeviceOnboarding: View {
 			criticalAlertSetting: notificationSettings.criticalAlertSetting,
 			locationStatus: locationStatus
 		) {
-			navigationPath.append(next)
+			currentStep = next
 		} else {
 			dismiss()
 		}
@@ -353,34 +378,45 @@ struct DeviceOnboarding: View {
 // MARK: Formatting
 extension DeviceOnboarding {
 	/// Links the word "settings" in an intro sentence to the app's page in the Settings app.
-	private func linkingSettings(_ text: AttributedString) -> AttributedString {
-		var fullText = text
-		if let range = fullText.range(of: String(localized: "settings"))
-			?? fullText.range(of: "settings") {
-			fullText[range].link = URL(string: UIApplication.openSettingsURLString)!
-			fullText[range].foregroundColor = .blue
+	private func linkingSettings(_ text: String) -> NSAttributedString {
+		let settingsURL = UIApplication.openSettingsURLString
+		let settingsWord = String(localized: "settings")
+
+		// Create HTML with a link for the word "settings"
+		let htmlString = text.replacingOccurrences(of: settingsWord, with: "<a href=\"\(settingsURL)\"><font color=\"blue\">\(settingsWord)</font></a>")
+
+		let data = Data(htmlString.utf8)
+		let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+			.documentType: NSAttributedString.DocumentType.html,
+			.characterEncoding: String.Encoding.utf8.rawValue
+		]
+
+		if let attributedString = try? NSAttributedString(data: data, options: options, documentAttributes: nil) {
+			return attributedString
 		}
-		return fullText
+
+		// Fallback: return plain attributed string
+		return NSAttributedString(string: text)
 	}
 
-	func createNotificationsString() -> AttributedString {
-		linkingSettings(AttributedString(localized: "Allow Meshtastic to send you notifications for messages, node events, and critical alerts. You can update notification permissions at any time from settings."))
+	func createNotificationsString() -> NSAttributedString {
+		linkingSettings(String(localized: "Allow Meshtastic to send you notifications for messages, node events, and critical alerts. You can update notification permissions at any time from settings."))
 	}
 
-	func createLocationString() -> AttributedString {
-		linkingSettings(AttributedString(localized: "Your phone's location goes only to your connected radio. Your radio shares nothing until you turn it on. This app only lets public channels share an approximate location. Radios on firmware 2.8 or later enforce the same limit. You can change location permissions at any time from settings."))
+	func createLocationString() -> NSAttributedString {
+		linkingSettings(String(localized: "Your phone's location goes only to your connected radio. Your radio shares nothing until you turn it on. This app only lets public channels share an approximate location. Radios on firmware 2.8 or later enforce the same limit. You can change location permissions at any time from settings."))
 	}
 
-	func createLocalNetworkString() -> AttributedString {
-		linkingSettings(AttributedString(localized: "Meshtastic accesses your local network to connect to TCP-based accessories.  You can update the local network permissions at any time from settings."))
+	func createLocalNetworkString() -> NSAttributedString {
+		linkingSettings(String(localized: "Meshtastic accesses your local network to connect to TCP-based accessories.  You can update the local network permissions at any time from settings."))
 	}
 
-	func createBluetoothString() -> AttributedString {
-		linkingSettings(AttributedString(localized: "Meshtastic uses Bluetooth to connect to BLE-based accessories.  You can update the permissions at any time from settings."))
+	func createBluetoothString() -> NSAttributedString {
+		linkingSettings(String(localized: "Meshtastic uses Bluetooth to connect to BLE-based accessories.  You can update the permissions at any time from settings."))
 	}
 
-	func createSiriString() -> AttributedString {
-		linkingSettings(AttributedString(localized: "Meshtastic supports Siri, Shortcuts, and CarPlay so you can send and receive messages hands-free. You can update Siri permissions at any time from settings."))
+	func createSiriString() -> NSAttributedString {
+		linkingSettings(String(localized: "Meshtastic supports Siri, Shortcuts, and CarPlay so you can send and receive messages hands-free. You can update Siri permissions at any time from settings."))
 	}
 }
 

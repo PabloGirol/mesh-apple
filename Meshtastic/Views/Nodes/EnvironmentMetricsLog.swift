@@ -1,16 +1,17 @@
 //
-//  DeviceMetricsLog.swift
+//  EnvironmentMetricsLog.swift
 //  Meshtastic
 //
 //  Copyright(c) Garth Vander Houwen 7/7/22.
+//  Updated for DGCharts iOS 15 compatibility
 //
-import Charts
+
 import CoreData
+import DGCharts
 import OSLog
 import SwiftUI
 
 struct EnvironmentMetricsLog: View {
-
 	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@EnvironmentObject var accessoryManager: AccessoryManager
@@ -40,19 +41,7 @@ struct EnvironmentMetricsLog: View {
 				VStack {
 					if chartData.count > 0 {
 						GroupBox(label: Label("\(totalReadings) Readings Total", systemImage: "chart.xyaxis.line")) {
-							Chart(seriesList.visible) { series in
-								ForEach(chartPoints, id: \.time) { dataPoint in
-									series.body(dataPoint, inChartRange: chartRange)
-								}
-							}
-							.chartXAxis(content: {
-								AxisMarks(position: .top)
-							})
-							.chartYScale(domain: chartRange)
-							.chartForegroundStyleScale { (seriesName: String) -> AnyShapeStyle in
-								return seriesList.foregroundStyle(forAbbreviatedName: seriesName, chartRange: chartRange) ?? AnyShapeStyle(Color.clear)
-							}
-							.chartLegend(position: .automatic, alignment: .bottom)
+							chartView(chartRange: chartRange)
 						}
 					}
 
@@ -101,8 +90,11 @@ struct EnvironmentMetricsLog: View {
 							.imageScale(imageScale)
 					}
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(buttonSize)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(buttonSize)
+					}
 					.padding(.bottom)
 					.padding(.leading)
 					.hostedSheet(isPresented: self.$isEditingColumnConfiguration) {
@@ -115,8 +107,11 @@ struct EnvironmentMetricsLog: View {
 							.imageScale(imageScale)
 					}
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(buttonSize)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(buttonSize)
+					}
 					.padding(.bottom)
 					.hostedConfirmation(
 						"Are you sure?",
@@ -146,14 +141,25 @@ struct EnvironmentMetricsLog: View {
 					}
 					.hostedWindowOnly()
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(buttonSize)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(buttonSize)
+					}
 					.padding(.bottom)
 					.padding(.trailing)
 				}
 
 			} else {
-				ContentUnavailableView("No Environment Metrics", systemImage: "slash.circle")
+				VStack(spacing: 16) {
+					Image(systemName: "slash.circle")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Environment Metrics")
+						.font(.title2)
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			}
 		}
 		.onAppear {
@@ -206,6 +212,122 @@ struct EnvironmentMetricsLog: View {
 		// window oldest-first, decimated AFTER the week filter so the mark budget is
 		// spent entirely on points the chart will draw.
 		chartPoints = downsampledForChart(Array(chartData.reversed()))
+	}
+
+	@ViewBuilder
+	private func chartView(chartRange: ClosedRange<Float>) -> some View {
+		let visibleSeries = seriesList.visible
+
+		// Convert series to DGCharts data
+		let chartSeriesData = visibleSeries.compactMap { series -> ChartSeriesData? in
+			let points = chartPoints.compactMap { entity -> ChartDataPoint? in
+				guard let time = entity.time, let value = series.valueFor(entity) else { return nil }
+				return ChartDataPoint(x: time.timeIntervalSince1970, y: Double(value))
+			}
+			guard !points.isEmpty else { return nil }
+
+			return series.toChartSeriesData(points: points)
+		}
+
+		guard !chartSeriesData.isEmpty else {
+			return Text("No data to display")
+				.frame(height: 200)
+				.foregroundStyle(.secondary)
+		}
+
+		// Determine chart type based on series
+		let hasAreaSeries = chartSeriesData.contains { $0.chartType == .area }
+		let hasBarSeries = chartSeriesData.contains { $0.chartType == .bar }
+		let hasLineSeries = chartSeriesData.contains { $0.chartType == .line }
+		let hasPointSeries = chartSeriesData.contains { $0.chartType == .point }
+
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .top,
+			labelCount: 6,
+			dateFormat: "MM/dd HH:mm"
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: 6,
+			axisMinimum: chartRange.lowerBound,
+			axisMaximum: chartRange.upperBound
+		)
+
+		let legendConfig = DGChartLegendConfig(
+			isEnabled: true,
+			position: .belowChartCenter,
+			alignment: .center,
+			orientation: .horizontal
+		)
+
+		if hasBarSeries {
+			return AnyView(BarChartView(
+				data: chartSeriesData,
+				xAxisConfig: xAxisConfig,
+				yAxisConfig: yAxisConfig,
+				legendConfig: legendConfig,
+				ruleMarks: [],
+				yDomain: chartRange.lowerBound...chartRange.upperBound,
+				visibleXRange: nil,
+				scrollPosition: nil,
+				isScrollable: false,
+				legendHidden: false,
+				frame: nil,
+				selection: nil,
+				onSelectionChanged: nil,
+				backgroundColor: .systemBackground,
+				gridColor: .systemGray4,
+				gridLineWidth: 0.5,
+				barWidth: 0.8,
+				groupSpace: 0.1
+			))
+		} else if hasAreaSeries || hasLineSeries {
+			return AnyView(LineChartView(
+				data: chartSeriesData,
+				xAxisConfig: xAxisConfig,
+				yAxisConfig: yAxisConfig,
+				legendConfig: legendConfig,
+				ruleMarks: [],
+				yDomain: chartRange.lowerBound...chartRange.upperBound,
+				visibleXRange: nil,
+				scrollPosition: nil,
+				isScrollable: false,
+				legendHidden: false,
+				frame: nil,
+				selection: nil,
+				onSelectionChanged: nil,
+				backgroundColor: .systemBackground,
+				gridColor: .systemGray4,
+				gridLineWidth: 0.5,
+				drawCircles: hasPointSeries,
+				circleRadius: 4.0,
+				mode: .linear,
+				cubicIntensity: 0.2,
+				drawFilled: hasAreaSeries,
+				fillAlpha: 0.3
+			))
+		} else {
+			return AnyView(CombinedChartView(
+				data: chartSeriesData,
+				xAxisConfig: xAxisConfig,
+				yAxisConfig: yAxisConfig,
+				legendConfig: legendConfig,
+				ruleMarks: [],
+				yDomain: chartRange.lowerBound...chartRange.upperBound,
+				visibleXRange: nil,
+				scrollPosition: nil,
+				isScrollable: false,
+				legendHidden: false,
+				frame: nil,
+				selection: nil,
+				onSelectionChanged: nil,
+				backgroundColor: .systemBackground,
+				gridColor: .systemGray4,
+				gridLineWidth: 0.5,
+				drawOrder: [.bar, .bubble, .line, .scatter, .candle]
+			))
+		}
 	}
 }
 

@@ -76,7 +76,6 @@ struct AppSettings: View {
 					.hostedSheet(isPresented: $isPresentingAppIconSheet) {
 						AppIconPicker(isPresenting: self.$isPresentingAppIconSheet)
 							.trackScreen(.appIconPicker)
-							.presentationDetents([.medium])
 					}
 #endif
 				}

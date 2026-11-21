@@ -8,6 +8,7 @@
 import SwiftUI
 import MapKit
 import OSLog
+import NavigationStackShim
 
 struct LogDetail: View {
 
@@ -25,7 +26,7 @@ struct LogDetail: View {
 
 	var body: some View {
 
-		SheetNavigationStack {
+		CompatNavigationStack {
 			VStack {
 				HStack {
 					Text("OS Log Entry Details")
@@ -150,9 +151,5 @@ struct LogDetail: View {
 			.monospaced()
 			.sheetCloseButton()
 		}
-		.presentationDetents([.fraction(0.75), .fraction(0.85), .fraction(1.0)])
-		#if !targetEnvironment(macCatalyst)
-		.presentationDragIndicator(.visible)
-		#endif
 	}
 }

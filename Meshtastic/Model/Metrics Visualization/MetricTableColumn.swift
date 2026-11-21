@@ -3,9 +3,9 @@
 //  Meshtastic
 //
 //  Created by Jake Bordens on 12/7/24.
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import Charts
 import OSLog
 import SwiftUI
 

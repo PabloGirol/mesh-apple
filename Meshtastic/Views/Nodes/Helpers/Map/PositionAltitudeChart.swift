@@ -3,12 +3,13 @@
 //  Meshtastic
 //
 //  Copyright(c) Garth Vander Houwen 11/17/23.
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import SwiftUI
-import Charts
-import MapKit
 import CoreData
+import DGCharts
+import MapKit
+import SwiftUI
 
 struct PositionAltitude {
 	let time: Date
@@ -26,41 +27,79 @@ struct PositionAltitudeChart: View {
 
 	var body: some View {
 		GroupBox(label: Label("Altitude", systemImage: "mountain.2")) {
-			Chart(data, id: \.time) {
-				LineMark(
-					x: .value("Time", $0.time),
-					y: .value("Altitude", PlottableMeasurement(measurement: $0.altitude))
-				)
-				.accessibilityLabel(String(localized: "Altitude at \($0.time.formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for an altitude point on the position altitude chart. %@ is the timestamp."))
-				.accessibilityValue($0.altitude.converted(to: Locale.current.measurementSystem == .metric ? .meters : .feet).formatted(.measurement(width: .abbreviated, numberFormatStyle: .number.precision(.fractionLength(0)))))
-				.lineStyle(StrokeStyle(lineWidth: lineWidth))
-				.interpolationMethod(.linear)
-				.symbol(Circle().strokeBorder(lineWidth: lineWidth))
-				.symbolSize(60)
-			}
-			.chartYAxis {
-				AxisMarks { value in
-					AxisGridLine()
-					AxisValueLabel("""
-						\(value.as(PlottableMeasurement.self)!
-							.measurement
-							.converted(to: Locale.current.measurementSystem == .metric ? .meters : .feet),
-								format: .measurement(
-									width: .wide,
-									numberFormatStyle: .number.precision(
-										.fractionLength(0))
-									)
-								)
-					""")
-				}
-			}
-			.chartXAxis(.visible)
+			chartView
 		}
-			.background(Color(UIColor.secondarySystemBackground))
-			.opacity(/*@START_MENU_TOKEN@*/0.8/*@END_MENU_TOKEN@*/)
-			.onAppear {
-				loadChartData()
+		.background(Color(UIColor.secondarySystemBackground))
+		.opacity(0.8)
+		.onAppear {
+			loadChartData()
+		}
+	}
+
+	@ViewBuilder
+	private var chartView: some View {
+		let points = data.map { position in
+			ChartDataPoint.fromDate(position.time, value: position.altitude.converted(to: .meters).value)
+		}
+
+		let seriesData = ChartSeriesData(
+			id: "altitude",
+			name: "Altitude",
+			color: .blue,
+			chartType: .line,
+			points: points,
+			lineWidth: lineWidth,
+			drawCircles: true,
+			circleRadius: 4.0,
+			mode: .linear
+		)
+
+		let isMetric = Locale.current.measurementSystem == .metric
+		let unit = isMetric ? UnitLength.meters : UnitLength.feet
+
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .bottom,
+			labelCount: 6,
+			dateFormat: "MM/dd HH:mm"
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: 6,
+			axisValueFormatter: { value, _ in
+				let measurement = Measurement(value: value, unit: .meters).converted(to: unit)
+				return measurement.formatted(.measurement(width: .wide, numberFormatStyle: .number.precision(.fractionLength(0))))
 			}
+		)
+
+		let legendConfig = DGChartLegendConfig(
+			isEnabled: false
+		)
+
+		return LineChartView(
+			data: [seriesData],
+			xAxisConfig: xAxisConfig,
+			yAxisConfig: yAxisConfig,
+			legendConfig: legendConfig,
+			ruleMarks: [],
+			yDomain: nil,
+			visibleXRange: nil,
+			scrollPosition: nil,
+			isScrollable: false,
+			legendHidden: true,
+			frame: nil,
+			selection: nil,
+			onSelectionChanged: nil,
+			backgroundColor: .systemBackground,
+			gridColor: .systemGray4,
+			gridLineWidth: 0.5,
+			drawCircles: true,
+			circleRadius: 4.0,
+			mode: .linear,
+			cubicIntensity: 0.2,
+			drawFilled: false,
+			fillAlpha: 0.3
+		)
 	}
 
 	private func loadChartData() {

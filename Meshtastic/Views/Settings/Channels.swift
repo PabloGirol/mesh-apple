@@ -8,9 +8,9 @@
 import CoreData
 import MapKit
 import MeshtasticProtobufs
+import NavigationStackShim
 import OSLog
 import SwiftUI
-import TipKit
 
 func generateChannelKey(size: Int) -> String {
 	var keyData = Data(count: size)
@@ -154,9 +154,6 @@ struct Channels: View {
 
 		VStack {
 			List {
-				TipView(CreateChannelsTip(), arrowEdge: .bottom)
-					.tipBackground(colorScheme == .dark ? Color(.systemBackground) : Color(.secondarySystemBackground))
-					.listRowSeparator(.hidden)
 				if node.myInfo != nil {
 					if let channelFrequencySummary {
 						ChannelConfigSummaryRow(summary: channelFrequencySummary)
@@ -235,7 +232,7 @@ struct Channels: View {
 						uplink = false
 						downlink = false
 
-						let newChannel = ChannelEntity()
+						let newChannel = ChannelEntity(context: context)
 						newChannel.id = channelIndex
 						newChannel.index = channelIndex
 						newChannel.uplinkEnabled = uplink
@@ -290,19 +287,27 @@ struct Channels: View {
 						Text(saveError ?? "")
 					}
 				}
-				.presentationDetents([.large])
-				#if !targetEnvironment(macCatalyst)
-				.presentationDragIndicator(.visible)
-				#endif
+				.modifier(SheetPresentationModifiers(
+					detents: [.large],
+					selection: .constant(.large),
+					contentInteraction: .scrolls,
+					dragIndicatorVisible: true,
+					backgroundInteractionEnabled: false,
+					interactiveDismissDisabled: isSavingChannel
+				))
 			}
 		}
 		.hostedSheet(isPresented: $showingHelp) {
 			ChannelsHelp()
 				.trackScreen(.channelsHelp)
-				.presentationDetents([.large])
-				#if !targetEnvironment(macCatalyst)
-				.presentationDragIndicator(.visible)
-				#endif
+				.modifier(SheetPresentationModifiers(
+					detents: [.large],
+					selection: .constant(.large),
+					contentInteraction: .scrolls,
+					dragIndicatorVisible: true,
+					backgroundInteractionEnabled: false,
+					interactiveDismissDisabled: false
+				))
 		}
 		.safeAreaInset(edge: .bottom, alignment: .leading) {
 			HStack {
@@ -608,3 +613,25 @@ private struct ChannelStatusIcon: View {
 // `ModemPresets` bandwidth/name helpers moved to
 // `Meshtastic/Helpers/LoRaChannelCalculator.swift` so the Mesh Beacons join
 // enhancement can reuse the firmware-accurate slot math.
+
+private struct SheetPresentationModifiers: ViewModifier {
+	let detents: [PresentationDetent]
+	@Binding var selection: PresentationDetent
+	let contentInteraction: PresentationContentInteraction
+	let dragIndicatorVisible: Bool
+	let backgroundInteractionEnabled: Bool
+	let interactiveDismissDisabled: Bool
+
+	func body(content: Content) -> some View {
+		if #available(iOS 16.0, *) {
+			content
+				.presentationDetents(detents, selection: $selection)
+				.presentationContentInteraction(contentInteraction)
+				.presentationDragIndicator(dragIndicatorVisible ? .visible : .hidden)
+				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+				.interactiveDismissDisabled(interactiveDismissDisabled)
+		} else {
+			content
+		}
+	}
+}

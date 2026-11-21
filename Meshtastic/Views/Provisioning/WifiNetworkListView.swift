@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import NavigationStackShim
 
 // MARK: - Network Row
 
@@ -58,11 +59,6 @@ private struct NetworkRow: View {
 				onCancel: { showPasswordSheet = false }
 			)
 			.trackScreen(.wifiPassword)
-			.presentationDetents([.medium])
-			.presentationBackground(.regularMaterial)
-			#if !targetEnvironment(macCatalyst)
-			.presentationDragIndicator(.visible)
-			#endif
 		}
 	}
 }
@@ -80,7 +76,7 @@ struct PasswordEntrySheet: View {
 	@FocusState private var passwordFocused: Bool
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			Form {
 				Section {
 					LabeledContent("Network") {
@@ -165,11 +161,6 @@ struct WifiNetworkListView: View {
 				onCancel: { showOtherSheet = false }
 			)
 			.trackScreen(.hiddenWiFiNetwork)
-			.presentationDetents([.medium])
-			.presentationBackground(.regularMaterial)
-			#if !targetEnvironment(macCatalyst)
-			.presentationDragIndicator(.visible)
-			#endif
 		}
 	}
 }
@@ -186,7 +177,7 @@ private struct HiddenNetworkSheet: View {
 	@FocusState private var ssidFocused: Bool
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			Form {
 				Section {
 					LabeledContent("Network Name") {

@@ -409,8 +409,7 @@ class MeshtasticAPI: ObservableObject, @unchecked Sendable {
 				if let existing {
 					deviceEntity = existing
 				} else {
-					deviceEntity = DeviceHardwareEntity()
-					context.insert(deviceEntity)
+					deviceEntity = DeviceHardwareEntity(context: context)
 				}
 
 				// Update Properties
@@ -617,8 +616,7 @@ deviceEntity.architecture = device.architecture
 		if let found = try? context.fetch(descriptor).first {
 			existingRelease = found
 		} else {
-			existingRelease = FirmwareReleaseEntity()
-			context.insert(existingRelease)
+			existingRelease = FirmwareReleaseEntity(context: context)
 		}
 		existingRelease.versionId = release.id
 		existingRelease.title = release.title
@@ -719,9 +717,8 @@ deviceEntity.architecture = device.architecture
 
 				let existing = deviceEntity.images.first(where: { $0.fileName == imageName })
 				if networkResult == nil, existing?.svgData?.isEmpty == false { continue }
-				let imageEntity = existing ?? DeviceHardwareImageEntity()
+				let imageEntity = existing ?? DeviceHardwareImageEntity(context: context)
 				if existing == nil {
-					context.insert(imageEntity)
 					imageEntity.device = deviceEntity
 				}
 				imageEntity.fileName = imageName
@@ -745,9 +742,8 @@ deviceEntity.architecture = device.architecture
 			return existingTag
 		}
 
-		let newTag = DeviceHardwareTagEntity()
+		let newTag = DeviceHardwareTagEntity(context: context)
 		newTag.tag = tag
-		context.insert(newTag)
 		return newTag
 	}
 
@@ -796,8 +792,7 @@ extension MeshtasticAPI {
 				if let existing {
 					deviceEntity = existing
 				} else {
-					deviceEntity = DeviceHardwareEntity()
-					context.insert(deviceEntity)
+					deviceEntity = DeviceHardwareEntity(context: context)
 				}
 				deviceEntity.hwModel = Int64(device.hwModel)
 				deviceEntity.hwModelSlug = device.hwModelSlug

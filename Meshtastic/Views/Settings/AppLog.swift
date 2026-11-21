@@ -126,7 +126,7 @@ struct AppLog: View {
 				}
 			}
 		)
-		.searchable(text: $searchText, placement: .navigationBarDrawer, prompt: "Search")
+		.searchable(text: $searchText, placement: .toolbar, prompt: "Search")
 		.navigationBarTitle(navTitle, displayMode: .inline)
 		.toolbar {
 #if targetEnvironment(macCatalyst)
@@ -178,96 +178,112 @@ struct AppLog: View {
 	}
 
 	private var phoneLogTable: some View {
-				Table(logs, selection: $selection, sortOrder: $sortOrder) {
-					TableColumn("Message", value: \.composedMessage) { value in
-						Text(value.composedMessage)
-							.foregroundStyle(value.level.color)
-							.font(.caption)
-					}
-					.width(ideal: 200, max: .infinity)
+			Table(logs, selection: $selection, sortOrder: $sortOrder) {
+				TableColumn("Message", value: \.composedMessage) { value in
+					Text(value.composedMessage)
+						.foregroundStyle(value.level.color)
+						.font(.caption)
 				}
-				.monospaced()
-				.safeAreaInset(edge: .bottom, alignment: .trailing) {
-					HStack {
-						Button(action: {
-							withAnimation {
-								isEditingFilters = !isEditingFilters
-							}
-						}) {
-							Image(systemName: !isEditingFilters ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-								.padding(.vertical, 5)
+				.width(ideal: 200, max: .infinity)
+			}
+			.monospaced()
+			.safeAreaInset(edge: .bottom, alignment: .trailing) {
+				HStack {
+					Button(action: {
+						withAnimation {
+							isEditingFilters = !isEditingFilters
 						}
-						.tint(Color(UIColor.secondarySystemBackground))
-						.foregroundColor(.accentColor)
-						.buttonStyle(.borderedProminent)
+					}) {
+						Image(systemName: !isEditingFilters ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+							.padding(.vertical, 5)
 					}
-					.controlSize(.regular)
-					.padding(5)
+					.tint(Color(UIColor.secondarySystemBackground))
+					.foregroundColor(.accentColor)
+					.buttonStyle(.borderedProminent)
 				}
-				.padding(.bottom, 5)
-				.padding(.trailing, 5)
-				.disabled(selection != nil)
-				.overlay {
-					if logs.isEmpty {
-						ContentUnavailableView("Loading Logs. . .", systemImage: "scroll")
+				.controlSize(.regular)
+				.padding(5)
+			}
+			.padding(.bottom, 5)
+			.padding(.trailing, 5)
+			.disabled(selection != nil)
+			.overlay {
+				if logs.isEmpty {
+					VStack(spacing: 16) {
+						Image(systemName: "scroll")
+							.font(.system(size: 48))
+							.foregroundColor(.secondary)
+						Text("Loading Logs. . .")
+							.font(.title2)
+							.foregroundColor(.secondary)
 					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
 				}
-				.refreshable {
-					await logs = searchAppLogs()
-					logs.sort(using: sortOrder)
-				}
+			}
+			.refreshable {
+				await logs = searchAppLogs()
+				logs.sort(using: sortOrder)
+			}
 	}
 
 	private var desktopLogTable: some View {
-				Table(logs, selection: $selection, sortOrder: $sortOrder) {
-					TableColumn("Time") { value in
-						Text(Self.logDateFormatter.string(from: value.date))
-					}
-					.width(min: 215, max: 240)
-					TableColumn("Level") { value in
-						Text(value.level.description)
-							.foregroundStyle(value.level.color)
-					}
-					.width(min: 85, max: 110)
-					TableColumn("Category", value: \.category)
-						.width(min: 80, max: 130)
-					TableColumn("Message", value: \.composedMessage) { value in
-						Text(value.composedMessage)
-							.foregroundStyle(value.level.color)
-							.font(.body)
-					}
-					.width(ideal: 200, max: .infinity)
+			Table(logs, selection: $selection, sortOrder: $sortOrder) {
+				TableColumn("Time") { value in
+					Text(Self.logDateFormatter.string(from: value.date))
 				}
-				.monospaced()
-				.safeAreaInset(edge: .bottom, alignment: .trailing) {
-					HStack {
-						Button(action: {
-							withAnimation {
-								isEditingFilters = !isEditingFilters
-							}
-						}) {
-							Image(systemName: !isEditingFilters ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-								.padding(.vertical, 5)
+				.width(min: 215, max: 240)
+				TableColumn("Level") { value in
+					Text(value.level.description)
+						.foregroundStyle(value.level.color)
+				}
+				.width(min: 85, max: 110)
+				TableColumn("Category", value: \.category)
+					.width(min: 80, max: 130)
+				TableColumn("Message", value: \.composedMessage) { value in
+					Text(value.composedMessage)
+						.foregroundStyle(value.level.color)
+						.font(.body)
+				}
+				.width(ideal: 200, max: .infinity)
+			}
+			.monospaced()
+			.safeAreaInset(edge: .bottom, alignment: .trailing) {
+				HStack {
+					Button(action: {
+						withAnimation {
+							isEditingFilters = !isEditingFilters
 						}
-						.tint(Color(UIColor.secondarySystemBackground))
-						.foregroundColor(.accentColor)
-						.buttonStyle(.borderedProminent)
+					}) {
+						Image(systemName: !isEditingFilters ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+							.padding(.vertical, 5)
 					}
-					.controlSize(.regular)
-					.padding(5)
+					.tint(Color(UIColor.secondarySystemBackground))
+					.foregroundColor(.accentColor)
+					.buttonStyle(.borderedProminent)
 				}
-				.padding(.bottom, 5)
-				.padding(.trailing, 5)
-				.disabled(selection != nil)
-				.overlay {
-					if logs.isEmpty {
-						ContentUnavailableView("Loading Logs. . .", systemImage: "scroll")
+				.controlSize(.regular)
+				.padding(5)
+			}
+			.padding(.bottom, 5)
+			.padding(.trailing, 5)
+			.disabled(selection != nil)
+			.overlay {
+				if logs.isEmpty {
+					VStack(spacing: 16) {
+						Image(systemName: "scroll")
+							.font(.system(size: 48))
+							.foregroundColor(.secondary)
+						Text("Loading Logs. . .")
+							.font(.title2)
+							.foregroundColor(.secondary)
 					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
 				}
-				.refreshable {
-					await logs = searchAppLogs()
-					logs.sort(using: sortOrder)
-				}
+			}
+			.refreshable {
+				await logs = searchAppLogs()
+				logs.sort(using: sortOrder)
+			}
 	}
 
 	func didDismiss() {
@@ -348,7 +364,15 @@ struct AppLog: View {
 			.dismissesKeyboardOnScroll()
 			.overlay {
 				if entries.isEmpty {
-					ContentUnavailableView("Waiting for packets…", systemImage: "dot.radiowaves.left.and.right")
+					VStack(spacing: 16) {
+						Image(systemName: "dot.radiowaves.left.and.right")
+							.font(.system(size: 48))
+							.foregroundColor(.secondary)
+						Text("Waiting for packets…")
+							.font(.title2)
+							.foregroundColor(.secondary)
+					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
 				}
 			}
 			.safeAreaInset(edge: .bottom, alignment: .trailing) {

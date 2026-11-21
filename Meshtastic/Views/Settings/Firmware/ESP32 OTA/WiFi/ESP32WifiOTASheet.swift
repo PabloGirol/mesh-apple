@@ -134,7 +134,7 @@ struct ESP32WifiOTASheet: View {
 					Logger.services.info("📡 [ESP32 WiFi OTA] Reboot command accepted")
 
 					// Give the packet a moment to send before disconnecting
-					try await Task.sleep(for: .seconds(0.5))
+					try await Task.sleep(nanoseconds: 500_000_000)
 					Logger.services.info("📡 [ESP32 WiFi OTA] Step 3: disconnecting")
 					try await accessoryManager.disconnect()
 					Logger.services.info("📡 [ESP32 WiFi OTA] Disconnected")
@@ -160,7 +160,7 @@ struct ESP32WifiOTASheet: View {
 					accessoryManager.otaInProgress = false
 					accessoryManager.userRequestedConnectionCancellation = false
 					accessoryManager.shouldAutomaticallyConnectToPreferredPeripheralAfterError = true
-					try await Task.sleep(for: .seconds(3))
+					try await Task.sleep(nanoseconds: 3_000_000_000)
 					try await accessoryManager.connect(to: device, retries: 5)
 				}
 			} catch OTAError.notAnIPv4Address {

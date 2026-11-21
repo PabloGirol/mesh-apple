@@ -464,7 +464,7 @@ actor DocTranslationService {
 			updateProgress(.translating(completed: index + 1, total: totalPages, description: page.title))
 			let elapsed = ContinuousClock.now - stepStart
 			if elapsed < minStepDuration {
-				try? await Task.sleep(for: minStepDuration - elapsed)
+				try? await Task.sleep(nanoseconds: 150_000_000)
 			}
 		}
 
@@ -487,7 +487,7 @@ actor DocTranslationService {
 			updateProgress(.translating(completed: index + 1, total: totalPages, description: "Nav Labels"))
 			let elapsed = ContinuousClock.now - stepStart
 			if elapsed < minStepDuration {
-				try? await Task.sleep(for: minStepDuration - elapsed)
+				try? await Task.sleep(nanoseconds: 150_000_000)
 			}
 		}
 
@@ -516,7 +516,7 @@ actor DocTranslationService {
 			updateProgress(.translating(completed: index + 1, total: totalPages, description: "Indexing Page"))
 			let elapsed = ContinuousClock.now - stepStart
 			if elapsed < minStepDuration {
-				try? await Task.sleep(for: minStepDuration - elapsed)
+				try? await Task.sleep(nanoseconds: 150_000_000)
 			}
 		}
 		if !searchEntries.isEmpty {
@@ -546,7 +546,7 @@ actor DocTranslationService {
 			let stepStart = ContinuousClock.now
 			let elapsed = ContinuousClock.now - stepStart
 			if elapsed < minStepDuration {
-				try? await Task.sleep(for: minStepDuration - elapsed)
+				try? await Task.sleep(nanoseconds: 150_000_000)
 			}
 		}
 
@@ -1615,3 +1615,4 @@ actor DocTranslationService {
 			.replacingOccurrences(of: ">", with: "&gt;")
 	}
 }
+

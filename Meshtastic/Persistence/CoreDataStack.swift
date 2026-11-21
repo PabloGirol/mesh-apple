@@ -390,8 +390,3 @@ extension NSManagedObjectContext {
         return try fetch(request).first
     }
 }
-
-import Foundation // for Logger
-extension Logger {
-    static let data = Logger(subsystem: "gvh.MeshtasticClient", category: "data")
-}

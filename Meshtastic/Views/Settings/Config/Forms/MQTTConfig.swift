@@ -319,10 +319,14 @@ private struct RootTopicField: View {
 		}
 		.hostedSheet(isPresented: $showFinder) {
 			MQTTTopicFinder(config: $config, node: node)
-				.presentationDetents([.large])
-				#if !targetEnvironment(macCatalyst)
-				.presentationDragIndicator(.visible)
-				#endif
+				.ifAvailable(iOS 16.0) { view in
+					view.presentationDetents([.large])
+				}
+				.ifAvailable(iOS 16.0) { view in
+					#if !targetEnvironment(macCatalyst)
+					view.presentationDragIndicator(.visible)
+					#endif
+				}
 		}
 		Text("See which root topics are active on your broker near you, and pick one.")
 			.foregroundColor(.gray)

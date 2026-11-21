@@ -150,7 +150,7 @@ class MetricsSeriesList: ObservableObject, RandomAccessCollection, RangeReplacea
 	typealias Element = MetricsChartSeries
 	typealias SubSequence = ArraySlice<Element>
 
-	required init() {
+	override required init() {
 		series = []
 		persistenceKey = nil
 		store = .standard

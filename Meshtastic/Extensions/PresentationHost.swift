@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import NavigationStackShim
 
 /// Where a screen is shown. In a window, sheets, alerts and confirmation dialogs work as usual.
 /// On a fixed panel inside the visionOS cinema tent (an immersive space) none of them ever
@@ -54,7 +55,7 @@ private struct PanelPresentationHostModifier: ViewModifier {
 				.accessibilityHidden(showingPage)
 			// Always there so the first page slides in like a push. Its root is empty, so every
 			// page is pushed and has a back button, and dismiss() inside a page pops it.
-			NavigationStack(path: Binding(get: { presenter.path }, set: { presenter.path = $0 })) {
+			CompatNavigationStackWithPath(path: Binding(get: { presenter.path }, set: { presenter.path = $0 })) {
 				Color.clear
 					.toolbar(.hidden, for: .navigationBar)
 					.navigationDestination(for: UUID.self) { id in
@@ -300,14 +301,14 @@ private struct PanelPush<Page: View>: ViewModifier {
 		Group {
 			if let presenter {
 				content
-					.onChange(of: isPresented, initial: true) { _, shown in
+					.onChange(of: isPresented) { _, shown in
 						if shown { push(on: presenter) } else { presenter.pop(id: pageID) }
 					}
 					.onChange(of: contentID) {
 						if isPresented { push(on: presenter) }
 					}
 			} else {
-				content.navigationDestination(isPresented: $isPresented, destination: page)
+				if #available(iOS 16.0, *) { content.navigationDestination(isPresented: $isPresented, destination: page) } else { content }
 			}
 		}
 		.onChange(of: isPresented) { old, new in
@@ -334,43 +335,12 @@ extension View {
 		modifier(HostedPopover(isPresented: isPresented, anchor: nil, arrowEdge: nil, page: content))
 	}
 
-	/// `.popover(isPresented:attachmentAnchor:arrowEdge:)` in a window; a pushed page in a panel.
-	func hostedPopover<Popover: View>(
-		isPresented: Binding<Bool>,
-		attachmentAnchor: PopoverAttachmentAnchor = .rect(.bounds),
-		arrowEdge: Edge,
-		@ViewBuilder content: @escaping () -> Popover
-	) -> some View {
-		modifier(HostedPopover(isPresented: isPresented, anchor: attachmentAnchor, arrowEdge: arrowEdge, page: content))
-	}
-
 	/// `.popover(item:)` in a window; a pushed page in a panel.
 	func hostedPopover<Item: Identifiable, Popover: View>(
 		item: Binding<Item?>,
 		@ViewBuilder content: @escaping (Item) -> Popover
 	) -> some View {
 		modifier(HostedItemPresentation(style: .popover, item: item, onDismiss: nil, page: content))
-	}
-}
-
-private struct HostedPopover<Popover: View>: ViewModifier {
-	@Binding var isPresented: Bool
-	let anchor: PopoverAttachmentAnchor?
-	let arrowEdge: Edge?
-	let page: () -> Popover
-	@Environment(\.presentationHost) private var host
-
-	func body(content: Content) -> some View {
-		switch host {
-		case .window:
-			if let arrowEdge {
-				content.popover(isPresented: $isPresented, attachmentAnchor: anchor ?? .rect(.bounds), arrowEdge: arrowEdge, content: page)
-			} else {
-				content.popover(isPresented: $isPresented, content: page)
-			}
-		case .panel:
-			content.modifier(PanelPush(isPresented: $isPresented, onDismiss: nil, page: page))
-		}
 	}
 }
 
@@ -637,7 +607,7 @@ private struct HostedAlert<Actions: View, Message: View>: ViewModifier {
 		case .panel:
 			if let presenter {
 				content
-					.onChange(of: isPresented, initial: true) { _, shown in
+					.onChange(of: isPresented) { _, shown in
 						if shown {
 							presenter.show(banner)
 						} else {
@@ -709,18 +679,16 @@ private struct WindowOnly: ViewModifier {
 /// there: it stands in for a control, which shouldn't vanish once a window is open.
 private struct OpenInAppWindowButton: View {
 	@EnvironmentObject private var appState: AppState
-	@Environment(\.openWindow) private var openWindow
 
 	var body: some View {
 		Button {
 			if appState.mainWindowCount > 0 {
 				appState.mainWindowForwardRequest = UUID()
 			} else {
-				#if os(visionOS)
-				CinemaScene.reopenMainWindow(openWindow, appState: appState)
-				#else
-				openWindow(id: MeshtasticAppleApp.mainWindowID)
-				#endif
+				// iOS 15: use URL scheme to open main window
+				if let url = URL(string: "meshtastic:///main") {
+					UIApplication.shared.open(url)
+				}
 			}
 		} label: {
 			Label {
@@ -743,7 +711,12 @@ struct SheetNavigationStack<Content: View>: View {
 
 	var body: some View {
 		switch host {
-		case .window: NavigationStack(root: content)
+		case .window:
+			if #available(iOS 16.0, *) {
+			NavigationStack(root: content)
+		} else {
+			CompatNavigationStack(root: content)
+		}
 		case .panel: content()
 		}
 	}
@@ -836,7 +809,9 @@ private struct PanelActionButtonStyle: PrimitiveButtonStyle {
 				.foregroundStyle(configuration.role == .destructive ? Color.white : Color.primary)
 		}
 		.buttonStyle(.bordered)
-		.controlSize(.large)
+		.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+			view.controlSize(.large)
+		}
 		.tint(configuration.role == .destructive ? .red : nil)
 		.preference(key: PanelButtonRolesKey.self, value: PanelButtonRoles(hasAny: true, hasCancel: configuration.role == .cancel))
 	}
@@ -877,7 +852,9 @@ private struct PanelDialogPage<Actions: View, Message: View>: View {
 							.frame(maxWidth: .infinity)
 					}
 					.buttonStyle(.bordered)
-						.controlSize(.large)
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view.controlSize(.large)
+						}
 				}
 			}
 			.frame(maxWidth: 480)
@@ -910,7 +887,9 @@ private struct PanelBannerCard: View {
 				if !roles.hasAny {
 					Button("OK") { banner.dismiss() }
 						.buttonStyle(.bordered)
-						.controlSize(.large)
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view.controlSize(.large)
+						}
 				}
 			}
 		}

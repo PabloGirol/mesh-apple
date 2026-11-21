@@ -195,7 +195,7 @@ final class SpatialTerrainKeeper: ObservableObject {
 		guard active else { return }
 		loop = Task {
 			while !Task.isCancelled {
-				guard (try? await Task.sleep(for: Self.tick)) != nil else { return }
+				guard (try? await Task.sleep(nanoseconds: UInt64(Self.tick * 1_000_000_000))) != nil else { return }
 				await checkIfDue(container: container)
 			}
 		}

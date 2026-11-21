@@ -47,28 +47,31 @@ struct AirQualityIndex: View {
 			Text(aqiEnum.description)
 				.font(.caption)
 		case .gauge:
-			Gauge(value: Double(aqi), in: 0...500) {
-
+			// iOS 15 fallback: simple progress view
+			VStack(spacing: 4) {
+				HStack {
+					Text("AQI")
+						.foregroundColor(aqiEnum.color)
+					Text("\(Int(aqi))")
+				}
+				ProgressView(value: Double(aqi), total: 500)
+					.tint(gradient)
+			}
+			.accessibilityLabel(String(localized: "Air quality index", comment: "VoiceOver: label for the air quality index gauge"))
+			.accessibilityValue(Text("AQI \(aqi), \(aqiEnum.description)"))
+		case .gradient:
+			// iOS 15 fallback: simple progress view
+			HStack {
+				VStack(spacing: 4) {
+					HStack {
 						Text("AQI")
 							.foregroundColor(aqiEnum.color)
-					} currentValueLabel: {
-						Text("\(Int(aqi))")
+						Text("AQI \(Int(aqi))")
+							.foregroundColor(.gray)
 					}
-					.tint(gradient)
-					.gaugeStyle(.accessoryCircular)
-					.accessibilityLabel(String(localized: "Air quality index", comment: "VoiceOver: label for the air quality index gauge"))
-					.accessibilityValue(Text("AQI \(aqi), \(aqiEnum.description)"))
-		case .gradient:
-			HStack {
-				Gauge(value: Double(aqi), in: 0...500) {
-							Text("AQI")
-							.foregroundColor(aqiEnum.color)
-						} currentValueLabel: {
-							Text("AQI ")+Text("\(Int(aqi))")
-								.foregroundColor(.gray)
-						}
+					ProgressView(value: Double(aqi), total: 500)
 						.tint(gradient)
-						.gaugeStyle(.accessoryLinear)
+				}
 				Text(aqiEnum.description)
 					.font(.caption)
 			}

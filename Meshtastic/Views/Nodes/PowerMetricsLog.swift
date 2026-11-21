@@ -7,8 +7,9 @@
 
 import Foundation
 import SwiftUI
-import Charts
 import OSLog
+import DGCharts
+import NavigationStackShim
 
 struct PowerMetricsLog: View {
 
@@ -71,53 +72,7 @@ struct PowerMetricsLog: View {
 							Text(displayLabel(2)).tag(2)
 						}
 
-						Chart {
-							ForEach(chartData, id: \.self) { point in
-
-								let voltage = channelSelection == 0 ? point.powerCh1Voltage : channelSelection == 1 ? point.powerCh2Voltage : point.powerCh3Voltage
-								let current = channelSelection == 0 ? point.powerCh1Current : channelSelection == 1 ? point.powerCh2Current : point.powerCh3Current
-
-								if let voltage {
-									LineMark(
-										x: .value("Time", point.time ?? Date()),
-										y: .value("Voltage", voltage)
-									)
-									.foregroundStyle(by: .value("Series", "Voltage".localized))
-									.interpolationMethod(.linear)
-									.accessibilityLabel(String(localized: "Voltage at \((point.time ?? Date()).formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for a voltage point on the power metrics chart. %@ is the timestamp."))
-									.accessibilityValue(String(localized: "\(voltage.formatted()) volts", comment: "VoiceOver value spoken as a voltage reading. %@ is the number."))
-								}
-
-								if let current {
-									LineMark(
-										x: .value("Time", point.time ?? Date()),
-										y: .value("Current", current)
-									)
-									.foregroundStyle(by: .value("Series", "Current".localized))
-									.interpolationMethod(.linear)
-									.accessibilityLabel(String(localized: "Current at \((point.time ?? Date()).formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for a current point on the power metrics chart. %@ is the timestamp."))
-									.accessibilityValue(String(localized: "\(current.formatted()) milliamps", comment: "VoiceOver value spoken as a current reading in milliamps. %@ is the number."))
-								}
-							}
-
-							if let chartSelection {
-								RuleMark(x: .value("Second", chartSelection, unit: .second))
-									.foregroundStyle(.tertiary.opacity(0.5))
-									.accessibilityHidden(true)
-							}
-
-						}
-						.chartXAxis(content: {
-							AxisMarks(position: .top)
-						})
-						.chartXAxis(.automatic)
-						.chartXSelection(value: $chartSelection)
-						.chartYScale(domain: minMax.min...minMax.max)
-						.chartForegroundStyleScale([
-							"Voltage".localized: .blue,
-							"Current".localized: .green
-						])
-						.chartLegend(position: .automatic, alignment: .bottom)
+						chartView
 					}
 				}
 				if !showsWideTable {
@@ -237,8 +192,11 @@ struct PowerMetricsLog: View {
 						Label("Clear Log", systemImage: "trash.fill")
 					}
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+					}
 					.padding(.bottom)
 					.padding(.leading)
 					.hostedConfirmation(
@@ -257,6 +215,7 @@ struct PowerMetricsLog: View {
 									} else {
 										Logger.data.error("Clear Power Metrics Log Failed")
 									}
+								}
 							}
 						}
 					}
@@ -269,8 +228,11 @@ struct PowerMetricsLog: View {
 					}
 					.hostedWindowOnly()
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+					}
 					.padding(.bottom)
 					.padding(.trailing)
 				}
@@ -281,7 +243,15 @@ struct PowerMetricsLog: View {
 					chartSelection = metrics.time
 				}
 			} else {
-				ContentUnavailableView("No Power Metrics", systemImage: "slash.circle")
+				VStack(spacing: 16) {
+					Image(systemName: "slash.circle")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Power Metrics")
+						.font(.title2)
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			}
 		}
 		.onAppear {
@@ -306,7 +276,7 @@ struct PowerMetricsLog: View {
 			}
 		}
 		.hostedSheet(isPresented: $isEditingLabels) {
-			SheetNavigationStack {
+			CompatNavigationStack {
 				Form {
 					Section {
 						ForEach(0..<3, id: \.self) { index in
@@ -356,6 +326,94 @@ struct PowerMetricsLog: View {
 				}
 			}
 			)
+	}
+
+	private var chartView: some View {
+		let voltagePoints = chartData.compactMap { point -> ChartDataPoint? in
+			let voltage = channelSelection == 0 ? point.powerCh1Voltage : channelSelection == 1 ? point.powerCh2Voltage : point.powerCh3Voltage
+			guard let voltage = voltage, let time = point.time else { return nil }
+			return ChartDataPoint.fromDate(time, value: voltage)
+		}
+
+		let currentPoints = chartData.compactMap { point -> ChartDataPoint? in
+			let current = channelSelection == 0 ? point.powerCh1Current : channelSelection == 1 ? point.powerCh2Current : point.powerCh3Current
+			guard let current = current, let time = point.time else { return nil }
+			return ChartDataPoint.fromDate(time, value: current)
+		}
+
+		let voltageSeries = ChartSeriesData(
+			id: "voltage",
+			name: "Voltage".localized,
+			color: .blue,
+			chartType: .line,
+			points: voltagePoints,
+			lineWidth: 2.0
+		)
+
+		let currentSeries = ChartSeriesData(
+			id: "current",
+			name: "Current".localized,
+			color: .green,
+			chartType: .line,
+			points: currentPoints,
+			lineWidth: 2.0
+		)
+
+		let ruleMarks: [DGRuleMark] = []
+		if let chartSelection = chartSelection {
+			ruleMarks.append(DGRuleMark(
+				position: chartSelection.timeIntervalSince1970,
+				axis: .x,
+				color: .tertiary,
+				lineWidth: 1.0,
+				dashPattern: nil
+			))
+		}
+
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .top,
+			labelCount: 6,
+			dateFormat: "MM/dd HH:mm"
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: 6,
+			axisMinimum: minMax.min,
+			axisMaximum: minMax.max
+		)
+
+		let legendConfig = DGChartLegendConfig(
+			isEnabled: true,
+			position: .belowChartCenter,
+			alignment: .center,
+			orientation: .horizontal
+		)
+
+		return LineChartView(
+			data: [voltageSeries, currentSeries],
+			xAxisConfig: xAxisConfig,
+			yAxisConfig: yAxisConfig,
+			legendConfig: legendConfig,
+			ruleMarks: ruleMarks,
+			yDomain: minMax.min...minMax.max,
+			visibleXRange: nil,
+			scrollPosition: nil,
+			isScrollable: false,
+			legendHidden: false,
+			frame: nil,
+			selection: nil,
+			onSelectionChanged: nil,
+			backgroundColor: .systemBackground,
+			gridColor: .systemGray4,
+			gridLineWidth: 0.5,
+			drawCircles: false,
+			circleRadius: 4.0,
+			mode: .linear,
+			cubicIntensity: 0.2,
+			drawFilled: false,
+			fillAlpha: 0.3
+		)
 	}
 
 	private func refreshMetrics() {

@@ -148,7 +148,12 @@ struct UserMessageRow: View {
 				
 				// Node Detail Tap
 				if !isCurrentUser {
-					NavigationLink(value: Int64(message.fromUser?.num ?? 0)) {
+					NavigationLink(destination: {
+						if let nodeNum = message.fromUser?.num,
+						   let node = getNodeInfo(id: nodeNum, context: context) {
+							NodeDetail(node: node, nodeNum: nodeNum)
+						}
+					}) {
 						CircleText(text: message.fromUser?.shortName ?? "?", color: Color(UIColor(hex: UInt32(message.fromUser?.num ?? 0))), circleSize: 50)
 					}
 					.buttonStyle(.plain)

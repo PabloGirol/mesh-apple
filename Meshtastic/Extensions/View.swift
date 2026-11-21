@@ -45,12 +45,23 @@ extension View {
 		}
 	}
 
+	/// Conditionally applies a modifier only when running on iOS 16+ (or macOS 13+).
+	/// Use this instead of #if !MESHTASTIC_IOS15 guards for runtime-available APIs like
+	/// presentationDetents, presentationDragIndicator, etc.
+	@ViewBuilder
+	func ifAvailable(_ version: VersionTuple, transform: (Self) -> some View) -> some View {
+		if #available(iOS 16.0, macOS 13.0, *) {
+			transform(self)
+		} else {
+			self
+		}
+	}
+}
+
 	/// Standard capsule-shaped prominent button styling.
 	@ViewBuilder
 	func capsuleButtonStyle() -> some View {
 		self
-			.buttonBorderShape(.capsule)
-			.controlSize(.large)
 			.padding(.horizontal)
 			.buttonStyle(.borderedProminent)
 			.tint(.accentFill)

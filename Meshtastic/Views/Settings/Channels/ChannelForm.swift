@@ -86,11 +86,7 @@ struct ChannelForm: View {
 					HStack(alignment: .center) {
 						Text("Key")
 						Spacer()
-						TextField(
-							"Key",
-							text: $channelKey,
-							axis: .vertical
-						)
+						TextField("Key", text: $channelKey)
 						.padding(6)
 						.disableAutocorrection(true)
 						.keyboardType(.alphabet)

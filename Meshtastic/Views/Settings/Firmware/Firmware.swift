@@ -11,7 +11,6 @@ import StoreKit
 import OSLog
 import SwiftDraw
 import UniformTypeIdentifiers
-import WebKit
 
 // 1. THE WRAPPER
 // Caches the resolved hardware so Core Data re-evaluations don't flash the
@@ -46,9 +45,17 @@ struct Firmware: View {
 				.id("\(resolvedNode.num)-\(firmwareTarget)")
 			} else {
 				List {
-					ContentUnavailableView("Firmware Updates",
-						systemImage: "arrow.triangle.2.circlepath",
-						description: Text("Please reconnect to your device to load firmware information."))
+					VStack(spacing: 16) {
+						Image(systemName: "arrow.triangle.2.circlepath")
+							.font(.system(size: 48))
+							.foregroundColor(.secondary)
+						Text("Firmware Updates")
+							.font(.title2)
+							.foregroundColor(.secondary)
+						Text("Please reconnect to your device to load firmware information.")
+							.foregroundColor(.secondary)
+					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
 				}
 			}
 		}
@@ -754,66 +761,53 @@ private struct FirmwareRow: View {
 
 // MARK: - FirmwareReleaseNotesView
 
-/// Renders GitHub-flavoured markdown release notes using swift-markdown + WKWebView.
+/// Renders GitHub-flavoured markdown release notes using swift-markdown + native AttributedString (iOS 15 compatible).
 struct FirmwareReleaseNotesView: View {
 	let markdown: String
 	let versionId: String
 
 	var body: some View {
-		FirmwareReleaseNotesWebView(html: renderedHTML)
-			.navigationTitle(versionId)
-			.navigationBarTitleDisplayMode(.inline)
+		ScrollView {
+			Text(attributedMarkdown)
+				.font(.body)
+				.textSelection(.enabled)
+				.padding(16)
+				.frame(maxWidth: .infinity, alignment: .leading)
+		}
+		.navigationTitle(versionId)
+		.navigationBarTitleDisplayMode(.inline)
 	}
 
-	private var renderedHTML: String {
+	private var attributedMarkdown: AttributedString {
+		// Convert markdown to HTML using swift-markdown (works on iOS 15)
 		let bodyHTML = MarkdownConverter.convert(markdown)
-		return """
+		// Wrap in minimal HTML document for proper NSAttributedString parsing
+		let htmlString = """
 		<!DOCTYPE html>
 		<html>
 		<head>
 		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<style>
-		:root { color-scheme: light dark; }
-		body {
-			font: -apple-system-body;
-			font-size: 15px;
-			padding: 16px;
-			margin: 0;
-			color: var(--text);
-			background: var(--bg);
-			--text: #1c1c1e;
-			--bg: #ffffff;
-			--code-bg: #f2f2f7;
-			--border: #c6c6c8;
-			--link: #007aff;
-		}
-		@media (prefers-color-scheme: dark) {
-			:root {
-				--text: #f2f2f7;
-				--bg: #1c1c1e;
-				--code-bg: #2c2c2e;
-				--border: #48484a;
-				--link: #0a84ff;
-			}
-		}
-		a { color: var(--link); }
-		h1 { font-size: 1.4em; }
-		h2 { font-size: 1.2em; }
-		h3 { font-size: 1.1em; }
-		code {
-			background: var(--code-bg);
-			padding: 2px 5px;
-			border-radius: 4px;
-			font-size: 0.9em;
-		}
-		pre { background: var(--code-bg); padding: 12px; border-radius: 8px; overflow-x: auto; }
-		pre code { background: none; padding: 0; }
+		body { font-family: -apple-system; font-size: 15px; margin: 0; padding: 0; color: #1c1c1e; background: #ffffff; }
+		@media (prefers-color-scheme: dark) { body { color: #f2f2f7; background: #1c1c1e; } }
+		a { color: #007aff; }
+		@media (prefers-color-scheme: dark) { a { color: #0a84ff; } }
+		h1 { font-size: 1.4em; font-weight: 600; margin: 16px 0 8px; }
+		h2 { font-size: 1.2em; font-weight: 600; margin: 14px 0 7px; }
+		h3 { font-size: 1.1em; font-weight: 600; margin: 12px 0 6px; }
+		code { background: #f2f2f7; padding: 2px 5px; border-radius: 4px; font-size: 0.9em; font-family: monospace; }
+		@media (prefers-color-scheme: dark) { code { background: #2c2c2e; } }
+		pre { background: #f2f2f7; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
+		@media (prefers-color-scheme: dark) { pre { background: #2c2c2e; } }
+		pre code { background: none; padding: 0; font-size: 0.9em; }
 		table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-		th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
-		th { background: var(--code-bg); font-weight: 600; }
-		blockquote { border-left: 3px solid var(--border); margin: 12px 0; padding-left: 12px; color: var(--text); opacity: 0.8; }
-		ul, ol { padding-left: 24px; }
+		th, td { border: 1px solid #c6c6c8; padding: 8px; text-align: left; }
+		@media (prefers-color-scheme: dark) { th, td { border-color: #48484a; } }
+		th { background: #f2f2f7; font-weight: 600; }
+		@media (prefers-color-scheme: dark) { th { background: #2c2c2e; } }
+		blockquote { border-left: 3px solid #c6c6c8; margin: 12px 0; padding-left: 12px; opacity: 0.8; }
+		@media (prefers-color-scheme: dark) { blockquote { border-left-color: #48484a; } }
+		ul, ol { padding-left: 24px; margin: 12px 0; }
 		li { margin: 4px 0; }
 		img { max-width: 100%; }
 		.warning-callout, .important-callout, .tips-callout {
@@ -821,39 +815,54 @@ struct FirmwareReleaseNotesView: View {
 			padding: 12px 16px;
 			margin: 12px 0;
 		}
-		.warning-callout {
-			background: rgba(255, 59, 48, 0.12);
-			border-left: 4px solid #ff3b30;
-		}
-		.important-callout {
-			background: rgba(175, 82, 222, 0.12);
-			border-left: 4px solid #af52de;
-		}
-		.tips-callout {
-			background: rgba(0, 122, 255, 0.12);
-			border-left: 4px solid #007aff;
-		}
+		.warning-callout { background: rgba(255, 59, 48, 0.12); border-left: 4px solid #ff3b30; }
+		.important-callout { background: rgba(175, 82, 222, 0.12); border-left: 4px solid #af52de; }
+		.tips-callout { background: rgba(0, 122, 255, 0.12); border-left: 4px solid #007aff; }
 		</style>
 		</head>
 		<body>\(bodyHTML)</body>
 		</html>
 		"""
-	}
-}
 
-private struct FirmwareReleaseNotesWebView: UIViewRepresentable {
-	let html: String
+		guard let data = htmlString.data(using: .utf8),
+			  let nsAttributed = try? NSAttributedString(
+				data: data,
+				options: [
+					.documentType: NSAttributedString.DocumentType.html,
+					.characterEncoding: String.Encoding.utf8.rawValue
+				],
+				documentAttributes: nil
+			  ) else {
+			// Fallback to plain text if HTML parsing fails — use NSAttributedString for iOS 15 compatibility
+			let plainHtml = "<span style=\"font-family: -apple-system; font-size: 15px;\">\(markdown.replacingOccurrences(of: "\n", with: "<br>"))</span>"
+			guard let plainData = plainHtml.data(using: .utf8),
+				  let plainNsAttributed = try? NSAttributedString(
+					data: plainData,
+					options: [
+						.documentType: NSAttributedString.DocumentType.html,
+						.characterEncoding: String.Encoding.utf8.rawValue
+					],
+					documentAttributes: nil
+				  ) else {
+				// Ultimate fallback - plain string (iOS 15 compatible via NSAttributedString)
+				let ultimateHtml = "<span style=\"font-family: -apple-system; font-size: 15px;\">\(markdown.replacingOccurrences(of: "\n", with: "<br>"))</span>"
+				guard let ultimateData = ultimateHtml.data(using: .utf8),
+					  let ultimateNsAttributed = try? NSAttributedString(
+					data: ultimateData,
+					options: [
+						.documentType: NSAttributedString.DocumentType.html,
+						.characterEncoding: String.Encoding.utf8.rawValue
+					],
+					documentAttributes: nil
+				  ) else {
+					// Last resort - empty attributed string
+					return AttributedString("")
+				}
+				return AttributedString(ultimateNsAttributed)
+			}
+			return AttributedString(plainNsAttributed)
+		}
 
-	func makeUIView(context: Context) -> WKWebView {
-		let config = WKWebViewConfiguration()
-		let webView = WKWebView(frame: .zero, configuration: config)
-		webView.isOpaque = false
-		webView.backgroundColor = .clear
-		webView.scrollView.backgroundColor = .clear
-		return webView
-	}
-
-	func updateUIView(_ webView: WKWebView, context: Context) {
-		webView.loadHTMLString(html, baseURL: nil)
+		return AttributedString(nsAttributed)
 	}
 }

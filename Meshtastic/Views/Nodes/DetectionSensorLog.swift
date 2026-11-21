@@ -5,8 +5,8 @@
 //  Created by Ben on 8/22/23.
 //
 
-import Charts
 import CoreData
+import DGCharts
 import MeshtasticProtobufs
 import OSLog
 import SwiftUI
@@ -35,35 +35,7 @@ struct DetectionSensorLog: View {
 		VStack {
 			if chartData.count > 0 {
 				GroupBox(label: Label("\(chartData.count) Total Detection Events", systemImage: "sensor")) {
-					Chart {
-						ForEach(chartData, id: \.self) { point in
-							Plot {
-								BarMark(
-									x: .value("x", point.timestamp, unit: .hour),
-									y: .value("y", 1)
-								)
-							}
-							.accessibilityLabel(String(localized: "Detection event at \(point.timestamp.formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for a detection-event bar on the detection sensor chart. %@ is the timestamp."))
-							.accessibilityValue(String(localized: "Detected", comment: "VoiceOver value spoken for a detection-event bar on the detection sensor chart."))
-							.interpolationMethod(.cardinal)
-							.foregroundStyle(
-								.linearGradient(
-									colors: [.green, .yellow, .orange, .red],
-									startPoint: .bottom,
-									endPoint: .top
-								)
-							)
-							.alignsMarkStylesWithPlotArea()
-						}
-					}
-					.chartXAxis(content: {
-						AxisMarks(position: .top)
-					})
-					.chartXAxis(.automatic)
-					.chartForegroundStyleScale([
-						"Detection events".localized: .green
-					])
-					.chartLegend(position: .automatic, alignment: .bottom)
+					chartView
 				}
 				.frame(minHeight: 250)
 			}
@@ -122,8 +94,11 @@ struct DetectionSensorLog: View {
 			}
 			.hostedWindowOnly()
 			.buttonStyle(.bordered)
-			.buttonBorderShape(.capsule)
-			.controlSize(.large)
+			.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+				view
+					.buttonBorderShape(.capsule)
+					.controlSize(.large)
+			}
 			.padding(.bottom)
 			.padding(.trailing)
 		}
@@ -149,6 +124,69 @@ struct DetectionSensorLog: View {
 				}
 			}
 			)
+	}
+
+	private var chartView: some View {
+		// Group by hour and count
+		let calendar = Calendar.current
+		let hourlyCounts = Dictionary(grouping: chartData) { message in
+			calendar.dateInterval(of: .hour, for: message.timestamp)?.start ?? message.timestamp
+		}.mapValues { $0.count }
+
+		let sortedHours = hourlyCounts.keys.sorted()
+		let points = sortedHours.map { hour in
+			ChartDataPoint.fromDate(hour, value: Double(hourlyCounts[hour] ?? 0))
+		}
+
+		let seriesData = ChartSeriesData(
+			id: "detections",
+			name: "Detection events".localized,
+			color: .green,
+			chartType: .bar,
+			points: points,
+			lineWidth: 0,
+			barWidth: 0.8
+		)
+
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .top,
+			labelCount: 6,
+			dateFormat: "MM/dd HH:mm"
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: 6,
+			axisMinimum: 0
+		)
+
+		let legendConfig = DGChartLegendConfig(
+			isEnabled: true,
+			position: .belowChartCenter,
+			alignment: .center,
+			orientation: .horizontal
+		)
+
+		return BarChartView(
+			data: [seriesData],
+			xAxisConfig: xAxisConfig,
+			yAxisConfig: yAxisConfig,
+			legendConfig: legendConfig,
+			ruleMarks: [],
+			yDomain: nil,
+			visibleXRange: nil,
+			scrollPosition: nil,
+			isScrollable: false,
+			legendHidden: false,
+			frame: nil,
+			selection: nil,
+			onSelectionChanged: nil,
+			backgroundColor: .systemBackground,
+			gridColor: .systemGray4,
+			gridLineWidth: 0.5,
+			barWidth: 0.8,
+			groupSpace: 0.1
+		)
 	}
 
 	private func refreshDetections() {

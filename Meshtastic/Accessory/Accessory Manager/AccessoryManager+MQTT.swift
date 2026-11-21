@@ -54,7 +54,7 @@ extension AccessoryManager {
 				if fetchedNodeInfo[0].mqttConfig != nil && fetchedNodeInfo[0].mqttConfig?.enabled ?? false && fetchedNodeInfo[0].mqttConfig?.proxyToClientEnabled ?? false {
 					// Brief delay so CFNetwork callbacks don't fire before the app is fully
 					// initialised — prevents a launch-time SIGABRT in CocoaMQTT's stream parser.
-					try? await Task.sleep(for: .seconds(1))
+					try? await Task.sleep(nanoseconds: 1_000_000_000)
 					mqttManager.connectFromConfigSettings(node: fetchedNodeInfo[0])
 				} else {
 					if mqttProxyConnected {

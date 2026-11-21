@@ -186,7 +186,7 @@ private struct FixedPositionRow: View {
 	/// field under Swift Concurrency.
 	private func send(fixed: Bool) {
 		guard let nodeNum = accessoryManager.activeDeviceNum, nodeNum > 0,
-			  let user = node?.user, user.modelContext != nil else {
+			  let user = node?.user, user.managedObjectContext != nil else {
 			Logger.mesh.error("Fixed position change failed - no live user for the connected node")
 			config.fixedPosition = !fixed
 			return

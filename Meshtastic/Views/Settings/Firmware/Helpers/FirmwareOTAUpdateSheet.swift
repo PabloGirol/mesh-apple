@@ -403,26 +403,26 @@ struct FirmwareOTASimulatorView: View {
 
 		Task {
 			// Phase 1: Connecting
-			try? await Task.sleep(for: .milliseconds(600))
+			try? await Task.sleep(nanoseconds: 600_000_000)
 			guard isLiveSimulating else { return }
 			statusState = .connected
 			statusMessage = "Connected. Initializing..."
 
 			// Phase 2: Preparing / Erasing
-			try? await Task.sleep(for: .milliseconds(700))
+			try? await Task.sleep(nanoseconds: 700_000_000)
 			guard isLiveSimulating else { return }
 			statusState = .preparing
 			statusMessage = "Erasing partition..."
 
 			// Phase 3: Transferring
-			try? await Task.sleep(for: .milliseconds(900))
+			try? await Task.sleep(nanoseconds: 900_000_000)
 			guard isLiveSimulating else { return }
 			statusState = .transferring
 			statusMessage = "Uploading firmware..."
 
 			let steps = 40
 			for step in 1...steps {
-				try? await Task.sleep(for: .milliseconds(80))
+				try? await Task.sleep(nanoseconds: 80_000_000)
 				guard isLiveSimulating else { return }
 				progress = Double(step) / Double(steps)
 
@@ -436,7 +436,7 @@ struct FirmwareOTASimulatorView: View {
 
 			// Phase 4: Final verification and complete
 			statusMessage = "Verifying hash..."
-			try? await Task.sleep(for: .milliseconds(500))
+			try? await Task.sleep(nanoseconds: 500_000_000)
 			guard isLiveSimulating else { return }
 
 			progress = 1.0

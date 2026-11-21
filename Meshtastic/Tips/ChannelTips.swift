@@ -5,7 +5,7 @@
  //  Copyright(c) Garth Vander Houwen 8/31/23.
  //
  import SwiftUI
- import TipKit
+import TipKit
 
  struct ShareChannelsTip: Tip {
 

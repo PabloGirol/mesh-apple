@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import NavigationStackShim
 
 // MARK: - Activity row
 
@@ -164,7 +165,7 @@ struct WifiProvisioningView: View {
 	}
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			Group {
 				switch provisioning.state {
 

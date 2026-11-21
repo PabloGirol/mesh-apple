@@ -290,7 +290,7 @@ final class MeshLiveActivityManager: ObservableObject {
 		trackedReadIsDelayed = delay > .zero
 		trackedReadTask = Task { [weak self] in
 			if delay > .zero {
-				try? await Task.sleep(for: delay)
+				try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
 			}
 			guard !Task.isCancelled else { return }
 			self?.trackedReadIsDelayed = false

@@ -78,180 +78,118 @@ struct TraceRouteDetail: View {
 
 	private var legs: TraceRouteLegs {
 		TraceRouteLegs(route: route, preset: preset) { num in
-			findNode(num).map(TraceRouteLegs.NodeDetails.init(node:))
+			findNode(num)?.user?.longName ?? num.toHex()
 		}
 	}
 
-	/// Changes when the route gets its response or position snapshots, so the image is redrawn.
-	private var shareImageKey: String {
-		"\(route.id)|\(route.response)|\(route.nodePositions.count)"
+	private var shareImageKey: Int64 {
+		var key = route.id
+		key = key &* 31 &+ route.time
+		if let shareImage {
+			key = key &* 31 &+ Int64(shareImage.timestamp.timeIntervalSince1970)
+		}
+		return key
 	}
 
+	@MainActor
 	private func renderShareImage() async {
-		let state = route.state()
-		guard state == .complete || state == .observed else {
-			shareImage = nil
-			return
+		let model = TraceRouteShareModel(
+			route: route,
+			preset: preset,
+			findNodeName: { num in findNode(num)?.user?.longName ?? num.toHex() }
+		)
+		do {
+			let image = try await model.renderImage()
+			shareImage = TraceRouteShareImage(image: image, timestamp: Date())
+			isRenderingShareImage = false
+		} catch {
+			Logger.ui.error("Failed to render trace route share image: \(error.localizedDescription)")
+			isRenderingShareImage = false
 		}
-		isRenderingShareImage = true
-		defer { isRenderingShareImage = false }
-		let model = TraceRouteShareModel(route: route, legs: legs, mapWidth: TraceRouteShareStyle.mapWidth)
-		shareImage = await TraceRouteShareRenderer.render(model: model)
-	}
-
-	private func shareLink(_ image: TraceRouteShareImage) -> some View {
-		ShareLink(
-			item: image,
-			subject: Text(image.title),
-			preview: SharePreview(image.title, image: Image(uiImage: image.image))
-		) {
-			Label("Share", systemImage: "square.and.arrow.up")
-		}
-		.hostedWindowOnly()
 	}
 
 	private func findNode(_ num: Int64) -> NodeInfoEntity? {
-		guard num != 0, num != TraceRouteLegs.unknownRepeaterNum else { return nil }
-		return router.cachedNodeInfo(id: num, context: context)
+		guard num != accessoryManager.activeDeviceNum else { return nil }
+		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
+		request.predicate = NSPredicate(format: "num == %lld", num)
+		request.fetchLimit = 1
+		return try? context.fetch(request).first
 	}
 
-	@ViewBuilder
-	private func stateMessage(_ state: TraceRouteState) -> some View {
-		switch state {
-		case .rateLimited:
-			VStack(alignment: .leading, spacing: 6) {
-				Text("Trace route to \(targetName) was not sent.")
-					.font(.headline)
-				Text("Trace Route was rate limited. You can send a trace route a maximum of once every thirty seconds.")
-					.font(.callout)
-					.foregroundStyle(.secondary)
-			}
-		default:
-			VStack(alignment: .leading, spacing: 6) {
-				Text("Trace route sent to \(targetName)")
-					.font(.headline)
-				if state == .noResponse {
-					Text("A Trace Route was sent, no response has been received.")
-						.font(.callout)
-						.foregroundStyle(.secondary)
-				} else {
-					Text("This could take a while, response will appear in the trace route log for the node it was sent to.")
-						.font(.callout)
-						.foregroundStyle(.secondary)
-				}
-			}
-		}
-	}
-
-	@ViewBuilder
-	private func details(state: TraceRouteState) -> some View {
-		if state == .complete || state == .observed {
-			Section {
-				if let roundTrip = route.roundTrip {
-					LabeledContent(String(localized: "Round trip", comment: "Trace route: time from sending the request to getting the response")) {
-						Text(TraceRouteCardModel.formattedRoundTrip(roundTrip))
-					}
-				}
-				LabeledContent(String(localized: "Forward hops", comment: "Trace route: hop count towards the target")) {
-					Text(TraceRouteCardModel.hops(Int(route.hopsTowards)))
-				}
-				if route.hopsBack >= 0 {
-					LabeledContent(String(localized: "Return hops", comment: "Trace route: hop count on the way back")) {
-						Text(TraceRouteCardModel.hops(Int(route.hopsBack)))
-					}
-				}
-				if let time = route.time {
-					LabeledContent("Time") {
-						Text(time.formatted(date: .abbreviated, time: .standard))
-					}
-				}
-			}
-		}
-	}
-
-	/// Map, Share and Trace Route as one row of equal buttons between the card and the route.
-	@ViewBuilder
 	private func actions(state: TraceRouteState) -> some View {
-		let answered = state == .complete || state == .observed
-		let canMap = route.hasPositions && answered
-		let target = route.node
-		let canTrace = !route.observed && accessoryManager.isConnected && target != nil && target?.num != accessoryManager.activeDeviceNum
-		if canMap || answered || canTrace {
-			Section {
-				HStack(spacing: 10) {
-					if canMap {
-						Button {
-							router.selectedTab = .map
-							router.mapState = .traceRoute(route.id)
-						} label: {
-							TraceRouteActionLabel(title: String(localized: "Map", comment: "Trace route detail: button that shows the route on the map"), systemImage: "map")
-						}
-					}
-					if answered {
-						if let shareImage {
-							ShareLink(
-								item: shareImage,
-								subject: Text(shareImage.title),
-								preview: SharePreview(shareImage.title, image: Image(uiImage: shareImage.image))
-							) {
-								TraceRouteActionLabel(title: String(localized: "Share", comment: "Trace route detail: share the route image"), systemImage: "square.and.arrow.up")
-							}
-							.hostedWindowOnly()
-						} else {
-							TraceRouteActionLabel(title: String(localized: "Share", comment: "Trace route detail: share the route image"), systemImage: "square.and.arrow.up", isBusy: isRenderingShareImage)
-								.foregroundStyle(.secondary)
-						}
-					}
-					if canTrace, let target {
-						TraceRouteButton(node: target, compact: true)
-					}
+		Section {
+			if state == .complete || state == .observed {
+				Button {
+					Task { await renderShareImage() }
+				} label: {
+					Label("Share", systemImage: "square.and.arrow.up")
 				}
-				.buttonStyle(.borderless)
-				.listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
-				.listRowBackground(Color.clear)
+				.disabled(isRenderingShareImage)
 			}
-		}
-	}
-
-	@ViewBuilder
-	private var copyButton: some View {
-		if let routeText = route.routeText {
 			Button {
-				var text = String(localized: "Route: \(routeText)")
-				if let back = route.routeBackText {
-					text += "\n" + String(localized: "Route Back: \(back)")
-				}
-				UIPasteboard.general.string = text
+				copyTraceRoute()
 			} label: {
 				Label("Copy", systemImage: "doc.on.doc")
 			}
 		}
 	}
+
+	private var copyButton: some View {
+		Button {
+			copyTraceRoute()
+		} label: {
+			Label("Copy", systemImage: "doc.on.doc")
+		}
+	}
+
+	private var shareLink: (TraceRouteShareImage) -> some View = { shareImage in
+		ShareLink(item: shareImage.image, preview: SharePreview("Trace Route", image: shareImage.image))
+	}
+
+	private func copyTraceRoute() {
+		let text = traceRouteToText(route: route, preset: preset, findNodeName: { num in findNode(num)?.user?.longName ?? num.toHex() })
+		UIPasteboard.general.string = text
+	}
+
+	private func stateMessage(_ state: TraceRouteState) -> some View {
+		switch state {
+		case .pending:
+			Text("Trace route request sent, waiting for response...")
+		case .noResponse:
+			Text("No response received. The target may be out of range or offline.")
+		case .rateLimited:
+			Text("Rate limited. Try again in a moment.")
+		case .complete, .observed:
+			EmptyView()
+		}
+	}
+
+	private func details(state: TraceRouteState) -> some View {
+		Section {
+			DetailRow(title: "State", value: state.description)
+			if state == .complete || state == .observed {
+				DetailRow(title: "Round Trip", value: route.roundTripMs.map { "\($0) ms" } ?? "—")
+				DetailRow(title: "Hops", value: "\(route.hopCount)")
+			}
+			DetailRow(title: "Requested", value: route.sentAt.formatted(date: .abbreviated, time: .standard))
+			if let time = route.time {
+				DetailRow(title: "Completed", value: time.formatted(date: .abbreviated, time: .standard))
+			}
+		}
+	}
 }
 
-/// One of the equal-width action tiles in the trace route detail: an icon over a short title.
-struct TraceRouteActionLabel: View {
+private struct DetailRow: View {
 	let title: String
-	let systemImage: String
-	var isBusy = false
+	let value: String
 
 	var body: some View {
-		VStack(spacing: 6) {
-			if isBusy {
-				ProgressView()
-					.frame(height: 22)
-			} else {
-				Image(systemName: systemImage)
-					.font(.title3)
-					.frame(height: 22)
-			}
+		HStack {
 			Text(title)
-				.font(.caption.weight(.semibold))
-				.lineLimit(1)
-				.minimumScaleFactor(0.8)
+				.foregroundStyle(.secondary)
+			Spacer()
+			Text(value)
+				.font(.callout.monospacedDigit())
 		}
-		.frame(maxWidth: .infinity, minHeight: 64)
-		.background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-		.contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 	}
 }

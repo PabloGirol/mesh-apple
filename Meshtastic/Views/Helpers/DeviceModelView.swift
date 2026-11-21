@@ -295,7 +295,7 @@ struct DeviceModelFullScreen: View {
 	@Environment(\.presentationHost) private var presentationHost
 	/// A scene can only hold an entity once, so this view turns its own copy.
 	@State private var stage: DeviceModelStage
-	/// How close the model is: the zoom button steps through the stage's levels.
+	/// How close the model is: the zoom button steps from the whole model to the case to the screen.
 	@State private var zoomLevel: DeviceModelStage.ZoomLevel = .model
 
 	private var accessoryManager: AccessoryManager { AccessoryManager.shared }
@@ -314,7 +314,6 @@ struct DeviceModelFullScreen: View {
 				NavigationStack { content }
 			}
 		}
-		.presentationDetents([.large])
 		// Without the live screen the zoom button goes, so go back to the whole model with it.
 		.onChange(of: liveScreen) { _, live in
 			guard !live, zoomLevel != .model else { return }

@@ -3,9 +3,10 @@
 //  Meshtastic
 //
 //  Copyright(c) Garth Vander Houwen 10/13/26.
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import Charts
+import DGCharts
 import SwiftUI
 
 /// Hop counts over time, forward and back on the leading axis and the round trip on the trailing
@@ -33,75 +34,116 @@ struct TraceRouteChart: View {
 
 	var body: some View {
 		let scale = scale
-		Chart {
-			ForEach(points) { point in
-				LineMark(x: .value("Time", point.date), y: .value("Hops", point.forwardHops), series: .value("Series", forwardName))
-					.foregroundStyle(by: .value("Series", forwardName))
-					.lineStyle(StrokeStyle(lineWidth: 2))
-					.symbol(.circle)
-					.accessibilityLabel(forwardName)
-					.accessibilityValue(TraceRouteCardModel.hops(point.forwardHops))
-				if let backHops = point.backHops {
-					LineMark(x: .value("Time", point.date), y: .value("Hops", backHops), series: .value("Series", backName))
-						.foregroundStyle(by: .value("Series", backName))
-						.lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 3]))
-						.symbol(.square)
-						.accessibilityLabel(backName)
-						.accessibilityValue(TraceRouteCardModel.hops(backHops))
-				}
-				if let roundTrip = point.roundTrip {
-					LineMark(x: .value("Time", point.date), y: .value("Hops", scale.plotted(roundTrip: roundTrip)), series: .value("Series", roundTripName))
-						.foregroundStyle(by: .value("Series", roundTripName))
-						.lineStyle(StrokeStyle(lineWidth: 1.5))
-						.symbol(.triangle)
-						.accessibilityLabel(roundTripName)
-						.accessibilityValue(TraceRouteCardModel.formattedRoundTrip(roundTrip))
-				}
-			}
-			if let selectedPoint {
-				RuleMark(x: .value("Time", selectedPoint.date))
-					.foregroundStyle(Color.secondary.opacity(0.5))
-					.accessibilityHidden(true)
-			}
+
+		// Build chart data
+		let forwardPoints = points.compactMap { point -> ChartDataPoint? in
+			ChartDataPoint.fromDate(point.date, value: Double(point.forwardHops))
 		}
-		.chartForegroundStyleScale([
-			forwardName: TraceRouteColors.forward,
-			backName: TraceRouteColors.back,
-			roundTripName: TraceRouteColors.roundTrip
-		])
-		.chartYScale(domain: 0...scale.maxHops)
-		.chartYAxis {
-			AxisMarks(position: .leading, values: scale.hopTicks) { value in
-				AxisGridLine()
-				AxisValueLabel {
-					if let hops = value.as(Double.self) {
-						Text(Int(hops), format: .number)
-					}
-				}
-			}
-			if scale.hasRoundTrip {
-				AxisMarks(position: .trailing, values: scale.roundTripTicks) { value in
-					AxisValueLabel {
-						if let plotted = value.as(Double.self) {
-							Text(TraceRouteCardModel.formattedRoundTrip(scale.roundTrip(atPlotted: plotted), trimsWholeSeconds: true))
-								.foregroundStyle(TraceRouteColors.roundTrip)
-						}
-					}
-				}
-			}
+
+		let backPoints = points.compactMap { point -> ChartDataPoint? in
+			guard let backHops = point.backHops else { return nil }
+			return ChartDataPoint.fromDate(point.date, value: Double(backHops))
 		}
-		.chartXAxis {
-			AxisMarks(values: .automatic(desiredCount: 3)) { _ in
-				AxisGridLine()
-				AxisValueLabel(format: dateFormat, collisionResolution: .greedy(minimumSpacing: 8))
-			}
+
+		let roundTripPoints = points.compactMap { point -> ChartDataPoint? in
+			guard let roundTrip = point.roundTrip else { return nil }
+			return ChartDataPoint.fromDate(point.date, value: scale.plotted(roundTrip: roundTrip))
 		}
-		.chartLegend(position: .bottom, alignment: .leading)
-		.chartXSelection(value: $rawSelection)
-		.onChange(of: rawSelection) { _, date in
-			guard let date, let point = TraceRouteChartPoint.nearest(to: date, in: points) else { return }
-			selectedID = point.id
+
+		let forwardSeries = ChartSeriesData(
+			id: "forward",
+			name: forwardName,
+			color: TraceRouteColors.forward,
+			chartType: .line,
+			points: forwardPoints,
+			lineWidth: 2.0,
+			drawCircles: true,
+			circleRadius: 4.0,
+			mode: .linear
+		)
+
+		var seriesData: [ChartSeriesData] = [forwardSeries]
+
+		if !backPoints.isEmpty {
+			let backSeries = ChartSeriesData(
+				id: "back",
+				name: backName,
+				color: TraceRouteColors.back,
+				chartType: .line,
+				points: backPoints,
+				lineWidth: 2.0,
+				drawCircles: true,
+				circleRadius: 4.0,
+				mode: .linear,
+				dashPattern: [5, 3]
+			)
+			seriesData.append(backSeries)
 		}
-		.frame(height: 200)
+
+		if !roundTripPoints.isEmpty {
+			let roundTripSeries = ChartSeriesData(
+				id: "roundTrip",
+				name: roundTripName,
+				color: TraceRouteColors.roundTrip,
+				chartType: .line,
+				points: roundTripPoints,
+				lineWidth: 1.5,
+				drawCircles: true,
+				circleRadius: 4.0,
+				mode: .linear
+			)
+			seriesData.append(roundTripSeries)
+		}
+
+		var ruleMarks: [DGRuleMark] = []
+		if let selectedPoint {
+			ruleMarks.append(DGRuleMark(
+				position: selectedPoint.date.timeIntervalSince1970,
+				axis: .x,
+				color: .secondary,
+				lineWidth: 1.0,
+				dashPattern: nil
+			))
+		}
+
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .bottom,
+			labelCount: 3,
+			dateFormat: dateFormat.format
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: scale.maxHops + 1,
+			axisMinimum: 0,
+			axisMaximum: Double(scale.maxHops)
+		)
+
+		let legendConfig = DGChartLegendConfig(
+			isEnabled: true,
+			position: .belowChartLeft,
+			alignment: .left,
+			orientation: .horizontal
+		)
+
+		return CombinedChartView(
+			data: seriesData,
+			xAxisConfig: xAxisConfig,
+			yAxisConfig: yAxisConfig,
+			legendConfig: legendConfig,
+			ruleMarks: ruleMarks,
+			yDomain: 0...Double(scale.maxHops),
+			visibleXRange: nil,
+			scrollPosition: nil,
+			isScrollable: false,
+			legendHidden: false,
+			frame: CGSize(width: 300, height: 200),
+			selection: nil,
+			onSelectionChanged: nil,
+			backgroundColor: .systemBackground,
+			gridColor: .systemGray4,
+			gridLineWidth: 0.5,
+			drawOrder: [.bar, .bubble, .line, .scatter, .candle]
+		)
 	}
 }

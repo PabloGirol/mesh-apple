@@ -196,49 +196,57 @@ class ESP32WifiOTAViewModel: ObservableObject {
 			self.otaState = .transferring
 			self.statusMessage = "Uploading firmware..."
 		}
-		
-		let isUploading = OSAllocatedUnfairLock(initialState: true)
-		
+
+		// Uses os_unfair_lock (available iOS 10+) for iOS 15 compatibility.
+		var isUploadingLock = os_unfair_lock()
+		var isUploadingState = true
+
+		func withIsUploadingLock<T>(_ body: (inout Bool) -> T) -> T {
+			os_unfair_lock_lock(&isUploadingLock)
+			defer { os_unfair_lock_unlock(&isUploadingLock) }
+			return body(&isUploadingState)
+		}
+
 		try await withThrowingTaskGroup(of: Void.self) { group in
-			
+
 			// TASK A: Writer (Sends Data)
 			group.addTask {
 				var offset = 0
 				let totalSize = data.count
-				
+
 				while offset < totalSize {
 					try Task.checkCancellation()
-					
+
 					let endIndex = min(offset + self.chunkSize, totalSize)
 					let chunk = data[offset..<endIndex]
-					
+
 					try await connection.sendAsync(data: chunk)
-					
+
 					offset += chunk.count
-					
+
 					// Update UI periodically to avoid flooding main thread
 					if offset % (self.chunkSize * 10) == 0 {
 						let percent = Double(offset) / Double(totalSize)
 						await self.updateUI { self.progress = percent }
 					}
 				}
-				
+
 				// MARK: - FIX: Force 100% on upload completion
 				// Because of the modulo operator above, the loop often ends at 99.xxx%.
 				// We force it to 1.0 here so the user sees "100%" while waiting for verification.
 				await self.updateUI { self.progress = 1.0 }
-				
-				isUploading.withLock { $0 = false }
+
+				withIsUploadingLock { $0 = false }
 				Logger.services.info("[ESP OTA] Writer Task: All data sent.")
 			}
-			
+
 			// TASK B: Reader (Processes ACKs and OK)
 			group.addTask {
 				var finished = false
 				while !finished {
 					try Task.checkCancellation()
-					
-					let currentPhaseIsUploading = isUploading.withLock { $0 }
+
+					let currentPhaseIsUploading = withIsUploadingLock { $0 }
 					let timeoutDuration = currentPhaseIsUploading ? self.packetTimeout : self.finalVerifyTimeout
 					
 					if !currentPhaseIsUploading {
@@ -284,7 +292,7 @@ class ESP32WifiOTAViewModel: ObservableObject {
 		while Date() < deadline {
 			try Task.checkCancellation()
 			if await probeTcpConnection(endpoint: endpoint) { return }
-			try await Task.sleep(for: .seconds(1))
+			try await Task.sleep(nanoseconds: 1_000_000_000)
 		}
 		throw OTAError.timeout
 	}
@@ -315,22 +323,23 @@ class ESP32WifiOTAViewModel: ObservableObject {
 		let parameters = NWParameters.udp
 		parameters.allowLocalEndpointReuse = true
 		let listener = try NWListener(using: parameters, on: port)
-		
+
 		return try await withCheckedThrowingContinuation { continuation in
-			let hasResumed = OSAllocatedUnfairLock(initialState: false)
+			var hasResumed = false
+			let lock = os_unfair_lock_s()
 			listener.newConnectionHandler = { newConnection in
 				newConnection.start(queue: .global())
 				newConnection.receiveMessage { data, _, _, _ in
 					if let data = data, let message = String(data: data, encoding: .utf8) {
 						if message.hasPrefix("MeshtasticOTA") {
-							hasResumed.withLock { resumed in
-								if !resumed {
-									resumed = true
-									let endpoint = newConnection.endpoint
-									continuation.resume(returning: endpoint)
-									listener.cancel()
-								}
+							os_unfair_lock_lock(&lock)
+							if !hasResumed {
+								hasResumed = true
+								let endpoint = newConnection.endpoint
+								continuation.resume(returning: endpoint)
+								listener.cancel()
 							}
+							os_unfair_lock_unlock(&lock)
 						}
 					}
 					newConnection.cancel()
@@ -338,14 +347,14 @@ class ESP32WifiOTAViewModel: ObservableObject {
 			}
 			listener.start(queue: .global())
 			Task {
-				try await Task.sleep(for: .seconds(connectionTimeout))
-				hasResumed.withLock { resumed in
-					if !resumed {
-						resumed = true
-						listener.cancel()
-						continuation.resume(throwing: OTAError.timeout)
-					}
+				try await Task.sleep(nanoseconds: UInt64(connectionTimeout * 1_000_000_000))
+				os_unfair_lock_lock(&lock)
+				if !hasResumed {
+					hasResumed = true
+					listener.cancel()
+					continuation.resume(throwing: OTAError.timeout)
 				}
+				os_unfair_lock_unlock(&lock)
 			}
 		}
 	}
@@ -414,48 +423,56 @@ actor AsyncLineReader {
 	private func receiveNextChunk() async throws -> Data {
 		// We use a Lock to hold the continuation so the cancellation handler
 		// can force-resume it if the network stack hangs.
-		let lock = OSAllocatedUnfairLock<CheckedContinuation<Data, Error>?>(initialState: nil)
-		
+		var lock = os_unfair_lock_s()
+		var continuation: CheckedContinuation<Data, Error>? = nil
+
 		return try await withTaskCancellationHandler {
-			return try await withCheckedThrowingContinuation { continuation in
-				lock.withLock { $0 = continuation }
-				
+			return try await withCheckedThrowingContinuation { cont in
+				os_unfair_lock_lock(&lock)
+				continuation = cont
+				os_unfair_lock_unlock(&lock)
+
 				// MARK: - FIX for Deadlock
 				// If `onCancel` ran before we set the lock (race condition), `Task.isCancelled`
 				// will be true here. We must abort immediately.
 				if Task.isCancelled {
-					lock.withLock { state in
-						guard let cont = state else { return }
-						state = nil
+					os_unfair_lock_lock(&lock)
+					if let cont = continuation {
+						continuation = nil
 						cont.resume(throwing: CancellationError())
 					}
+					os_unfair_lock_unlock(&lock)
 					return
 				}
-				
+
 				connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { data, _, _, error in
-					lock.withLock { state in
-						guard let cont = state else { return } // Already cancelled/resumed
-						state = nil
-						
-						if let error = error {
-							cont.resume(throwing: error)
-						} else if let data = data {
-							cont.resume(returning: data)
-						} else {
-							cont.resume(throwing: OTAError.connectionFailed)
-						}
+					os_unfair_lock_lock(&lock)
+					guard let cont = continuation else {
+						os_unfair_lock_unlock(&lock)
+						return
+					}
+					continuation = nil
+					os_unfair_lock_unlock(&lock)
+
+					if let error = error {
+						cont.resume(throwing: error)
+					} else if let data = data {
+						cont.resume(returning: data)
+					} else {
+						cont.resume(throwing: OTAError.connectionFailed)
 					}
 				}
 			}
 		} onCancel: {
 			connection.cancel()
-			
+
 			// Force resume the continuation to unblock 'await'
-			lock.withLock { state in
-				guard let cont = state else { return }
-				state = nil
+			os_unfair_lock_lock(&lock)
+			if let cont = continuation {
+				continuation = nil
 				cont.resume(throwing: CancellationError())
 			}
+			os_unfair_lock_unlock(&lock)
 		}
 	}
 }

@@ -3,10 +3,10 @@
 //  Meshtastic
 //
 //  Copyright(c) Garth Vander Houwen 11/17/23.
+//  Updated for DGCharts iOS 15 compatibility
 //
 
 import Foundation
-import Charts
 
 struct PlottableMeasurement<UnitType: Unit> {
 	var measurement: Measurement<UnitType>

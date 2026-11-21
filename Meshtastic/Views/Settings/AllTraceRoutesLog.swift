@@ -32,7 +32,15 @@ struct AllTraceRoutesLog: View {
 	var body: some View {
 		Group {
 			if traceRoutes.isEmpty {
-				ContentUnavailableView("No Trace Routes", systemImage: "point.3.connected.trianglepath.dotted")
+				VStack(spacing: 16) {
+					Image(systemName: "point.3.connected.trianglepath.dotted")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Trace Routes")
+						.font(.title2)
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			} else {
 				let names = nodeNames
 				List {
@@ -61,11 +69,20 @@ struct AllTraceRoutesLog: View {
 			}
 		}
 		.navigationTitle("Trace Routes")
-		.navigationDestination(item: $openRouteID) { id in
-			if let route = traceRoutes.first(where: { $0.objectID == id }) {
-				TraceRouteDetail(route: route)
-			}
-		}
+		.background(
+			NavigationLink(
+				destination: Group {
+					if let id = openRouteID,
+					   let route = traceRoutes.first(where: { $0.objectID == id }) {
+						TraceRouteDetail(route: route)
+					}
+				},
+				isActive: Binding(
+					get: { openRouteID != nil },
+					set: { if !$0 { openRouteID = nil } }
+				)
+			) { EmptyView() }
+		)
 		.toolbar {
 			ToolbarItem(placement: .topBarTrailing) {
 				ConnectedDevice(deviceConnected: accessoryManager.isConnected, name: accessoryManager.activeConnection?.device.shortName ?? "?")

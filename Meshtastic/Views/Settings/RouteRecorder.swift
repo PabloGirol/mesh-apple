@@ -11,6 +11,7 @@ import MapKit
 import CoreLocation
 import CoreMotion
 import OSLog
+import NavigationStackShim
 
 struct RouteRecorder: View {
 
@@ -87,7 +88,7 @@ struct RouteRecorder: View {
 				.padding()
 			}
 			.hostedSheet(isPresented: $isShowingDetails) {
-				SheetNavigationStack {
+				CompatNavigationStack {
 					VStack {
 							if locationsHandler.isRecording {
 								HStack(alignment: .center) {
@@ -184,8 +185,7 @@ struct RouteRecorder: View {
 											locationsHandler.elevationGain = 0.0
 											locationsHandler.locationsArray.removeAll()
 											locationsHandler.recordingStarted = Date()
-											let newRoute = RouteEntity()
-											context.insert(newRoute)
+											let newRoute = RouteEntity(context: context)
 											newRoute.date = Date()
 											let at = ActivityType(rawValue: activity)
 											newRoute.name = "\(newRoute.date?.relativeTimeOfDay() ?? "morning".localized) \(at?.fileNameString ?? "hike")"
@@ -275,9 +275,14 @@ struct RouteRecorder: View {
 					.sheetCloseButton { isShowingDetails = false }
 				}
 				.trackScreen(.routeRecordingDetails)
-				.presentationDetents([.fraction(0.45), .fraction(0.65)])
-				.presentationDragIndicator(.hidden)
-				.interactiveDismissDisabled(false)
+				.modifier(SheetPresentationModifiers(
+					detents: [.fraction(0.45), .fraction(0.65)],
+					selection: .constant(.fraction(0.45)),
+					contentInteraction: .scrolls,
+					dragIndicatorVisible: false,
+					backgroundInteractionEnabled: false,
+					interactiveDismissDisabled: false
+				))
 				.onAppear {
 					UIApplication.shared.isIdleTimerDisabled = true
 				}
@@ -288,8 +293,7 @@ struct RouteRecorder: View {
 					if locationsHandler.isRecording {
 						if let loc = newLoc {
 							if recording != nil {
-								let locationEntity = LocationEntity()
-								context.insert(locationEntity)
+								let locationEntity = LocationEntity(context: context)
 								locationEntity.routeLocation = recording
 								locationEntity.id = Int32(locationsHandler.count)
 								locationEntity.altitude = Int32(loc.altitude)

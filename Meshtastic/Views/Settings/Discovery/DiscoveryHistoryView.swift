@@ -34,11 +34,18 @@ struct DiscoveryHistoryView: View {
 				}
 			}
 			if sessions.isEmpty {
-				ContentUnavailableView(
-					"No Discovery Sessions",
-					systemImage: "antenna.radiowaves.left.and.right",
-					description: Text("Complete a Local Mesh Discovery scan to see results here.")
-				)
+				VStack(spacing: 16) {
+					Image(systemName: "antenna.radiowaves.left.and.right")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Discovery Sessions")
+						.font(.title2)
+							.foregroundColor(.secondary)
+						Text("Complete a Local Mesh Discovery scan to see results here.")
+							.foregroundColor(.secondary)
+					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
+			}
 			} else {
 				ForEach(sessions, id: \.timestamp) { session in
 					NavigationLink {

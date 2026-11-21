@@ -127,12 +127,17 @@ struct TAKServerConfig: View {
 			}
 			dataPackageURL = nil
 		}
-		.navigationDestination(isPresented: $showShareChannels) {
-			if let node = connectedNode {
-				ShareChannels(node: node)
-					.trackScreen(SettingsNavigationState.shareQRCode.screenName)
-			}
-		}
+		.background(
+			NavigationLink(
+				destination: Group {
+					if let node = connectedNode {
+						ShareChannels(node: node)
+							.trackScreen(SettingsNavigationState.shareQRCode.screenName)
+					}
+				},
+				isActive: $showShareChannels
+			) { EmptyView() }
+		)
 	}
 
 	// MARK: - Primary Channel Warning Section

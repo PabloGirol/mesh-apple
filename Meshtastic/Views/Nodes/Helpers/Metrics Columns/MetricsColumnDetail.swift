@@ -5,6 +5,7 @@
 //  Created by Jake Bordens on 12/10/24.
 //
 
+import NavigationStackShim
 import SwiftUI
 
 struct MetricsColumnDetail: View {
@@ -16,14 +17,14 @@ struct MetricsColumnDetail: View {
 	enum ViewOption: String, CaseIterable, Identifiable {
 		case chart = "Chart"
 		case table = "Table"
-		
+
 		var id: String { rawValue }
 	}
-	
+
 	@State private var selectedView: ViewOption = .chart
-	
+
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			Form {
 				Section {
 					Picker("", selection: $selectedView) {
@@ -34,7 +35,7 @@ struct MetricsColumnDetail: View {
 					}
 					.pickerStyle(.segmented)
 				}.listRowBackground(Color.clear)
-				
+
 				switch selectedView {
 				case .chart:
 					ForEach(seriesList) { series in
@@ -94,14 +95,45 @@ struct MetricsColumnDetail: View {
 			.listSectionSpacing(12)
 			.sheetCloseButton()
 		}
-		.presentationDetents([.medium, .large], selection: $currentDetent)
-		.presentationContentInteraction(.scrolls)
-		#if !targetEnvironment(macCatalyst)
-		.presentationDragIndicator(.visible)
-		#endif
-		.presentationBackgroundInteraction(.enabled(upThrough: .medium))
-		.interactiveDismissDisabled(false)
+		.modifier(SheetPresentationModifiers(
+			detents: [.medium, .large],
+			selection: $currentDetent,
+			contentInteraction: .scrolls,
+			dragIndicatorVisible: true,
+			backgroundInteractionEnabled: true,
+			interactiveDismissDisabled: false
+		))
 	}
+}
+
+private struct SheetPresentationModifiers: ViewModifier {
+	let detents: [PresentationDetent]
+	@Binding var selection: PresentationDetent
+	let contentInteraction: PresentationContentInteraction
+	let dragIndicatorVisible: Bool
+	let backgroundInteractionEnabled: Bool
+	let interactiveDismissDisabled: Bool
+
+	func body(content: Content) -> some View {
+		if #available(iOS 16.0, *) {
+			content
+				.presentationDetents(detents, selection: $selection)
+				.presentationContentInteraction(contentInteraction)
+				.presentationDragIndicator(dragIndicatorVisible ? .visible : .hidden)
+				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+				.interactiveDismissDisabled(interactiveDismissDisabled)
+		} else {
+			// iOS 15 fallback: fixed height sheet
+			content
+		}
+	}
+}
+
+#Preview {
+	MetricsColumnDetail(
+		columnList: MetricsColumnList(columns: []),
+		seriesList: MetricsSeriesList()
+	)
 }
 
 #Preview {

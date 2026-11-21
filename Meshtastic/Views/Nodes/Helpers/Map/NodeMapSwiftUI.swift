@@ -73,7 +73,15 @@ struct NodeMapSwiftUI: View {
 				if totalPositionCount > 0 {
 					mapWithNavigation
 				} else {
-					ContentUnavailableView("No Positions", systemImage: "mappin.slash")
+					VStack(spacing: 16) {
+						Image(systemName: "mappin.slash")
+							.font(.system(size: 48))
+							.foregroundColor(.secondary)
+						Text("No Positions")
+							.font(.title2)
+							.foregroundColor(.secondary)
+					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
 				}
 			}
 			.onChange(of: node) {
@@ -114,11 +122,12 @@ struct NodeMapSwiftUI: View {
 			.hostedSheet(isPresented: $isShowingLegend) {
 				MapLegend(isMeshMap: false)
 					.trackScreen(.mapLegend)
+			}
+			.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+				view
 					.presentationDetents([.medium, .large])
 					.presentationContentInteraction(.scrolls)
-					#if !targetEnvironment(macCatalyst)
 					.presentationDragIndicator(.visible)
-					#endif
 					.presentationBackgroundInteraction(.enabled(upThrough: .medium))
 			}
 			.onChange(of: selectedMapLayer) { _, newMapLayer in

@@ -3,9 +3,9 @@
 //  Meshtastic
 //
 //  Created by Jake Bordens on 12/10/24.
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import Charts
 import Foundation
 import SwiftUI
 
@@ -39,7 +39,7 @@ extension MetricsColumnList {
 					} ?? Text(verbatim: Constants.nilValueIndicator)
 				}),
 
-			// Relative Humidity Series Configuration
+			// Dew Point Series Configuration
 			MetricsTableColumn(
 				id: "dewPoint",
 				keyPath: \.dewPoint,
@@ -51,7 +51,7 @@ extension MetricsColumnList {
 						Text("\($0.formattedTemperature())")
 					} ?? Text(verbatim: Constants.nilValueIndicator)
 				}),
-			
+
 			// Barometric Pressure Series Configuration
 			MetricsTableColumn(
 				id: "barometricPressure",
@@ -169,10 +169,8 @@ extension MetricsColumnList {
 				visible: false,
 				tableBody: { _, wind in
 					HStack(spacing: 1.0) {
-						// debug data: let wind = Double.random(in: 0..<360.0)
 						if let wind {
 							HStack(spacing: 1.0) {
-								// debug data: let wind = Double.random(in: 0..<360.0)
 								let wind = Double(wind)
 								Image(systemName: "location.north")
 									.imageScale(.small)

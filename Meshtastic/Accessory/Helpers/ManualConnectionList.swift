@@ -8,7 +8,7 @@
 import Foundation
 
 // Maintains an observable list of devices that's backed by UserDefaults
-public class ManualConnectionList: ObservableObject {
+public final class ManualConnectionList: ObservableObject {
 	static let shared = ManualConnectionList()
 	
 	@Published private var _list: [Device]

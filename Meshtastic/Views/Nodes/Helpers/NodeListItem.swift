@@ -271,10 +271,10 @@ struct NodeListItem: View {
 
 	var body: some View {
 		// Render from the cached snapshot whenever we have one — this path never touches the live
-		// @Model, so a row retained past the node's deletion (nodes/positions are pruned constantly;
+		// NSManagedObject, so a row retained past the node's deletion (nodes/positions are pruned constantly;
 		// bulk deletes leave zombies that `isDeleted` doesn't flag) can't fault. Only the first
 		// appearance reads the live node, and only while it's still valid.
-		if rowSummary != nil || (node.modelContext != nil && !node.isDeleted) {
+		if rowSummary != nil || (node.managedObjectContext != nil && !node.isDeleted) {
 			let summary = rowSummary ?? NodeListRowSummary(node: node)
 			rowContent(summary)
 				.onAppear {
@@ -440,9 +440,9 @@ struct NodeListItem: View {
 		.padding(.bottom, 3)
 		// Gate the identity on liveness too: `.task(id:)` reads the node during body construction,
 		// which would fault on an invalidated model before the body's guard runs.
-		.task(id: (node.modelContext != nil && !node.isDeleted) ? NodeRowRefreshKey(node) : nil) {
+		.task(id: (node.managedObjectContext != nil && !node.isDeleted) ? NodeRowRefreshKey(node) : nil) {
 			// Refresh the snapshot when the node changes, but only while it is still live.
-			guard node.modelContext != nil && !node.isDeleted else { return }
+			guard node.managedObjectContext != nil && !node.isDeleted else { return }
 			// The initial snapshot was just built synchronously; later task runs represent a
 			// last-heard or heard-on-current-LoRa change, or the row reappearing, and must refresh
 			// all snapshotted fields.

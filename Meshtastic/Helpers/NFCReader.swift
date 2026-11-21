@@ -1,11 +1,11 @@
 //
-//  NFCReader.swift
-//  Meshtastic
-//
-//  NDEF tag read/write sessions for sharing and importing Meshtastic
-//  contact and channel URLs. Promoted out of Tools.swift so every share
-//  surface can reuse the same session handling.
-//
+ //  NFCReader.swift
+ //  Meshtastic
+ //
+ //  NDEF tag read/write sessions for sharing and importing Meshtastic
+ //  contact and channel URLs. Promoted out of Tools.swift so every share
+ //  surface can reuse the same session handling.
+ //
 
 import SwiftUI
 import OSLog
@@ -15,7 +15,7 @@ import CoreNFC
 
 #if !targetEnvironment(macCatalyst) && !os(visionOS)
 @available(iOS 18, *)
-final class NFCReader: NSObject, ObservableObject, NFCNDEFReaderSessionDelegate {
+final class NFCReader: NSObject, NFCNDEFReaderSessionDelegate {
 
 	/// The two session modes are mutually exclusive so a read session can
 	/// never write a stale payload and a write session ignores tag contents.
@@ -240,6 +240,25 @@ final class NFCReader: NSObject, ObservableObject, NFCNDEFReaderSessionDelegate 
 		return nil
 	}
 }
+
+/// ObservableObject wrapper for NFCReader to avoid NSObject + ObservableObject multiple inheritance.
+@available(iOS 18, *)
+@MainActor
+final class NFCReaderObservable: ObservableObject {
+	private let reader = NFCReader()
+
+	static var isAvailable: Bool {
+		NFCReader.isAvailable
+	}
+
+	func write(payload: String) {
+		reader.write(payload: payload)
+	}
+
+	func scanToRead(onURL: @escaping (URL) -> Void) {
+		reader.scanToRead(onURL: onURL)
+	}
+}
 #endif
 
 #if !targetEnvironment(macCatalyst) && !os(visionOS)
@@ -250,10 +269,10 @@ final class NFCReader: NSObject, ObservableObject, NFCNDEFReaderSessionDelegate 
 struct NFCWriteButton: View {
 	let payload: String
 	let caption: LocalizedStringKey
-	@StateObject private var nfcReader = NFCReader()
+	@StateObject private var nfcReader = NFCReaderObservable()
 
 	var body: some View {
-		if NFCReader.isAvailable {
+		if NFCReaderObservable.isAvailable {
 			VStack(spacing: 8) {
 				Button {
 					nfcReader.write(payload: payload)

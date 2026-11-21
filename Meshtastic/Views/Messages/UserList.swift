@@ -8,7 +8,6 @@
 import CoreData
 import OSLog
 import SwiftUI
-import TipKit
 
 struct UserList: View {
 
@@ -73,11 +72,14 @@ struct UserList: View {
 					.buttonStyle(.borderedProminent)
 					.accessibilityLabel(editingFilters ? String(localized: "Hide contact filters", comment: "VoiceOver label for the contact filter toggle button when filters are showing") : String(localized: "Show contact filters", comment: "VoiceOver label for the contact filter toggle button when filters are hidden"))
 				}
-				.controlSize(.regular)
 				.padding(5)
 			}
 			.padding(.bottom, 5)
+			if #available(iOS 16.0, *) {
 			.searchable(text: $filters.searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find a contact")
+		} else {
+			.searchable(text: $filters.searchText, placement: .toolbar, prompt: "Find a contact")
+		}
 			.autocorrectionDisabled(true)
 			.dismissesKeyboardOnScroll()
 		}
@@ -210,7 +212,7 @@ private struct FilteredUserList: View {
 
 		do {
 			// Coalesce a burst of refresh triggers; a newer one cancels this task during the wait.
-			try await Task.sleep(for: .milliseconds(100))
+			try await Task.sleep(nanoseconds: 100_000_000)
 			guard containerGeneration == CoreDataStackImpl.shared.containerGeneration else { return }
 			let currentContainer = CoreDataStackImpl.shared.container
 			guard context.container === currentContainer else { return }
@@ -246,58 +248,8 @@ private struct DirectMessageUserRow: View {
 	private var hasUnreadMessages: Bool { unreadCount > 0 }
 
 	var body: some View {
-		NavigationLink(value: user) {
-			ZStack {
-				Image(systemName: "circle.fill")
-					.opacity(hasUnreadMessages ? 1 : 0)
-					.font(.system(size: 10))
-					.foregroundColor(.accentColor)
-					.brightness(0.2)
-			}
-			.accessibilityHidden(!hasUnreadMessages)
-			.accessibilityLabel(String(localized: "\(unreadCount) unread", comment: "VoiceOver: number of unread direct messages from this contact"))
-
-			CircleText(text: user.shortName ?? "?", color: Color(UIColor(hex: UInt32(user.num))))
-
-			VStack(alignment: .leading) {
-				HStack {
-					if user.pkiEncrypted {
-						if !user.keyMatch {
-							Image(systemName: "key.slash")
-								.foregroundColor(.red)
-								.accessibilityLabel(String(localized: "Encryption key mismatch", comment: "VoiceOver label for a contact whose public key no longer matches"))
-						} else {
-							Image(systemName: "lock.fill")
-								.foregroundColor(.green)
-								.accessibilityLabel(String(localized: "Encrypted", comment: "VoiceOver label for an encrypted contact"))
-						}
-					} else {
-						Image(systemName: "lock.open.fill")
-							.foregroundColor(.yellow)
-							.accessibilityLabel(String(localized: "Not encrypted", comment: "VoiceOver label for an unencrypted contact"))
-					}
-					Text(user.displayLongName)
-						.font(.headline)
-						.allowsTightening(true)
-					Spacer()
-					if user.userNode?.favorite ?? false {
-						Image(systemName: "star.fill")
-							.foregroundColor(.yellow)
-							.accessibilityLabel(String(localized: "Favorite", comment: "VoiceOver label for a favorited contact"))
-					}
-					if let summary {
-						messageTimeText(summary)
-					}
-				}
-
-				if let summary {
-					HStack(alignment: .top) {
-						MessagePreviewText(summary.payload)
-							.font(.footnote)
-							.foregroundColor(.onSurfaceVariant)
-					}
-				}
-			}
+		NavigationLink(destination: UserMessageList(user: user)) {
+			userRowContent
 		}
 		.accessibilityElement(children: .combine)
 		.frame(minHeight: 62)
@@ -344,6 +296,61 @@ private struct DirectMessageUserRow: View {
 					userToDeleteMessages = user
 				} label: {
 					Label("Delete Messages", systemImage: "trash")
+				}
+			}
+		}
+	}
+
+	@ViewBuilder
+	private var userRowContent: some View {
+		ZStack {
+			Image(systemName: "circle.fill")
+				.opacity(hasUnreadMessages ? 1 : 0)
+				.font(.system(size: 10))
+				.foregroundColor(.accentColor)
+				.brightness(0.2)
+		}
+		.accessibilityHidden(!hasUnreadMessages)
+		.accessibilityLabel(String(localized: "\(unreadCount) unread", comment: "VoiceOver: number of unread direct messages from this contact"))
+
+		CircleText(text: user.shortName ?? "?", color: Color(UIColor(hex: UInt32(user.num))))
+
+		VStack(alignment: .leading) {
+			HStack {
+				if user.pkiEncrypted {
+					if !user.keyMatch {
+						Image(systemName: "key.slash")
+							.foregroundColor(.red)
+							.accessibilityLabel(String(localized: "Encryption key mismatch", comment: "VoiceOver label for a contact whose public key no longer matches"))
+					} else {
+						Image(systemName: "lock.fill")
+							.foregroundColor(.green)
+							.accessibilityLabel(String(localized: "Encrypted", comment: "VoiceOver label for an encrypted contact"))
+					}
+				} else {
+					Image(systemName: "lock.open.fill")
+						.foregroundColor(.yellow)
+						.accessibilityLabel(String(localized: "Not encrypted", comment: "VoiceOver label for an unencrypted contact"))
+				}
+				Text(user.displayLongName)
+					.font(.headline)
+					.allowsTightening(true)
+				Spacer()
+				if user.userNode?.favorite ?? false {
+					Image(systemName: "star.fill")
+						.foregroundColor(.yellow)
+						.accessibilityLabel(String(localized: "Favorite", comment: "VoiceOver label for a favorited contact"))
+				}
+				if let summary {
+					messageTimeText(summary)
+				}
+			}
+
+			if let summary {
+				HStack(alignment: .top) {
+					MessagePreviewText(summary.payload)
+						.font(.footnote)
+						.foregroundColor(.onSurfaceVariant)
 				}
 			}
 		}

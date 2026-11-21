@@ -149,7 +149,11 @@ private struct ADCOverrideField: View {
 		Toggle(isOn: overriding) {
 			Text(Self.label)
 		}
-		.onChange(of: multiplier, initial: true) { _, new in
+		.onAppear {
+			// iOS 15 fallback for onChange(initial: true)
+			if multiplier > 0 { typed = multiplier }
+		}
+		.onChange(of: multiplier) { _, new in
 			// Follows the message, including the first time the form fills it in. Zero is the
 			// off state rather than a multiplier, so the last real value stays to be restored.
 			if new > 0 { typed = new }

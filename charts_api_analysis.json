@@ -1,0 +1,222 @@
+{
+  "file": "Meshtastic/Views/Nodes/Helpers/Metrics Columns/EnvironmentDefaultSeries.swift",
+  "apis": {
+    "ChartContentBuilder": {
+      "usage": "Used in MetricsChartSeries initializer parameter `chartBody` (MetricsChartSeries.swift:65) to build chart content from multiple marks",
+      "locations": [
+        "EnvironmentDefaultSeries.swift:42-65 (Temperature chartBody)",
+        "EnvironmentDefaultSeries.swift:81-92 (Humidity chartBody)",
+        "EnvironmentDefaultSeries.swift:112-124 (DewPoint chartBody)",
+        "EnvironmentDefaultSeries.swift:145-156 (Pressure chartBody)",
+        "EnvironmentDefaultSeries.swift:166-184 (IAQ chartBody)",
+        "EnvironmentDefaultSeries.swift:200-211 (Lux chartBody)",
+        "EnvironmentDefaultSeries.swift:227-238 (WhiteLux chartBody)",
+        "EnvironmentDefaultSeries.swift:254-265 (UV Lux chartBody)",
+        "EnvironmentDefaultSeries.swift:281-292 (IR Lux chartBody)",
+        "EnvironmentDefaultSeries.swift:309-320 (Radiation chartBody)",
+        "EnvironmentDefaultSeries.swift:336-361 (Wind chartBody)",
+        "EnvironmentDefaultSeries.swift:377-388 (Rainfall1H chartBody)",
+        "EnvironmentDefaultSeries.swift:404-415 (Rainfall24H chartBody)",
+        "EnvironmentDefaultSeries.swift:431-442 (Weight chartBody)",
+        "EnvironmentDefaultSeries.swift:458-469 (Distance chartBody)",
+        "EnvironmentDefaultSeries.swift:485-496 (SoilTemp chartBody)",
+        "EnvironmentDefaultSeries.swift:512-523 (SoilMoisture chartBody)"
+      ]
+    },
+    "Plottable": {
+      "usage": "WindSpeedAndDirection class conforms to Plottable protocol for use as Y-axis value in charts",
+      "locations": [
+        "EnvironmentDefaultSeries.swift:537 (class declaration)",
+        "EnvironmentDefaultSeries.swift:547-548 (primitivePlottable implementation)",
+        "EnvironmentDefaultSeries.swift:550-552 (Comparable implementation)"
+      ]
+    },
+    "AnyChartContent": {
+      "usage": "Type-erased return type for chartBodyClosure in MetricsChartSeries (MetricsChartSeries.swift:43)",
+      "locations": [
+        "MetricsChartSeries.swift:43 (chartBodyClosure type)",
+        "MetricsChartSeries.swift:81-85 (type erasure in initializer)"
+      ]
+    },
+    "foregroundStyle_closures": {
+      "usage": "Closure property on MetricsChartSeries returning AnyShapeStyle? based on chart range, used for dynamic gradients per series",
+      "locations": [
+        "MetricsChartSeries.swift:36 (property declaration)",
+        "MetricsChartSeries.swift:64 (initializer parameter)",
+        "MetricsChartSeries.swift:80 (type erasure to AnyShapeStyle)",
+        "EnvironmentDefaultSeries.swift:33-41 (Temperature: dynamic temperature gradient)",
+        "EnvironmentDefaultSeries.swift:75-80 (Humidity: static purple gradient)",
+        "EnvironmentDefaultSeries.swift:103-111 (DewPoint: dynamic temperature gradient)",
+        "EnvironmentDefaultSeries.swift:139-144 (Pressure: static green gradient)",
+        "EnvironmentDefaultSeries.swift:165 (IAQ: static gray)",
+        "EnvironmentDefaultSeries.swift:194-199 (Lux: static cyan gradient)",
+        "EnvironmentDefaultSeries.swift:221-226 (WhiteLux: static cyan gradient)",
+        "EnvironmentDefaultSeries.swift:248-253 (UV Lux: static indigo gradient)",
+        "EnvironmentDefaultSeries.swift:275-280 (IR Lux: static red gradient)",
+        "EnvironmentDefaultSeries.swift:303-308 (Radiation: static orange gradient)",
+        "EnvironmentDefaultSeries.swift:330-335 (Wind: static yellow gradient)",
+        "EnvironmentDefaultSeries.swift:371-376 (Rainfall1H: static blue gradient)",
+        "EnvironmentDefaultSeries.swift:398-403 (Rainfall24H: static blue-cyan gradient)",
+        "EnvironmentDefaultSeries.swift:425-430 (Weight: static pink gradient)",
+        "EnvironmentDefaultSeries.swift:452-457 (Distance: static teal gradient)",
+        "EnvironmentDefaultSeries.swift:479-484 (SoilTemp: static brown gradient)",
+        "EnvironmentDefaultSeries.swift:506-511 (SoilMoisture: static blue-brown gradient)"
+      ]
+    },
+    "strokeStyle": {
+      "usage": "StrokeStyle property on MetricsChartSeries applied via .lineStyle() modifier on LineMark",
+      "locations": [
+        "MetricsChartSeries.swift:39 (property declaration)",
+        "MetricsChartSeries.swift:63 (initializer parameter with default)",
+        "EnvironmentDefaultSeries.swift:102 (DewPoint: custom dashed StrokeStyle)",
+        "EnvironmentDefaultSeries.swift:62 (Temperature: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:89 (Humidity: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:121 (DewPoint: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:153 (Pressure: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:181 (IAQ: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:208 (Lux: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:235 (WhiteLux: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:262 (UV Lux: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:289 (IR Lux: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:317 (Radiation: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:345 (Wind: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:385 (Rainfall1H: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:411 (Rainfall24H: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:439 (Weight: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:466 (Distance: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:493 (SoilTemp: .lineStyle(series.strokeStyle))",
+        "EnvironmentDefaultSeries.swift:520 (SoilMoisture: .lineStyle(series.strokeStyle))"
+      ]
+    },
+    "chartBody_closures": {
+      "usage": "Closure property chartBodyClosure on MetricsChartSeries that returns AnyChartContent? for rendering chart marks",
+      "locations": [
+        "MetricsChartSeries.swift:42-43 (property declaration)",
+        "MetricsChartSeries.swift:65 (initializer parameter with @ChartContentBuilder)",
+        "MetricsChartSeries.swift:81-85 (type erasure in initializer)",
+        "EnvironmentDefaultSeries.swift:42-65 (Temperature: AreaMark + LineMark)",
+        "EnvironmentDefaultSeries.swift:81-92 (Humidity: LineMark)",
+        "EnvironmentDefaultSeries.swift:112-124 (DewPoint: LineMark)",
+        "EnvironmentDefaultSeries.swift:145-156 (Pressure: LineMark)",
+        "EnvironmentDefaultSeries.swift:166-184 (IAQ: PointMark + LineMark)",
+        "EnvironmentDefaultSeries.swift:200-211 (Lux: LineMark)",
+        "EnvironmentDefaultSeries.swift:227-238 (WhiteLux: LineMark)",
+        "EnvironmentDefaultSeries.swift:254-265 (UV Lux: LineMark)",
+        "EnvironmentDefaultSeries.swift:281-292 (IR Lux: LineMark)",
+        "EnvironmentDefaultSeries.swift:309-320 (Radiation: LineMark)",
+        "EnvironmentDefaultSeries.swift:336-361 (Wind: LineMark + PointMark with custom symbol)",
+        "EnvironmentDefaultSeries.swift:377-388 (Rainfall1H: LineMark)",
+        "EnvironmentDefaultSeries.swift:404-415 (Rainfall24H: LineMark)",
+        "EnvironmentDefaultSeries.swift:431-442 (Weight: LineMark)",
+        "EnvironmentDefaultSeries.swift:458-469 (Distance: LineMark)",
+        "EnvironmentDefaultSeries.swift:485-496 (SoilTemp: LineMark)",
+        "EnvironmentDefaultSeries.swift:512-523 (SoilMoisture: LineMark)"
+      ]
+    },
+    "Chart_Marks": {
+      "AreaMark": {
+        "usage": "Filled area under line for temperature series",
+        "locations": ["EnvironmentDefaultSeries.swift:44-54"]
+      },
+      "LineMark": {
+        "usage": "Primary mark type for all time-series data",
+        "locations": [
+          "EnvironmentDefaultSeries.swift:55-64 (Temperature)",
+          "EnvironmentDefaultSeries.swift:83-91 (Humidity)",
+          "EnvironmentDefaultSeries.swift:114-123 (DewPoint)",
+          "EnvironmentDefaultSeries.swift:147-155 (Pressure)",
+          "EnvironmentDefaultSeries.swift:175-183 (IAQ)",
+          "EnvironmentDefaultSeries.swift:202-210 (Lux)",
+          "EnvironmentDefaultSeries.swift:229-237 (WhiteLux)",
+          "EnvironmentDefaultSeries.swift:256-264 (UV Lux)",
+          "EnvironmentDefaultSeries.swift:283-291 (IR Lux)",
+          "EnvironmentDefaultSeries.swift:311-319 (Radiation)",
+          "EnvironmentDefaultSeries.swift:339-346 (Wind speed)",
+          "EnvironmentDefaultSeries.swift:379-387 (Rainfall1H)",
+          "EnvironmentDefaultSeries.swift:406-414 (Rainfall24H)",
+          "EnvironmentDefaultSeries.swift:433-441 (Weight)",
+          "EnvironmentDefaultSeries.swift:460-468 (Distance)",
+          "EnvironmentDefaultSeries.swift:487-495 (SoilTemp)",
+          "EnvironmentDefaultSeries.swift:514-522 (SoilMoisture)"
+        ]
+      },
+      "PointMark": {
+        "usage": "Data points for IAQ and wind direction symbols",
+        "locations": [
+          "EnvironmentDefaultSeries.swift:169-174 (IAQ: Circle symbol)",
+          "EnvironmentDefaultSeries.swift:347-359 (Wind: custom rotating arrow symbol)"
+        ]
+      }
+    },
+    "Chart_Modifiers": {
+      "interpolationMethod": {
+        "usage": ".interpolationMethod(.catmullRom) for smooth curves on all LineMark and AreaMark",
+        "locations": "All chartBody closures (20 occurrences)"
+      },
+      "foregroundStyle_by": {
+        "usage": ".foregroundStyle(by: .value(\"Series\", series.abbreviatedName)) for legend grouping",
+        "locations": "All chartBody closures (20 occurrences)"
+      },
+      "lineStyle": {
+        "usage": ".lineStyle(series.strokeStyle) applies StrokeStyle to LineMark",
+        "locations": "All chartBody closures with LineMark (20 occurrences)"
+      },
+      "alignsMarkStylesWithPlotArea": {
+        "usage": ".alignsMarkStylesWithPlotArea() for consistent styling across plot area",
+        "locations": "All chartBody closures (20 occurrences)"
+      },
+      "opacity": {
+        "usage": ".opacity(0.6) on AreaMark for transparency",
+        "locations": ["EnvironmentDefaultSeries.swift:54"]
+      },
+      "accessibilityHidden": {
+        "usage": ".accessibilityHidden(true) on AreaMark",
+        "locations": ["EnvironmentDefaultSeries.swift:53"]
+      },
+      "symbol": {
+        "usage": ".symbol(Circle()) for IAQ points; .symbol({ ... }) for custom wind direction arrow",
+        "locations": [
+          "EnvironmentDefaultSeries.swift:173",
+          "EnvironmentDefaultSeries.swift:351-359"
+        ]
+      },
+      "foregroundStyle_mark": {
+        "usage": ".foregroundStyle(iaqEnum.color) on PointMark; .foregroundStyle(.yellow) on wind symbol",
+        "locations": [
+          "EnvironmentDefaultSeries.swift:174",
+          "EnvironmentDefaultSeries.swift:359"
+        ]
+      },
+      "rotationEffect": {
+        "usage": ".rotationEffect(.degrees(Double(wd))) on wind direction symbol",
+        "locations": ["EnvironmentDefaultSeries.swift:356-357"]
+      }
+    },
+    "AnyShapeStyle": {
+      "usage": "Type-erased ShapeStyle for foregroundStyle closure return type",
+      "locations": [
+        "MetricsChartSeries.swift:36 (property type)",
+        "MetricsChartSeries.swift:80 (type erasure in initializer)"
+      ]
+    },
+    "LinearGradient": {
+      "usage": "Used in foregroundStyle closures for gradient fills",
+      "locations": [
+        "EnvironmentDefaultSeries.swift:40 (Temperature)",
+        "EnvironmentDefaultSeries.swift:110 (DewPoint)",
+        "EnvironmentDefaultSeries.swift:76-79, 140-143, 195-198, 222-225, 249-252, 276-279, 304-307, 331-334, 372-375, 399-402, 426-429, 453-456, 480-483, 507-510 (all other series)"
+      ]
+    },
+    "Gradient_Stop": {
+      "usage": "Used in generateStops() function for temperature gradient stops",
+      "locations": [
+        "EnvironmentDefaultSeries.swift:565-579 (generateStops function)",
+        "EnvironmentDefaultSeries.swift:576 (Gradient.Stop creation)"
+      ]
+    },
+    "Value_Plotting": {
+      "usage": ".value(\"Label\", value) for plotting X and Y values in marks",
+      "locations": "All chartBody closures for x: .value(\"Time\", time) and y: .value(series.abbreviatedName, value)"
+    }
+  }
+}

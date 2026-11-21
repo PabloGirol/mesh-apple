@@ -298,7 +298,7 @@ actor BLEConnection: Connection {
 			guard let self else { return }
 			do {
 				while !Task.isCancelled {
-					try await Task.sleep(for: .seconds(10))
+					try await Task.sleep(nanoseconds: 10_000_000_000)
 					await self.requestRSSIRead()
 				}
 			} catch {
@@ -562,7 +562,7 @@ extension BLEConnection {
 					Logger.transport.error("🛜 [BLE] radio out of buffers for a \(binaryData.count, privacy: .public)B write; retry \(attempt + 1, privacy: .public)")
 					// Not `try?`: a cancellation during the backoff must propagate rather than fall
 					// through into another write.
-					try await Task.sleep(for: backoff)
+					try await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
 				}
 			}
 		}
@@ -580,15 +580,15 @@ extension BLEConnection {
 	/// Pure, so the retry count and the backoff schedule can be tested without a peripheral —
 	/// the same reason `shouldReconnect(after:)` below is pure.
 	enum RefusedWriteAction: Equatable {
-		/// Wait this long, then write again.
-		case retry(backoff: Duration)
+		/// Wait this long (in seconds), then write again.
+		case retry(backoff: TimeInterval)
 		/// Attempts are spent. Throw to the caller and leave the link alone.
 		case giveUp
 	}
 
 	static func refusedWriteAction(afterAttempt attempt: Int) -> RefusedWriteAction {
 		guard attempt + 1 < writeAttemptLimit else { return .giveUp }
-		return .retry(backoff: .milliseconds(120 * (attempt + 1)))
+		return .retry(backoff: TimeInterval(0.12 * Double(attempt + 1)))
 	}
 
 	/// Total number of times a single write is attempted when the radio reports it is out of

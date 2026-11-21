@@ -272,8 +272,12 @@ struct ChannelMessageList: View {
 			}
 			.trackMessageScrollViewport(scrollTracker)
 			.messageBottomScrollPosition(request: bottomScrollRequest, tracker: scrollTracker)
+			if #available(iOS 17.0, *) {
 			.defaultScrollAnchor(.bottom)
-			.defaultScrollAnchorBottomSizeChanges()
+		} else {
+			self
+		}
+		.defaultScrollAnchorBottomSizeChanges()
 			.dismissesKeyboardOnScroll()
 			.onAppear {
 				DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -291,7 +295,7 @@ struct ChannelMessageList: View {
 					// Reloads are driven by .meshMessagesDidChange below. This is only a safety
 					// net for a change that somehow saved without one.
 					while !Task.isCancelled {
-						try? await Task.sleep(for: .seconds(30))
+						try? await Task.sleep(nanoseconds: 30_000_000_000)
 						guard !Task.isCancelled else { return }
 						loadMessages(markReadAfterLoad: routerIsShowingThisChannel())
 					}
@@ -362,7 +366,11 @@ struct ChannelMessageList: View {
 		}
 		}
 		.navigationBarTitleDisplayMode(.inline)
-		.searchable(text: $searchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find in conversation")
+		if #available(iOS 16.0, *) {
+			.searchable(text: $searchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find in conversation")
+		} else {
+			.searchable(text: $searchQuery, placement: .toolbar, prompt: "Find in conversation")
+		}
 		.autocorrectionDisabled()
 		.task(id: searchQuery) { await debouncedSearch() }
 		.toolbar {
@@ -425,7 +433,7 @@ private extension ChannelMessageList {
 			await runSearch()
 			return
 		}
-		try? await Task.sleep(for: .milliseconds(250))
+		try? await Task.sleep(nanoseconds: 250_000_000)
 		guard !Task.isCancelled else { return }
 		await runSearch()
 	}

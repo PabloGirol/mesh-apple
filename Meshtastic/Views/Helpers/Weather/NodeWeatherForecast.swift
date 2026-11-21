@@ -3,13 +3,14 @@
 //  Meshtastic
 //
 //  Copyright(c) Garth Vander Houwen 2/25/23.
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import SwiftUI
 import CoreLocation
-import Charts
-import WeatherKit
+import DGCharts
 import OSLog
+import SwiftUI
+import WeatherKit
 
 struct NodeWeatherForecastView: View {
 	var location: CLLocation
@@ -21,7 +22,6 @@ struct NodeWeatherForecastView: View {
 			chart
 				.frame(width: 400)
 		}
-		// .frame(width: 350, height: 200)
 		.padding(10)
 		.background()
 		.task {
@@ -43,91 +43,112 @@ struct NodeWeatherForecastView: View {
 		}
 	}
 
+	@ViewBuilder
 	var chart: some View {
-		Chart {
-			areaMarks(seriesKey: "Temperature", value: 0)
-				.foregroundStyle(.linearGradient(colors: [.teal, .yellow], startPoint: .bottom, endPoint: .top))
+		// Build chart data points
+		let points = forecast.entries.map { entry in
+			ChartDataPoint.fromDate(entry.date, value: entry.degrees)
+		}
 
-			ForEach(forecast.nightTimeRanges, id: \.lowerBound) { range in
-				RectangleMark(
-					xStart: .value("Hour", range.lowerBound),
-					xEnd: .value("Hour", range.upperBound)
-				)
-				.opacity(0.5)
-				.accessibilityHidden(true)
-				.mask {
-					areaMarks(seriesKey: "Mask", value: range.lowerBound.timeIntervalSince1970)
-				}
+		let lowPoints = forecast.entries.map { entry in
+			ChartDataPoint.fromDate(entry.date, value: forecast.low)
+		}
 
-				if range.lowerBound != forecast.entries.first?.date {
-					let date = range.lowerBound
-					RectangleMark(
-						x: .value("Date", date),
-						yStart: .value("Temperature", forecast.low - 0.5),
-						yEnd: .value("Temperature", forecast.temperature(at: date) + 0.5),
-						width: .fixed(4)
-					)
-					.foregroundStyle(.indigo.shadow(.drop(color: .white.opacity(0.25), radius: 0, x: 1)))
-					.cornerRadius(2)
-					.accessibilityHidden(true)
-					.annotation(position: .top, alignment: .bottom, spacing: 5) {
-						Image(systemName: "moon.circle.fill")
-							.imageScale(.large)
-							.symbolRenderingMode(.palette)
-							.foregroundStyle(.white, .indigo)
-					}
-				}
+		let seriesData = ChartSeriesData(
+			id: "temperature",
+			name: "Temperature",
+			color: .teal,
+			chartType: .area,
+			points: points,
+			lineWidth: 2.0,
+			drawFilled: true,
+			fillAlpha: 0.3,
+			fillColor: .yellow
+		)
 
-				if range.upperBound != forecast.entries.last?.date {
-					let date = range.upperBound
-					RectangleMark(
-						x: .value("Date", date),
-						yStart: .value("Temperature", forecast.low - 0.5),
-						yEnd: .value("Temperature", forecast.temperature(at: date) + 0.5),
-						width: .fixed(4)
-					)
-					.foregroundStyle(.indigo.shadow(.drop(color: .white.opacity(0.25), radius: 0, x: -1)))
-					.cornerRadius(2)
-					.accessibilityHidden(true)
-					.annotation(position: .top, alignment: .bottom, spacing: 5) {
-						Image(systemName: "sun.max.circle.fill")
-							.imageScale(.large)
-							.symbolRenderingMode(.palette)
-							.foregroundStyle(.white, .indigo)
-					}
-				}
+		let lowSeries = ChartSeriesData(
+			id: "low",
+			name: "Low",
+			color: .clear,
+			chartType: .line,
+			points: lowPoints,
+			lineWidth: 0,
+			isVisible: false
+		)
+
+		// Build rule marks for night time ranges
+		var ruleMarks: [DGRuleMark] = []
+		for range in forecast.nightTimeRanges {
+			// Add vertical rule marks for night boundaries
+			if range.lowerBound != forecast.entries.first?.date {
+				ruleMarks.append(DGRuleMark(
+					position: range.lowerBound.timeIntervalSince1970,
+					axis: .x,
+					color: .indigo,
+					lineWidth: 1.0,
+					dashPattern: [4, 4]
+				))
+			}
+			if range.upperBound != forecast.entries.last?.date {
+				ruleMarks.append(DGRuleMark(
+					position: range.upperBound.timeIntervalSince1970,
+					axis: .x,
+					color: .indigo,
+					lineWidth: 1.0,
+					dashPattern: [4, 4]
+				))
 			}
 		}
-		.chartXAxis {
-			AxisMarks(values: DateBins(unit: .hour, by: 3, range: forecast.binRange).thresholds) { _ in
-				AxisValueLabel(format: .dateTime.hour())
-				AxisTick()
-				AxisGridLine()
-			}
-		}
-		.chartYScale(domain: .automatic(includesZero: false))
-		.chartYAxis {
-			AxisMarks(values: .automatic(minimumStride: 5, desiredCount: 6, roundLowerBound: false)) { value in
-				AxisValueLabel("\(value.as(Double.self)!.formatted())°F")
-				AxisTick()
-				AxisGridLine()
-			}
-		}
-	}
 
-	@ChartContentBuilder
-	func areaMarks(seriesKey: String, value: Double) -> some ChartContent {
-		ForEach(forecast.entries) { entry in
-			AreaMark(
-				x: .value("Hour", entry.date),
-				yStart: .value("Temperature", forecast.low),
-				yEnd: .value("Temperature", entry.degrees),
-				series: .value(seriesKey, value)
-			)
-			.interpolationMethod(.catmullRom)
-			.accessibilityLabel(String(localized: "Temperature at \(entry.date.formatted(date: .omitted, time: .shortened))", comment: "VoiceOver label for a temperature point on the weather forecast chart. %@ is the time of day."))
-			.accessibilityValue(String(localized: "\(entry.degrees.formatted(.number.precision(.fractionLength(0)))) degrees", comment: "VoiceOver value spoken as a temperature reading in degrees. %@ is the number."))
-		}
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .bottom,
+			labelCount: 8,
+			dateFormat: "HH:mm",
+			dateFormatter: {
+				let formatter = DateFormatter()
+				formatter.dateFormat = "HH:mm"
+				return formatter
+			}()
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: 6,
+			axisMinimum: nil,
+			axisMaximum: nil,
+			axisValueFormatter: { value, _ in
+				return "\(Int(value))°"
+			}
+		)
+
+		let legendConfig = DGChartLegendConfig(
+			isEnabled: false
+		)
+
+		return LineChartView(
+			data: [seriesData, lowSeries],
+			xAxisConfig: xAxisConfig,
+			yAxisConfig: yAxisConfig,
+			legendConfig: legendConfig,
+			ruleMarks: ruleMarks,
+			yDomain: nil,
+			visibleXRange: nil,
+			scrollPosition: nil,
+			isScrollable: false,
+			legendHidden: true,
+			frame: nil,
+			selection: nil,
+			onSelectionChanged: nil,
+			backgroundColor: .systemBackground,
+			gridColor: .systemGray4,
+			gridLineWidth: 0.5,
+			drawCircles: false,
+			circleRadius: 4.0,
+			mode: .cubicBezier,
+			cubicIntensity: 0.2,
+			drawFilled: true,
+			fillAlpha: 0.3
+		)
 	}
 
 	static var placeholderForecast: NodeWeatherForecast {
@@ -219,7 +240,6 @@ struct NodeWeatherForecast {
 
 struct NodeWeatherForecastView_Previews: PreviewProvider {
 	static var previews: some View {
-		
 		if let cl = LocationsHandler.currentLocation {
 			NodeWeatherForecastView(location: CLLocation(latitude: cl.latitude, longitude: cl.longitude) )
 				.aspectRatio(2, contentMode: .fit)

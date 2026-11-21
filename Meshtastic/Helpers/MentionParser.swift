@@ -4,6 +4,12 @@
 import Foundation
 import CoreData
 
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
 /// Parses and resolves `@!<hex-id>` mention tokens embedded in message text.
 ///
 /// ## Wire format
@@ -110,6 +116,48 @@ enum MentionParser {
 			result.replaceSubrange(range, with: link)
 		}
 		return result
+	}
+
+	/// Replaces all `@!<hex>` mention tokens in `text` with markdown links and converts
+	/// the result to an `AttributedString` using an iOS 15 compatible approach
+	/// (NSAttributedString with HTML parsing).
+	///
+	/// This avoids the iOS 16+ `AttributedString(markdown:)` initializer.
+	///
+	/// Returns `nil` if HTML parsing fails, in which case callers should fall back to
+	/// plain text rendering.
+	static func resolveMentionsAsAttributedString(in text: String, context: NSManagedObjectContext) -> AttributedString? {
+		let markdown = resolveMentions(in: text, context: context)
+		return attributedStringFromMarkdown(markdown)
+	}
+
+	/// Converts basic markdown to an AttributedString using NSAttributedString HTML parsing.
+	/// iOS 15 compatible — does not use `AttributedString(markdown:)`.
+	private static func attributedStringFromMarkdown(_ markdown: String) -> AttributedString? {
+		// Convert basic markdown to HTML
+		let html = markdown
+			.replacingOccurrences(of: "&", with: "&")
+			.replacingOccurrences(of: "<", with: "<")
+			.replacingOccurrences(of: ">", with: ">")
+			.replacingOccurrences(of: "\n", with: "<br>")
+			.replacingOccurrences(of: "\\*\\*(.+?)\\*\\*", with: "<b>$1</b>", options: .regularExpression)
+			.replacingOccurrences(of: "\\*(.+?)\\*", with: "<i>$1</i>", options: .regularExpression)
+			.replacingOccurrences(of: "`(.+?)`", with: "<code>$1</code>", options: .regularExpression)
+			.replacingOccurrences(of: "\\[(.+?)\\]\\((.+?)\\)", with: "<a href=\"$2\">$1</a>", options: .regularExpression)
+
+		let htmlString = "<span style=\"font-family: -apple-system; font-size: 17px;\">\(html)</span>"
+
+		guard let data = htmlString.data(using: .utf8),
+			  let nsAttributed = try? NSAttributedString(
+				data: data,
+				options: [.documentType: NSAttributedString.DocumentType.html,
+						  .characterEncoding: String.Encoding.utf8.rawValue],
+				documentAttributes: nil
+			  ) else {
+			return nil
+		}
+
+		return AttributedString(nsAttributed)
 	}
 
 	// MARK: - Private helpers

@@ -35,11 +35,18 @@ struct DiscoveryBeaconsView: View {
 	var body: some View {
 		List {
 			if passiveBeacons.isEmpty {
-				ContentUnavailableView(
-					"No Nearby Meshes",
-					systemImage: "dot.radiowaves.left.and.right",
-					description: Text("Meshes heard advertising themselves via beacons will appear here.")
-				)
+				VStack(spacing: 16) {
+					Image(systemName: "dot.radiowaves.left.and.right")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Nearby Meshes")
+							.font(.title2)
+							.foregroundColor(.secondary)
+						Text("Meshes heard advertising themselves via beacons will appear here.")
+							.foregroundColor(.secondary)
+					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
+			}
 			} else {
 				// Resolved once per render — the per-row chip builder must not re-fetch
 				// the radio's channels for every beacon.

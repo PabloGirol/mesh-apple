@@ -137,14 +137,6 @@ enum AccessoryManagerState: Equatable {
 	}
 }
 
-private struct AutomaticConfigRefresh {
-	let owner: AutomaticChannelRefreshOwner
-	let sessionID: UUID
-	let channelRefreshBaselineByNode: [Int64: [ChannelRefreshSnapshot]]
-	var nodeNum: Int64?
-	var waiters: [UUID: CheckedContinuation<Void, Error>] = [:]
-}
-
 @MainActor
 class AccessoryManager: ObservableObject, MqttClientProxyManagerDelegate {
 	// Singleton Access.  Conditionally compiled
@@ -385,11 +377,11 @@ class AccessoryManager: ObservableObject, MqttClientProxyManagerDelegate {
 	var mqttProxyDroppedNoPayload: Int = 0
 	
 	// Continuations
+	var firstDatabaseNodeInfoContinuation: CheckedContinuation<Void, Error>?
+	var wantDatabaseGate: AsyncGate = AsyncGate()
 	private var activeAutomaticConfigRefresh: AutomaticConfigRefresh?
 	private var automaticConfigRefreshTask: Task<Void, Never>?
 	private var nextAutomaticConfigRefreshGeneration: UInt64 = 0
-	var firstDatabaseNodeInfoContinuation: CheckedContinuation<Void, Error>?
-	var wantDatabaseGate: AsyncGate = AsyncGate()
 
 	// Misc
 	@Published var expectedNodeDBSize: Int?
@@ -600,10 +592,10 @@ class AccessoryManager: ObservableObject, MqttClientProxyManagerDelegate {
 		let generation = loraChangeTracker.changed()
 		Task { @MainActor in
 			// Let the radio finish reprogramming the modem before asking.
-			try? await Task.sleep(for: .seconds(2))
+			try? await Task.sleep(nanoseconds: 2_000_000_000)
 			// One download at a time: the completion doesn't say which request it answers.
 			while self.nodeDatabaseDumpInProgress, self.isConnected {
-				try? await Task.sleep(for: .milliseconds(250))
+				try? await Task.sleep(nanoseconds: 250_000_000)
 			}
 			guard self.isConnected else {
 				self.loraChangeTracker.reset()
@@ -977,10 +969,10 @@ class AccessoryManager: ObservableObject, MqttClientProxyManagerDelegate {
 		if log.starts(with: "DEBUG |") {
 			do {
 				let logString = log
-				if let coordsMatch = try CommonRegex.COORDS_REGEX.firstMatch(in: logString) {
+				if let coordsMatch = try CommonRegex.firstMatch(in: logString) {
 					log = "\(log.replacingOccurrences(of: "DEBUG |", with: "").trimmingCharacters(in: .whitespaces))"
 					log = log.replacingOccurrences(of: "[,]", with: "", options: .regularExpression)
-					Logger.radio.debug("🛰️ \(log.prefix(upTo: coordsMatch.range.lowerBound), privacy: .public) \(coordsMatch.0.replacingOccurrences(of: "[,]", with: "", options: .regularExpression), privacy: .private(mask: .none)) \(log.suffix(from: coordsMatch.range.upperBound), privacy: .public)")
+					Logger.radio.debug("🛰️ \(log.prefix(upTo: coordsMatch.range.lowerBound), privacy: .public) \(coordsMatch.wholeMatch.replacingOccurrences(of: "[,]", with: "", options: .regularExpression), privacy: .private(mask: .none)) \(log.suffix(from: coordsMatch.range.upperBound), privacy: .public)")
 				} else {
 					log = log.replacingOccurrences(of: "[,]", with: "", options: .regularExpression)
 					Logger.radio.debug("🕵🏻‍♂️ \(log.replacingOccurrences(of: "DEBUG |", with: "").trimmingCharacters(in: .whitespaces), privacy: .public)")
@@ -992,10 +984,10 @@ class AccessoryManager: ObservableObject, MqttClientProxyManagerDelegate {
 		} else if log.starts(with: "INFO  |") {
 			do {
 				let logString = log
-				if let coordsMatch = try CommonRegex.COORDS_REGEX.firstMatch(in: logString) {
+				if let coordsMatch = try CommonRegex.firstMatch(in: logString) {
 					log = "\(log.replacingOccurrences(of: "INFO  |", with: "").trimmingCharacters(in: .whitespaces))"
 					log = log.replacingOccurrences(of: "[,]", with: "", options: .regularExpression)
-					Logger.radio.info("🛰️ \(log.prefix(upTo: coordsMatch.range.lowerBound), privacy: .public) \(coordsMatch.0.replacingOccurrences(of: "[,]", with: "", options: .regularExpression), privacy: .private) \(log.suffix(from: coordsMatch.range.upperBound), privacy: .public)")
+					Logger.radio.info("🛰️ \(log.prefix(upTo: coordsMatch.range.lowerBound), privacy: .public) \(coordsMatch.wholeMatch.replacingOccurrences(of: "[,]", with: "", options: .regularExpression), privacy: .private) \(log.suffix(from: coordsMatch.range.upperBound), privacy: .public)")
 				} else {
 					log = log.replacingOccurrences(of: "[,]", with: "", options: .regularExpression)
 					Logger.radio.info("📢 \(log.replacingOccurrences(of: "INFO  |", with: "").trimmingCharacters(in: .whitespaces), privacy: .public)")
@@ -1623,7 +1615,7 @@ extension AccessoryManager {
 			return
 		}
 
-		let entity = DiscoveredBeaconEntity()
+		let entity = DiscoveredBeaconEntity(context: context)
 		entity.nodeNum = fromNodeNum
 		entity.message = beacon.message
 		entity.offerRegion = beacon.offerRegion != .unset ? beacon.offerRegion.rawValue : 0
@@ -1645,8 +1637,6 @@ extension AccessoryManager {
 			entity.shortName = knownNode.user?.shortName ?? ""
 			entity.longName = knownNode.user?.longName ?? ""
 		}
-
-		context.insert(entity)
 		do {
 			try context.save()
 			Logger.mesh.info("📡 [Beacon] Passively captured beacon from \(packet.from.toHex(), privacy: .public) — customChannel \(hasCustomChannel, privacy: .public)")

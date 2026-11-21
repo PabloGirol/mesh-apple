@@ -166,7 +166,7 @@ struct NRFDFUSheet: View {
 		dfuViewModel.abort()
 		let deadline = Date().addingTimeInterval(3)
 		while !dfuViewModel.didAbort && Date() < deadline {
-			try? await Task.sleep(for: .milliseconds(100))
+			try? await Task.sleep(nanoseconds: 100_000_000)
 		}
 		if !dfuViewModel.didAbort {
 			Logger.services.error("NRF DFU: abort was not confirmed, handing the radio back anyway")

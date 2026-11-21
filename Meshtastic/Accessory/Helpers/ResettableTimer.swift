@@ -1,11 +1,11 @@
 //
-//  ResettableTimer.swift
-//  Meshtastic
-//
-//  Created by jake on 8/16/25.
-//
+ //  ResettableTimer.swift
+ //  Meshtastic
+ //
+ //  Created by jake on 8/16/25.
+ //
 
-import Foundation  // For Duration and Task (though often implicit in Swift environments)
+import Foundation
 import OSLog
 
 /// A resettable timer implemented using Swift concurrency.
@@ -26,10 +26,10 @@ actor ResettableTimer {
 		self.action = action
 		self.debugName = debugName
 	}
-	
+
 	/// Resets the timer to a new delay, cancelling any previous scheduled execution.
-	/// - Parameter delay: The new delay duration before executing the action.
-	func reset(delay: Duration, withReason reason: String? = nil) {
+	/// - Parameter delay: The new delay in seconds before executing the action.
+	func reset(delay: TimeInterval, withReason reason: String? = nil) {
 		if let debugName {
 			if let reason {
 				Logger.services.debug("⏱️ [\(debugName)] Resettable timer reset with new duration \(delay): \(reason)")
@@ -41,7 +41,7 @@ actor ResettableTimer {
 		currentTask = Task {
 			repeat {
 				do {
-					try await Task.sleep(for: delay)
+					try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
 					if Task.isCancelled { break }
 					await action()
 				} catch {
@@ -51,7 +51,7 @@ actor ResettableTimer {
 			} while isRepeating
 		}
 	}
-	
+
 	/// Cancels the timer without starting a new one. For repeating timers, this stops future executions.
 	func cancel(withReason reason: String? = nil) {
 		if let debugName {

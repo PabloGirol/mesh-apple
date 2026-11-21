@@ -12,6 +12,7 @@ import SwiftUI
 /// write back.
 struct RadioSetupRegionPage: View {
 	let model: RadioSetupModel
+	let onAdvance: () -> Void
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 
 	/// The radio's legal-preset map for a region; only 2.8 radios send one.
@@ -44,8 +45,8 @@ struct RadioSetupRegionPage: View {
 
 	private var intro: AttributedString {
 		model.suggestedRegion != nil
-			? AttributedString(localized: "Picked from your phone's region setting. Your radio must use the frequencies allowed where you are, so change it if you are somewhere else.", comment: "Radio setup region intro when one was pre-selected")
-			: AttributedString(localized: "Your radio must use the frequencies allowed where you are. With the wrong region nothing nearby will hear you.", comment: "Radio setup region intro")
+			? AttributedString(String(localized: "Picked from your phone's region setting. Your radio must use the frequencies allowed where you are, so change it if you are somewhere else.", comment: "Radio setup region intro when one was pre-selected"))
+			: AttributedString(String(localized: "Your radio must use the frequencies allowed where you are. With the wrong region nothing nearby will hear you.", comment: "Radio setup region intro"))
 	}
 
 	var body: some View {
@@ -54,7 +55,7 @@ struct RadioSetupRegionPage: View {
 			intro: intro,
 			footer: footer,
 			isContinueEnabled: model.hasChosenRegion,
-			action: { model.advance(from: .region) }
+			action: onAdvance
 		) {
 			OnboardingControlRow(symbol: "globe.americas.fill", color: .red, title: String(localized: "Region", comment: "Radio setup row title")) {
 				Picker(String(localized: "Region", comment: "Radio setup row title"), selection: selection) {

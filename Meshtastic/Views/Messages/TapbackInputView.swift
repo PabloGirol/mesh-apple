@@ -42,7 +42,6 @@ struct TapbackInputView: View {
 				}
 			}
 		}
-		.presentationDetents([.height(120)])
 	}
 	
 	private func extractFirstEmoji(from string: String) -> String? {

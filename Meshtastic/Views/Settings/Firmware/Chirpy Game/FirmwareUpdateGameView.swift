@@ -212,7 +212,7 @@ struct FirmwareUpdateGameDemoHost: View {
 	@State private var showGame = false
 
 	var body: some View {
-		NavigationStack {
+		CompatNavigationStack {
 			VStack(spacing: 18) {
 				VStack(spacing: 4) {
 					Text("Mock OTA Upload")
@@ -260,7 +260,7 @@ struct FirmwareUpdateGameDemoHost: View {
 		.firmwareUpdateGame(isPresented: $showGame, status: upload.status)
 		.task {
 			while !Task.isCancelled {
-				try? await Task.sleep(for: .milliseconds(100))
+				try? await Task.sleep(nanoseconds: 100_000_000)
 				upload.advance(by: 0.1)
 			}
 		}

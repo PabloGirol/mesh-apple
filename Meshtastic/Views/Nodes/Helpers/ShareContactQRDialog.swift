@@ -130,7 +130,9 @@ struct ShareContactQRDialog: View {
 				.padding(.leading, 14)
 			}
 		}
-		.presentationDragIndicator(.visible)
+		.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+			view.presentationDragIndicator(.visible)
+		}
 	}
 }
 

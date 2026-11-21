@@ -98,7 +98,9 @@ enum DeviceProfileImporter {
 		selection: Set<ImportSection>,
 		gateway: ProfileApplyGateway,
 		sendInterval: Duration = defaultSendInterval,
-		sleep: @escaping (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+		sleep: @escaping (Duration) async throws -> Void = { duration in
+			try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+		},
 		progress: ((ImportItem, Int, Int) -> Void)? = nil
 	) async -> DeviceProfileImportResult {
 		var result = DeviceProfileImportResult()

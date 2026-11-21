@@ -176,7 +176,15 @@ struct PositionLog: View {
 				)
 
 			} else {
-				ContentUnavailableView("No Positions", systemImage: "mappin.slash")
+				VStack(spacing: 16) {
+					Image(systemName: "mappin.slash")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Positions")
+						.font(.title2)
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			}
 		}
 		.navigationTitle("Position Log \(totalPositionCount) Points")

@@ -31,18 +31,17 @@ public class BroadcastTargetEntity: NSManagedObject {
 		self.channelName = nil
 		self.meshBeaconConfig = nil
 	}
-}
 
-extension BroadcastTargetEntity {
-	@objc(addMeshBeaconConfigObject:)
-	@nonobjc public func addToMeshBeaconConfig(_ value: MeshBeaconConfigEntity) {
-		self.meshBeaconConfig = value
-	}
-
-	@objc(removeMeshBeaconConfigObject:)
-	@nonobjc public func removeFromMeshBeaconConfig(_ value: MeshBeaconConfigEntity) {
-		if self.meshBeaconConfig === value {
-			self.meshBeaconConfig = nil
-		}
+	convenience init(context: NSManagedObjectContext, preset: Int32, region: Int32, channelIndex: Int32, frequencySlot: Int32) {
+		let entity = NSEntityDescription.entity(forEntityName: "BroadcastTargetEntity", in: context)!
+		self.init(entity: entity, insertInto: context)
+		self.channelIndex = channelIndex
+		self.region = region
+		self.preset = preset
+		self.frequencySlot = frequencySlot
+		self.psk = nil
+		self.channelName = nil
+		self.meshBeaconConfig = nil
 	}
 }
+

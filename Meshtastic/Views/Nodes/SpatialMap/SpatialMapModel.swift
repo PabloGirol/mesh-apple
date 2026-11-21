@@ -773,7 +773,7 @@ extension SpatialMapModel {
 		weatherRadarRetriedKey = key
 		weatherRadarRetryTask?.cancel()
 		weatherRadarRetryTask = Task {
-			guard (try? await Task.sleep(for: .seconds(SpatialWeatherRadar.retryDelay))) != nil, weatherRadarKey == key else { return }
+			guard (try? await Task.sleep(nanoseconds: UInt64(SpatialWeatherRadar.retryDelay * 1_000_000_000))) != nil, weatherRadarKey == key else { return }
 			weatherRadarKey = nil
 			rebuildWeatherRadarIfNeeded()
 		}

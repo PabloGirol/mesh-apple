@@ -278,7 +278,7 @@ final class DiscoveryScanEngine: ObservableObject {
 		}
 
 		// Create session
-		let newSession = DiscoverySessionEntity()
+		let newSession = DiscoverySessionEntity(context: context)
 		newSession.presetsScanned = (selectedPresets.map(\.name) + selectedBeaconTargets.map(\.label)).joined(separator: ",")
 		newSession.homePreset = homePreset?.name ?? ""
 		newSession.completionStatus = "inProgress"
@@ -288,8 +288,6 @@ final class DiscoveryScanEngine: ObservableObject {
 			newSession.userLatitude = position.latitude ?? 0.0
 			newSession.userLongitude = position.longitude ?? 0.0
 		}
-
-		context.insert(newSession)
 		session = newSession
 
 		// Build preset queue — manual selections run on the default public channel. Custom-channel
@@ -338,13 +336,12 @@ final class DiscoveryScanEngine: ObservableObject {
 		transitionTo(.shifting)
 
 		// Create preset result
-		let presetResult = DiscoveryPresetResultEntity()
+		let presetResult = DiscoveryPresetResultEntity(context: context)
 		presetResult.presetName = target.label
 		presetResult.dwellDurationSeconds = Int(dwellDuration)
 		presetResult.session = session
 		session?.presetResults.append(presetResult)
 		currentPresetResult = presetResult
-		managedObjectContext?.insert(presetResult)
 
 		// Start the local-stats window for this preset. The radio is offline during the config
 		// change/reboot, so no stale samples land before the new frequency is active.
@@ -578,7 +575,7 @@ final class DiscoveryScanEngine: ObservableObject {
 			// the disconnect edge (missed event, or a reconnect faster than the observer can see
 			// it), stop requiring it — otherwise the scan hangs on this preset forever and never
 			// rotates (#1952 item 3).
-			do { try await Task.sleep(for: .seconds(Self.reconnectGraceSeconds)) } catch { return }
+			do { try await Task.sleep(nanoseconds: UInt64(Self.reconnectGraceSeconds * 1_000_000_000)) } catch { return }
 			guard let self, self.currentState == .reconnecting else { return }
 
 			// After the grace period we no longer require an observed disconnect edge.
@@ -604,7 +601,7 @@ final class DiscoveryScanEngine: ObservableObject {
 			// the connection observer will advance us to dwell the instant we reconnect. If the
 			// window fully elapses, recover if we're somehow connected, else pause.
 			let remaining = Self.reconnectTimeoutSeconds - Self.reconnectGraceSeconds
-			do { try await Task.sleep(for: .seconds(remaining)) } catch { return }
+			do { try await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000)) } catch { return }
 			guard self.currentState == .reconnecting else { return }
 			let resolution = Self.reconnectTimeoutResolution(
 				isConnected: self.accessoryManager?.isConnected ?? false,
@@ -621,7 +618,7 @@ final class DiscoveryScanEngine: ObservableObject {
 		reconnectTimeoutTask?.cancel()
 		reconnectTimeoutTask = Task { [weak self] in
 			do {
-				try await Task.sleep(for: .seconds(60))
+				try await Task.sleep(nanoseconds: 60_000_000_000)
 				guard let self, self.currentState == .reconnecting else { return }
 				guard let accessoryManager, accessoryManager.isConnected else {
 					Logger.discovery.warning("📡 [Discovery] TCP/Serial not connected after reboot wait → Paused")
@@ -658,7 +655,7 @@ final class DiscoveryScanEngine: ObservableObject {
 
 			while dwellTimeRemaining > 0 {
 				do {
-					try await Task.sleep(for: .seconds(1))
+					try await Task.sleep(nanoseconds: 1_000_000_000)
 					guard !Task.isCancelled else { return }
 					let elapsed = Date().timeIntervalSince(startTime)
 					dwellTimeRemaining = max(0, effectiveDuration - elapsed)
@@ -703,14 +700,13 @@ final class DiscoveryScanEngine: ObservableObject {
 			let existingNode = session?.discoveredNodes.first(where: { $0.nodeNum == nodeNum && $0.presetName == activeTargetLabel })
 
 			if existingNode == nil {
-				let discoveredNode = DiscoveredNodeEntity()
+				let discoveredNode = DiscoveredNodeEntity(context: context)
 				discoveredNode.nodeNum = nodeNum
 				discoveredNode.neighborType = "mesh"
 				discoveredNode.snr = neighbor.snr
 				discoveredNode.presetName = activeTargetLabel
 				discoveredNode.session = session
 				discoveredNode.presetResult = currentPresetResult
-				context.insert(discoveredNode)
 				session?.discoveredNodes.append(discoveredNode)
 				currentPresetResult?.nodes.append(discoveredNode)
 
@@ -742,7 +738,7 @@ final class DiscoveryScanEngine: ObservableObject {
 
 		let hasCustomChannel = beacon.hasOfferChannel && !beacon.offerChannel.name.isEmpty
 
-		let entity = DiscoveredBeaconEntity()
+		let entity = DiscoveredBeaconEntity(context: context)
 		entity.nodeNum = fromNodeNum
 		entity.message = beacon.message
 		entity.offerRegion = beacon.offerRegion != .unset ? beacon.offerRegion.rawValue : 0
@@ -764,8 +760,6 @@ final class DiscoveryScanEngine: ObservableObject {
 			entity.shortName = knownNode.user?.shortName ?? ""
 			entity.longName = knownNode.user?.longName ?? ""
 		}
-
-		context.insert(entity)
 		session?.beacons.append(entity)
 		currentPresetResult?.beacons.append(entity)
 
@@ -831,7 +825,7 @@ final class DiscoveryScanEngine: ObservableObject {
 		var discoveredNode = session?.discoveredNodes.first(where: { $0.nodeNum == fromNodeNum && $0.presetName == activeTargetLabel })
 
 		if discoveredNode == nil {
-			let newNode = DiscoveredNodeEntity()
+			let newNode = DiscoveredNodeEntity(context: context)
 			newNode.nodeNum = fromNodeNum
 			newNode.neighborType = hopsAway <= 1 ? "direct" : "mesh"
 			newNode.hopCount = hopsAway
@@ -840,7 +834,6 @@ final class DiscoveryScanEngine: ObservableObject {
 			newNode.presetName = activeTargetLabel
 			newNode.session = session
 			newNode.presetResult = currentPresetResult
-			context.insert(newNode)
 			session?.discoveredNodes.append(newNode)
 			currentPresetResult?.nodes.append(newNode)
 
@@ -1337,7 +1330,7 @@ extension DiscoveryScanEngine {
 			guard session.managedObjectContext != nil, result.managedObjectContext != nil else { break }
 			let end = min(index + batchSize, snapshots.count)
 			for snapshot in snapshots[index..<end] {
-				let dn = DiscoveredNodeEntity()
+				let dn = DiscoveredNodeEntity(context: context)
 				dn.nodeNum = snapshot.nodeNum
 				dn.shortName = snapshot.shortName
 				dn.longName = snapshot.longName
@@ -1353,19 +1346,18 @@ extension DiscoveryScanEngine {
 					let nodeLocation = CLLocation(latitude: snapshot.latitude, longitude: snapshot.longitude)
 					dn.distanceFromUser = userLocation.distance(from: nodeLocation)
 				}
-				dn.messageCount = snapshot.messageCount
-				dn.sensorPacketCount = snapshot.sensorPacketCount
+				dn.messageCount = Int32(snapshot.messageCount)
+				dn.sensorPacketCount = Int32(snapshot.sensorPacketCount)
 				dn.presetName = presetName
 				dn.session = session
 				dn.presetResult = result
-				context.insert(dn)
 				session.discoveredNodes.append(dn)
 				result.nodes.append(dn)
 				seeded += 1
 			}
 			index = end
 			if index < snapshots.count {
-				try? await Task.sleep(for: .seconds(tick))
+				try? await Task.sleep(nanoseconds: UInt64(tick * 1_000_000_000))
 			}
 		}
 

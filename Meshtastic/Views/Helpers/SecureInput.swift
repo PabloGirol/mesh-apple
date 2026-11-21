@@ -42,7 +42,7 @@ struct SecureInput: View {
 						.foregroundStyle(.tertiary)
 						.disableAutocorrection(true)
 				} else {
-					TextField(title, text: $text, axis: .vertical)
+					TextField(title, text: $text)
 						.font(idiom == .phone ? .caption : .callout)
 						.allowsTightening(true)
 						.monospaced()

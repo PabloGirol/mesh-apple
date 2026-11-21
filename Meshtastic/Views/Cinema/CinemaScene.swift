@@ -86,17 +86,6 @@ enum CinemaScene {
 	/// visionOS and the session role can't tell the main window from the Mesh Map window, so the
 	/// count the main windows keep is the only check. While a window asked for is still on its
 	/// way, waits for it and asks again if it never comes.
-	@MainActor
-	static func reopenMainWindow(_ openWindow: OpenWindowAction, appState: AppState) {
-		guard appState.mainWindowCount == 0 else { return }
-		let now = Date()
-		if latch.request(at: now) {
-			openWindow(id: MeshtasticAppleApp.mainWindowID)
-		} else {
-			retryLater(after: latch.timeRemaining(at: now), openWindow, appState: appState)
-		}
-	}
-
 	/// A main window appeared, asked for or not.
 	@MainActor
 	static func mainWindowAppeared() {
@@ -109,28 +98,6 @@ enum CinemaScene {
 	/// request made on the way to the background can be dropped. Asks again, after a window the
 	/// system opens itself (the app relaunched from Home) has had a moment to appear, and not
 	/// into an open space, whose way out brings the window back.
-	@MainActor
-	static func reopenMainWindowAfterBackground(_ openWindow: OpenWindowAction, appState: AppState) {
-		guard latch.awaitingWindow else { return }
-		retry?.cancel()
-		retry = Task {
-			try? await Task.sleep(for: .seconds(1))
-			guard !Task.isCancelled, !appState.cinemaOpen, !appState.showcaseOpen else { return }
-			reopenMainWindow(openWindow, appState: appState)
-		}
-	}
-
-	/// Asks for the main window again after a delay. Not from the background, where the ask may
-	/// be dropped again; the return to the foreground asks instead.
-	@MainActor
-	private static func retryLater(after delay: TimeInterval, _ openWindow: OpenWindowAction, appState: AppState) {
-		retry?.cancel()
-		retry = Task {
-			try? await Task.sleep(for: .seconds(delay))
-			guard !Task.isCancelled, UIApplication.shared.applicationState != .background else { return }
-			reopenMainWindow(openWindow, appState: appState)
-		}
-	}
 
 	/// Opens the space unless it is open or opening. Returns whether it is open afterwards.
 	@MainActor @discardableResult

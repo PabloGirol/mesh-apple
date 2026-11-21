@@ -1,9 +1,9 @@
 //
-//  WatchLocationManager.swift
-//  Meshtastic Watch App
-//
-//  Copyright(c) Meshtastic 2025.
-//
+ //  WatchLocationManager.swift
+ //  Meshtastic Watch App
+ //
+ //  Copyright(c) Meshtastic 2025.
+ //
 
 import Foundation
 import CoreLocation
@@ -15,7 +15,7 @@ import os
 /// is used. On older models the GPS course (direction of travel) is used as a
 /// fallback – this only works while the user is moving.
 @MainActor
-final class WatchLocationManager: NSObject, ObservableObject {
+final class WatchLocationManager: NSObject {
 
 	private let manager = CLLocationManager()
 	private let logger = Logger(subsystem: "gvh.MeshtasticClient.watchkitapp", category: "📍 Location")
@@ -74,6 +74,52 @@ final class WatchLocationManager: NSObject, ObservableObject {
 		}
 		isUpdating = false
 	}
+}
+
+/// ObservableObject wrapper for WatchLocationManager to avoid NSObject + ObservableObject multiple inheritance.
+@MainActor
+final class WatchLocationManagerObservable: ObservableObject {
+	static let shared = WatchLocationManagerObservable()
+
+	private let manager = WatchLocationManager()
+
+	var heading: Double {
+		get { manager.heading }
+		set { manager.heading = newValue }
+	}
+
+	var currentLocation: CLLocation? {
+		get { manager.currentLocation }
+		set { manager.currentLocation = newValue }
+	}
+
+	var isUpdating: Bool {
+		get { manager.isUpdating }
+		set { manager.isUpdating = newValue }
+	}
+
+	var authorizationStatus: CLAuthorizationStatus {
+		get { manager.authorizationStatus }
+		set { manager.authorizationStatus = newValue }
+	}
+
+	var hasCompass: Bool {
+		manager.hasCompass
+	}
+
+	func requestAuthorization() {
+		manager.requestAuthorization()
+	}
+
+	func startUpdates() {
+		manager.startUpdates()
+	}
+
+	func stopUpdates() {
+		manager.stopUpdates()
+	}
+
+	private init() {}
 }
 
 // MARK: - CLLocationManagerDelegate

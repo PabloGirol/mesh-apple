@@ -14,7 +14,7 @@ import SwiftUI
 
 struct OnboardingPage<Rows: View>: View {
 	let title: String
-	let intro: AttributedString?
+	let intro: NSAttributedString?
 	let footer: String?
 	let buttonTitle: String
 	/// False keeps the main button disabled: a choice the page needs has not been made.
@@ -33,7 +33,7 @@ struct OnboardingPage<Rows: View>: View {
 
 	init(
 		title: String,
-		intro: AttributedString? = nil,
+		intro: NSAttributedString? = nil,
 		footer: String? = nil,
 		buttonTitle: String = String(localized: "Continue"),
 		isContinueEnabled: Bool = true,

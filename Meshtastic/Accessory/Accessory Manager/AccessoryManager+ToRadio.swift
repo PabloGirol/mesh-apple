@@ -402,8 +402,7 @@ extension AccessoryManager {
 					Logger.data.error("🚫 Message Users Not Found, Fail")
 					throw AccessoryError.ioFailed("🚫 Message Users Not Found, Fail")
 				} else if fetchedUsers.count >= 1 {
-					let newMessage = MessageEntity()
-					context.insert(newMessage)
+					let newMessage = MessageEntity(context: context)
 					newMessage.messageId = Int64(UInt32.random(in: UInt32(UInt8.max)..<UInt32.max))
 					newMessage.messageTimestamp =  Int32(Date().timeIntervalSince1970)
 					newMessage.receivedACK = false
@@ -955,8 +954,7 @@ extension AccessoryManager {
 		if let existing {
 			entity = existing
 		} else {
-			entity = ChannelEntity()
-			context.insert(entity)
+			entity = ChannelEntity(context: context)
 			myInfo.channels.append(entity)
 		}
 		entity.id = channelIndex
@@ -1442,8 +1440,7 @@ extension AccessoryManager {
 		let logString = String.localizedStringWithFormat("Sent a TraceRoute Packet from: %@ to: %@".localized, String(fromNodeNum), String(destNum))
 		try await send(toRadio, debugDescription: logString)
 
-			let traceRoute = TraceRouteEntity()
-			context.insert(traceRoute)
+			let traceRoute = TraceRouteEntity(context: context)
 			traceRoute.sent = true
 			// TODO: Not sure what's going on here. We always have a fromNodeNum
 			let nodes = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")

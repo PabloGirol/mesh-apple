@@ -542,7 +542,7 @@ extension MeshPackets {
 					// means one verified signed broadcast persists even if a later packet omits the bit.
 					fetchedNode[0].hasXeddsaSigned = fetchedNode[0].hasXeddsaSigned || packet.xeddsaSigned
 					if nodeInfoMessage.hasDeviceMetrics {
-						let telemetry = TelemetryEntity()
+						let telemetry = TelemetryEntity(context: modelContext)
 						modelContext.insert(telemetry)
 						telemetry.batteryLevel = Int32(truncatingIfNeeded: nodeInfoMessage.deviceMetrics.batteryLevel)
 						telemetry.voltage = nodeInfoMessage.deviceMetrics.voltage
@@ -698,7 +698,7 @@ extension MeshPackets {
 							position = previousLatest
 						} else {
 							previousLatest?.latest = false
-							position = PositionEntity()
+							position = PositionEntity(context: modelContext)
 							modelContext.insert(position)
 						}
 						position.latest = true
@@ -798,7 +798,7 @@ extension MeshPackets {
 			// Found a node, save Device Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].bluetoothConfig == nil {
-					let newBluetoothConfig = BluetoothConfigEntity()
+					let newBluetoothConfig = BluetoothConfigEntity(context: modelContext)
 					modelContext.insert(newBluetoothConfig)
 					newBluetoothConfig.enabled = config.enabled
 					newBluetoothConfig.mode = Int32(config.mode.rawValue)
@@ -835,7 +835,7 @@ extension MeshPackets {
 			// Found a node, save Device Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].deviceConfig == nil {
-					let newDeviceConfig = DeviceConfigEntity()
+					let newDeviceConfig = DeviceConfigEntity(context: modelContext)
 					modelContext.insert(newDeviceConfig)
 					newDeviceConfig.role = Int32(config.role.rawValue)
 					newDeviceConfig.buttonGpio = Int32(truncatingIfNeeded: config.buttonGpio)
@@ -886,8 +886,8 @@ extension MeshPackets {
 			if !fetchedNode.isEmpty {
 				
 				if fetchedNode[0].displayConfig == nil {
-					
-					let newDisplayConfig = DisplayConfigEntity()
+
+					let newDisplayConfig = DisplayConfigEntity(context: modelContext)
 					modelContext.insert(newDisplayConfig)
 					newDisplayConfig.screenOnSeconds = Int32(truncatingIfNeeded: config.screenOnSecs)
 					newDisplayConfig.screenCarouselInterval = Int32(truncatingIfNeeded: config.autoScreenCarouselSecs)
@@ -941,7 +941,7 @@ extension MeshPackets {
 			if fetchedNode.count > 0 {
 				if fetchedNode[0].loRaConfig == nil {
 					// No lora config for node, save a new lora config
-					let newLoRaConfig = LoRaConfigEntity()
+					let newLoRaConfig = LoRaConfigEntity(context: modelContext)
 					modelContext.insert(newLoRaConfig)
 					newLoRaConfig.regionCode = Int32(config.region.rawValue)
 					newLoRaConfig.usePreset = config.usePreset
@@ -1008,7 +1008,7 @@ extension MeshPackets {
 			// Found a node, save WiFi Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].networkConfig == nil {
-					let newNetworkConfig = NetworkConfigEntity()
+					let newNetworkConfig = NetworkConfigEntity(context: modelContext)
 					modelContext.insert(newNetworkConfig)
 					newNetworkConfig.wifiEnabled = config.wifiEnabled
 					newNetworkConfig.wifiSsid = config.wifiSsid
@@ -1064,7 +1064,7 @@ extension MeshPackets {
 			// Found a node, save LoRa Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].positionConfig == nil {
-					let newPositionConfig = PositionConfigEntity()
+					let newPositionConfig = PositionConfigEntity(context: modelContext)
 					modelContext.insert(newPositionConfig)
 					newPositionConfig.smartPositionEnabled = config.positionBroadcastSmartEnabled
 					newPositionConfig.deviceGpsEnabled = config.gpsEnabled
@@ -1121,7 +1121,7 @@ extension MeshPackets {
 			// Found a node, save Power Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].powerConfig == nil {
-					let newPowerConfig = PowerConfigEntity()
+					let newPowerConfig = PowerConfigEntity(context: modelContext)
 					modelContext.insert(newPowerConfig)
 					newPowerConfig.adcMultiplierOverride = config.adcMultiplierOverride
 					newPowerConfig.deviceBatteryInaAddress = Int32(truncatingIfNeeded: config.deviceBatteryInaAddress)
@@ -1177,7 +1177,7 @@ extension MeshPackets {
 			// Found a node, save Security Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].securityConfig == nil {
-					let newSecurityConfig = SecurityConfigEntity()
+					let newSecurityConfig = SecurityConfigEntity(context: modelContext)
 					modelContext.insert(newSecurityConfig)
 					newSecurityConfig.publicKey = config.publicKey
 					newSecurityConfig.privateKey = config.privateKey
@@ -1224,7 +1224,7 @@ extension MeshPackets {
 			let fetchedNode = try fetch(request)
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].audioConfig == nil {
-					let newAudioConfig = AudioConfigEntity()
+					let newAudioConfig = AudioConfigEntity(context: modelContext)
 					modelContext.insert(newAudioConfig)
 					newAudioConfig.codec2Enabled = config.codec2Enabled
 					newAudioConfig.pttPin = Int32(truncatingIfNeeded: config.pttPin)
@@ -1271,7 +1271,7 @@ extension MeshPackets {
 			if !fetchedNode.isEmpty {
 				
 				if fetchedNode[0].ambientLightingConfig == nil {
-					let newAmbientLighting = AmbientLightingConfigEntity()
+					let newAmbientLighting = AmbientLightingConfigEntity(context: modelContext)
 					modelContext.insert(newAmbientLighting)
 					fetchedNode[0].ambientLightingConfig = newAmbientLighting
 				}
@@ -1308,7 +1308,7 @@ extension MeshPackets {
 			if !fetchedNode.isEmpty {
 				
 				if fetchedNode[0].cannedMessageConfig == nil {
-					let newCannedMessageConfig = CannedMessageConfigEntity()
+					let newCannedMessageConfig = CannedMessageConfigEntity(context: modelContext)
 					modelContext.insert(newCannedMessageConfig)
 					// config.enabled is deprecated (no successor, removed from active use);
 					// tolerated on read but no longer written to the stored entity. (#2021)
@@ -1361,7 +1361,7 @@ extension MeshPackets {
 			// Found a node, save Detection Sensor Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].detectionSensorConfig == nil {
-					let newConfig = DetectionSensorConfigEntity()
+					let newConfig = DetectionSensorConfigEntity(context: modelContext)
 					modelContext.insert(newConfig)
 					newConfig.enabled = config.enabled
 					newConfig.sendBell = config.sendBell
@@ -1414,7 +1414,7 @@ extension MeshPackets {
 				if let existing = fetchedNode[0].meshBeaconConfig {
 					entity = existing
 				} else {
-					entity = MeshBeaconConfigEntity()
+					entity = MeshBeaconConfigEntity(context: modelContext)
 					modelContext.insert(entity)
 					fetchedNode[0].meshBeaconConfig = entity
 				}
@@ -1473,7 +1473,7 @@ extension MeshPackets {
 			if !fetchedNode.isEmpty {
 				
 				if fetchedNode[0].externalNotificationConfig == nil {
-					let newExternalNotificationConfig = ExternalNotificationConfigEntity()
+					let newExternalNotificationConfig = ExternalNotificationConfigEntity(context: modelContext)
 					modelContext.insert(newExternalNotificationConfig)
 					newExternalNotificationConfig.enabled = config.enabled
 					newExternalNotificationConfig.usePWM = config.usePwm
@@ -1534,7 +1534,7 @@ extension MeshPackets {
 			let fetchedNode = try fetch(request)
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].neighborInfoConfig == nil {
-					let newConfig = NeighborInfoConfigEntity()
+					let newConfig = NeighborInfoConfigEntity(context: modelContext)
 					modelContext.insert(newConfig)
 					newConfig.enabled = config.enabled
 					newConfig.updateInterval = Int32(truncatingIfNeeded: config.updateInterval)
@@ -1572,7 +1572,7 @@ extension MeshPackets {
 			// Found a node, save PAX Counter Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].paxCounterConfig == nil {
-					let newPaxCounterConfig = PaxCounterConfigEntity()
+					let newPaxCounterConfig = PaxCounterConfigEntity(context: modelContext)
 					modelContext.insert(newPaxCounterConfig)
 					newPaxCounterConfig.enabled = config.enabled
 					newPaxCounterConfig.updateInterval = Int32(truncatingIfNeeded: config.paxcounterUpdateInterval)
@@ -1612,7 +1612,7 @@ extension MeshPackets {
 			// Found a node, save RTTTL Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].rtttlConfig == nil {
-					let newRtttlConfig = RTTTLConfigEntity()
+					let newRtttlConfig = RTTTLConfigEntity(context: modelContext)
 					modelContext.insert(newRtttlConfig)
 					newRtttlConfig.ringtone = ringtone
 					fetchedNode[0].rtttlConfig = newRtttlConfig
@@ -1646,7 +1646,7 @@ extension MeshPackets {
 			// Found a node, save MQTT Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].mqttConfig == nil {
-					let newMQTTConfig = MQTTConfigEntity()
+					let newMQTTConfig = MQTTConfigEntity(context: modelContext)
 					modelContext.insert(newMQTTConfig)
 					newMQTTConfig.enabled = config.enabled
 					newMQTTConfig.proxyToClientEnabled = config.proxyToClientEnabled
@@ -1704,7 +1704,7 @@ extension MeshPackets {
 			// Found a node, save Device Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].rangeTestConfig == nil {
-					let newRangeTestConfig = RangeTestConfigEntity()
+					let newRangeTestConfig = RangeTestConfigEntity(context: modelContext)
 					modelContext.insert(newRangeTestConfig)
 					newRangeTestConfig.sender = Int32(truncatingIfNeeded: config.sender)
 					newRangeTestConfig.enabled = config.enabled
@@ -1742,7 +1742,7 @@ extension MeshPackets {
 			// Found a node, save Device Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].serialConfig == nil {
-					let newSerialConfig = SerialConfigEntity()
+					let newSerialConfig = SerialConfigEntity(context: modelContext)
 					modelContext.insert(newSerialConfig)
 					newSerialConfig.enabled = config.enabled
 					newSerialConfig.echo = config.echo
@@ -1788,7 +1788,7 @@ extension MeshPackets {
 				let fetchedNode = try modelContext.fetch(request)
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].statusMessageConfig == nil {
-					let newConfig = StatusMessageConfigEntity()
+					let newConfig = StatusMessageConfigEntity(context: modelContext)
 					modelContext.insert(newConfig)
 					newConfig.nodeStatus = config.nodeStatus
 					fetchedNode[0].statusMessageConfig = newConfig
@@ -1856,7 +1856,7 @@ extension MeshPackets {
 			// Found a node, save Store & Forward Sensor Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].storeForwardConfig == nil {
-					let newConfig = StoreForwardConfigEntity()
+					let newConfig = StoreForwardConfigEntity(context: modelContext)
 					modelContext.insert(newConfig)
 					newConfig.enabled = config.enabled
 					newConfig.heartbeat = config.heartbeat
@@ -1902,7 +1902,7 @@ extension MeshPackets {
 			// Found a node, save Telemetry Config
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].telemetryConfig == nil {
-					let newTelemetryConfig = TelemetryConfigEntity()
+					let newTelemetryConfig = TelemetryConfigEntity(context: modelContext)
 					modelContext.insert(newTelemetryConfig)
 					newTelemetryConfig.deviceUpdateInterval = Int32(truncatingIfNeeded: config.deviceUpdateInterval)
 					newTelemetryConfig.deviceTelemetryEnabled = config.deviceTelemetryEnabled
@@ -1957,7 +1957,7 @@ extension MeshPackets {
 				let fetchedNode = try modelContext.fetch(request)
 			if !fetchedNode.isEmpty {
 				if fetchedNode[0].takConfig == nil {
-					let newTAKConfig = TAKConfigEntity()
+					let newTAKConfig = TAKConfigEntity(context: modelContext)
 					modelContext.insert(newTAKConfig)
 					newTAKConfig.team = Int32(config.team.rawValue)
 					newTAKConfig.role = Int32(config.role.rawValue)

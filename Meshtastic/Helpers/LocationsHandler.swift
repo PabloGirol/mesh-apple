@@ -1,9 +1,9 @@
 //
-//  LocationsHandler.swift
-//  Meshtastic
-//
-//  Copyright Garth Vander Houwen 12/4/23.
-//
+ //  LocationsHandler.swift
+ //  Meshtastic
+ //
+ //  Copyright Garth Vander Houwen 12/4/23.
+ //
 
 import SwiftUI
 import CoreLocation
@@ -11,9 +11,10 @@ import OSLog
 
 // The @MainActor annotation ensures that all state changes and UI updates happen on the main thread,
 // preventing potential race conditions and crashes related to UI updates from background threads.
-@MainActor class LocationsHandler: NSObject, ObservableObject {
+@MainActor
+final class LocationsHandler: NSObject {
 
-	static let shared = LocationsHandler()  // Create a single, shared instance of the object.
+	static let shared = LocationsHandler()
 	public var manager = CLLocationManager()
 	@available(iOS 17.0, *)
 	private var background: CLBackgroundActivitySession?
@@ -107,11 +108,7 @@ import OSLog
 			// we'll resume the continuation with .notDetermined to prevent a leak.
 			self.permissionTimeoutTask = Task { @MainActor in // Ensure this task runs on the MainActor
 				do {
-					if #available(iOS 16.0, *) {
-						try await Task.sleep(for: .seconds(5))
-					} else {
-						try await Task.sleep(nanoseconds: 5_000_000_000)
-					}
+					try await Task.sleep(nanoseconds: 5_000_000_000)
 					// Bail out if this timeout belongs to a request that already completed;
 					// the stored continuation may belong to a newer request.
 					guard requestID == self.permissionRequestID,
@@ -360,6 +357,113 @@ import OSLog
 		}
 		return sats
 	}
+}
+
+/// ObservableObject wrapper for LocationsHandler to avoid NSObject + ObservableObject multiple inheritance.
+@MainActor
+final class LocationsHandlerObservable: ObservableObject {
+	static let shared = LocationsHandlerObservable()
+
+	private let handler = LocationsHandler()
+
+	var locationsArray: [CLLocation] {
+		get { handler.locationsArray }
+		set { handler.locationsArray = newValue }
+	}
+
+	var isStationary: Bool {
+		get { handler.isStationary }
+		set { handler.isStationary = newValue }
+	}
+
+	var count: Int {
+		get { handler.count }
+		set { handler.count = newValue }
+	}
+
+	var isRecording: Bool {
+		get { handler.isRecording }
+		set { handler.isRecording = newValue }
+	}
+
+	var isRecordingPaused: Bool {
+		get { handler.isRecordingPaused }
+		set { handler.isRecordingPaused = newValue }
+	}
+
+	var recordingStarted: Date? {
+		get { handler.recordingStarted }
+		set { handler.recordingStarted = newValue }
+	}
+
+	var distanceTraveled: Double {
+		get { handler.distanceTraveled }
+		set { handler.distanceTraveled = newValue }
+	}
+
+	var elevationGain: Double {
+		get { handler.elevationGain }
+		set { handler.elevationGain = newValue }
+	}
+
+	var heading: Double {
+		get { handler.heading }
+		set { handler.heading = newValue }
+	}
+
+	var headingUpdatesStarted: Bool {
+		get { handler.headingUpdatesStarted }
+		set { handler.headingUpdatesStarted = newValue }
+	}
+
+	var updatesStarted: Bool {
+		get { handler.updatesStarted }
+		set { handler.updatesStarted = newValue }
+	}
+
+	var backgroundActivity: Bool {
+		get { handler.backgroundActivity }
+		set { handler.backgroundActivity = newValue }
+	}
+
+	var enableSmartPosition: Bool {
+		get { handler.enableSmartPosition }
+		set { handler.enableSmartPosition = newValue }
+	}
+
+	var manager: CLLocationManager {
+		handler.manager
+	}
+
+	func requestLocationAlwaysPermissions() async -> CLAuthorizationStatus {
+		await handler.requestLocationAlwaysPermissions()
+	}
+
+	func startLocationUpdates() {
+		handler.startLocationUpdates()
+	}
+
+	func beginLocationDelivery() {
+		handler.beginLocationDelivery()
+	}
+
+	func startHeadingUpdates() {
+		handler.startHeadingUpdates()
+	}
+
+	func stopHeadingUpdates() {
+		handler.stopHeadingUpdates()
+	}
+
+	func stopLocationUpdates() {
+		handler.stopLocationUpdates()
+	}
+
+	func addLocation(_ location: CLLocation, smartPostion: Bool) -> Bool {
+		return handler.addLocation(location, smartPostion: smartPostion)
+	}
+
+	private init() {}
 }
 
 extension CLAuthorizationStatus {

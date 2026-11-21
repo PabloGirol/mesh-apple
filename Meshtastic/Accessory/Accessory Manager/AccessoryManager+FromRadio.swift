@@ -571,11 +571,10 @@ extension AccessoryManager {
 						routerNode.storeForwardConfig?.isRouter = storeAndForwardMessage.heartbeat.secondary == 0
 						routerNode.storeForwardConfig?.lastHeartbeat = Date()
 					} else {
-						let newConfig = StoreForwardConfigEntity()
+						let newConfig = StoreForwardConfigEntity(context: context)
 						newConfig.enabled = true
 						newConfig.isRouter = storeAndForwardMessage.heartbeat.secondary == 0
 						newConfig.lastHeartbeat = Date()
-						context.insert(newConfig)
 						routerNode.storeForwardConfig = newConfig
 					}
 
@@ -600,9 +599,8 @@ extension AccessoryManager {
 				if routerNode.storeForwardConfig != nil {
 					routerNode.storeForwardConfig?.lastRequest = Int32(storeAndForwardMessage.history.lastRequest)
 				} else {
-					let newConfig = StoreForwardConfigEntity()
+					let newConfig = StoreForwardConfigEntity(context: context)
 					newConfig.lastRequest = Int32(storeAndForwardMessage.history.lastRequest)
-					context.insert(newConfig)
 					routerNode.storeForwardConfig = newConfig
 				}
 
@@ -688,8 +686,7 @@ extension AccessoryManager {
 				if let existingTraceRoute {
 					traceRoute = existingTraceRoute
 				} else {
-					traceRoute = TraceRouteEntity()
-					context.insert(traceRoute)
+					traceRoute = TraceRouteEntity(context: context)
 					traceRoute.id = Int64(packet.decoded.requestID)
 				}
 				traceRoute.sent = false
@@ -712,8 +709,7 @@ extension AccessoryManager {
 			}
 
 			var hopNodes: [TraceRouteHopEntity] = []
-			let connectedHop = TraceRouteHopEntity()
-			context.insert(connectedHop)
+			let connectedHop = TraceRouteHopEntity(context: context)
 			connectedHop.time = Date()
 			connectedHop.num = originatorNum
 			connectedHop.name = originatorNode?.user?.longName ?? "???"
@@ -725,8 +721,7 @@ extension AccessoryManager {
 			traceRoute.hopsTowards = Int32(routingMessage.route.count)
 			for (index, node) in routingMessage.route.enumerated() {
 				let hopNode = traceRouteHopNode(num: node)
-				let traceRouteHop = TraceRouteHopEntity()
-				context.insert(traceRouteHop)
+				let traceRouteHop = TraceRouteHopEntity(context: context)
 				traceRouteHop.time = Date()
 				if routingMessage.snrTowards.count >= index + 1 {
 					traceRouteHop.snr = Float(routingMessage.snrTowards[index]) / 4
@@ -748,8 +743,7 @@ extension AccessoryManager {
 				let snrLabel = (traceRouteHop.snr != -32) ? String(traceRouteHop.snr) : "unknown ".localized
 				routeString += "\(hopName) \(mqttLabel)(\(snrLabel)dB) --> "
 			}
-			let destinationHop = TraceRouteHopEntity()
-			context.insert(destinationHop)
+			let destinationHop = TraceRouteHopEntity(context: context)
 			destinationHop.name = targetNodeInfo?.user?.longName ?? "Unknown".localized
 			destinationHop.time = Date()
 			// If nil, set to unknown, INT8_MIN (-128) then divide by 4
@@ -768,8 +762,7 @@ extension AccessoryManager {
 				var routeBackString = "\(targetNodeInfo?.user?.longName ?? "Unknown".localized) \(targetNum.toHex()) --> "
 				for (index, node) in routingMessage.routeBack.enumerated() {
 					let hopNode = traceRouteHopNode(num: node)
-					let traceRouteHop = TraceRouteHopEntity()
-					context.insert(traceRouteHop)
+					let traceRouteHop = TraceRouteHopEntity(context: context)
 					traceRouteHop.time = Date()
 					traceRouteHop.back = true
 					if routingMessage.snrBack.count >= index + 1 {
@@ -864,8 +857,7 @@ extension AccessoryManager {
 				  position.nodeCoordinate != nil else {
 				continue
 			}
-			let snapshot = TraceRouteNodePositionEntity()
-			context.insert(snapshot)
+			let snapshot = TraceRouteNodePositionEntity(context: context)
 			snapshot.num = num
 			snapshot.latitudeI = position.latitudeI
 			snapshot.longitudeI = position.longitudeI

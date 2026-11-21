@@ -12,7 +12,7 @@ import CoreLocation
 import CoreBluetooth
 import MeshtasticProtobufs
 import OSLog
-import TipKit
+import NavigationStackShim
 
 struct Connect: View {
 	
@@ -127,15 +127,11 @@ struct Connect: View {
 	}
 
 	var body: some View {
-		NavigationStack {
+		CompatNavigationStack {
 			List {
 					Section {
 						if let connectedDevice = accessoryManager.activeConnection?.device,
 						   accessoryManager.isConnected || accessoryManager.isConnecting {
-							TipView(ConnectionTip(), arrowEdge: .bottom)
-										.tipViewStyle(PersistentTipStyle())
-								.tipBackground(colorScheme == .dark ? Color(.systemBackground) : Color(.secondarySystemBackground))
-								.listRowSeparator(.hidden)
 							VStack(alignment: .leading) {
 								HStack {
 									VStack(alignment: .center) {
@@ -509,8 +505,6 @@ struct Connect: View {
 								Label("Disconnect", systemImage: "antenna.radiowaves.left.and.right.slash")
 							}
 							.buttonStyle(.bordered)
-							.buttonBorderShape(.capsule)
-							.controlSize(.large)
 							.padding()
 							Spacer()
 						}
@@ -528,7 +522,6 @@ struct Connect: View {
 
 						VStack(spacing: 14) {
 							ProgressView()
-								.controlSize(.large)
 							Text("Switching Radio")
 								.font(.headline)
 						}
@@ -600,8 +593,14 @@ struct Connect: View {
 		.hostedSheet(isPresented: $showSecurityVersionNag) {
 			SecurityVersionNag(minimumSecureVersion: accessoryManager.securityVersion, version: accessoryManager.activeConnection?.device.firmwareVersion ?? "?.?.?")
 				.trackScreen(.firmwareSecurityWarning)
-				.presentationDetents([.large])
-				.presentationDragIndicator(.automatic)
+				.modifier(SheetPresentationModifiers(
+					detents: [.large],
+					selection: .constant(.large),
+					contentInteraction: .scrolls,
+					dragIndicatorVisible: true,
+					backgroundInteractionEnabled: false,
+					interactiveDismissDisabled: false
+				))
 		}
 		.onChange(of: self.accessoryManager.state) { _, state in
 			if state != .subscribed {
@@ -630,7 +629,7 @@ struct Connect: View {
 			// ingestion churns the node @Query). Battery changes slowly, so 15s is plenty.
 			while !Task.isCancelled {
 				connectedBatteryLevel = latestBatteryLevel(for: node)
-				try? await Task.sleep(for: .seconds(15))
+				try? await Task.sleep(nanoseconds: 15_000_000_000)
 			}
 		}
 	}
@@ -1055,7 +1054,6 @@ func backupCurrentAndRestoreDatabase(
 	//    updates, which assert ("attempt to delete item…") when the data churns mid-flight;
 	//    non-animated replacement reloads instead.
 	// 3. Settle again so the unmount commits before the store work begins.
-	try? await Task.sleep(for: .milliseconds(350))
 	var gateTransaction = Transaction()
 	gateTransaction.disablesAnimations = true
 	withTransaction(gateTransaction) { appState.isDatabaseResetting = true }
@@ -1065,7 +1063,7 @@ func backupCurrentAndRestoreDatabase(
 		withTransaction(dropTransaction) { appState.isDatabaseResetting = false }
 	}
 	await Task.yield()
-	try? await Task.sleep(for: .milliseconds(300))
+	try? await Task.sleep(nanoseconds: 350_000_000)
 
 	await MeshPackets.shared.flushDebouncedSaves()
 
@@ -1095,6 +1093,10 @@ func backupCurrentAndRestoreDatabase(
 		// observer bridge).
 		accessoryManager.rebindToCurrentContainer()
 	}
+
+	await Task.yield()
+	try? await Task.sleep(nanoseconds: 300_000_000)
+
 
 	// The restore imports the backup's object graph into the SAME live container. With no
 	// resolvable target node (first connect to a never-seen radio) there is no backup, and
@@ -1263,6 +1265,28 @@ struct NymeaDeviceConnectRow: View {
 		case .weak: return String(localized: "Signal strength weak")
 		case .normal: return String(localized: "Signal strength normal")
 		case .strong: return String(localized: "Signal strength strong")
+		}
+	}
+}
+
+private struct SheetPresentationModifiers: ViewModifier {
+	let detents: [PresentationDetent]
+	@Binding var selection: PresentationDetent
+	let contentInteraction: PresentationContentInteraction
+	let dragIndicatorVisible: Bool
+	let backgroundInteractionEnabled: Bool
+	let interactiveDismissDisabled: Bool
+
+	func body(content: Content) -> some View {
+		if #available(iOS 16.0, *) {
+			content
+				.presentationDetents(detents, selection: $selection)
+				.presentationContentInteraction(contentInteraction)
+				.presentationDragIndicator(dragIndicatorVisible ? .visible : .hidden)
+				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+				.interactiveDismissDisabled(interactiveDismissDisabled)
+		} else {
+			content
 		}
 	}
 }

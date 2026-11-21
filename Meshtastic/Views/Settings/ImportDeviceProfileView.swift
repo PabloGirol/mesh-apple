@@ -11,6 +11,7 @@
 import SwiftUI
 import MeshtasticProtobufs
 import OSLog
+import NavigationStackShim
 
 struct ImportDeviceProfileView: View {
 	@EnvironmentObject private var accessoryManager: AccessoryManager
@@ -68,7 +69,7 @@ struct ImportDeviceProfileView: View {
 	}
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			Group {
 				switch phase {
 				case .review, .applying:
@@ -447,7 +448,7 @@ struct ImportDeviceProfileView: View {
 		// momentary but is not bounded by the OS.
 		forceDismissTask?.cancel()
 		forceDismissTask = Task {
-			try? await Task.sleep(for: .seconds(15))
+			try? await Task.sleep(nanoseconds: 15_000_000_000)
 			if isApplying { canForceDismiss = true }
 		}
 	}

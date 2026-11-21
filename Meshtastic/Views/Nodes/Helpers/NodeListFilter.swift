@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import NavigationStackShim
 
 struct NodeListFilter: View {
 	@State var editMode = EditMode.active
@@ -17,7 +18,7 @@ struct NodeListFilter: View {
 	@ObservedObject var filters: NodeFilterParameters
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			Form {
 				Section {
 					Toggle(isOn: $filters.viaLora) {
@@ -169,12 +170,15 @@ struct NodeListFilter: View {
 			.navigationBarTitleDisplayMode(.inline)
 			.sheetCloseButton()
 		}
-		.presentationDetents([.large])
-		.presentationContentInteraction(.scrolls)
-		#if !targetEnvironment(macCatalyst)
-		.presentationDragIndicator(.visible)
-		#endif
-		.presentationBackgroundInteraction(.enabled(upThrough: .large))
+		.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+			view
+				.presentationDetents([.large])
+				.presentationContentInteraction(.scrolls)
+			#if !targetEnvironment(macCatalyst)
+				.presentationDragIndicator(.visible)
+			#endif
+				.presentationBackgroundInteraction(.enabled(upThrough: .large))
+		}
 	}
 }
 

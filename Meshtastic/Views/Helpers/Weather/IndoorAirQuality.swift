@@ -50,25 +50,29 @@ struct IndoorAirQuality: View {
 				Text(iaqEnum.description)
 					.font(.caption)
 			case .gauge:
-				Gauge(value: Double(iaq), in: 0...500) {
-					Text("IAQ")
-						.foregroundColor(iaqEnum.color)
-				} currentValueLabel: {
-					Text("\(Int(iaq))")
-				}
-				.tint(gradient)
-				.gaugeStyle(.accessoryCircular)
-			case .gradient:
-				HStack {
-					Gauge(value: Double(iaq), in: 0...500) {
+				// iOS 15 fallback: simple progress view
+				VStack(spacing: 4) {
+					HStack {
 						Text("IAQ")
 							.foregroundColor(iaqEnum.color)
-					} currentValueLabel: {
-						Text("IAQ ")+Text("\(Int(iaq))")
-							.foregroundColor(.gray)
+						Text("\(Int(iaq))")
 					}
-					.tint(gradient)
-					.gaugeStyle(.accessoryLinear)
+					ProgressView(value: Double(iaq), total: 500)
+						.tint(gradient)
+				}
+			case .gradient:
+				// iOS 15 fallback: simple progress view
+				HStack {
+					VStack(spacing: 4) {
+						HStack {
+							Text("IAQ")
+								.foregroundColor(iaqEnum.color)
+							Text("IAQ \(Int(iaq))")
+								.foregroundColor(.gray)
+						}
+						ProgressView(value: Double(iaq), total: 500)
+							.tint(gradient)
+					}
 					Text(iaqEnum.description)
 						.font(.caption)
 				}

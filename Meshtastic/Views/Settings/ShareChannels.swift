@@ -8,7 +8,6 @@ import SwiftUI
 import CoreData
 import CoreImage.CIFilterBuiltins
 import MeshtasticProtobufs
-import TipKit
 
 struct QrCodeImage {
 	let context = CIContext()
@@ -77,9 +76,6 @@ struct ShareChannels: View {
 	var body: some View {
 
 		VStack {
-			TipView(ShareChannelsTip(), arrowEdge: .bottom)
-				.tipBackground(Color(.secondarySystemBackground))
-				.listRowSeparator(.hidden)
 		}
 		.padding(.horizontal)
 
@@ -89,28 +85,46 @@ struct ShareChannels: View {
 			ScrollView {
 				if node != nil && node?.myInfo != nil {
 					if shareableChannels.isEmpty {
-						ContentUnavailableView(
-							"No Shareable Channels",
-							systemImage: "qrcode",
-							description: Text("Connect to a radio with channel settings before sharing.")
-						)
+						VStack(spacing: 16) {
+							Image(systemName: "qrcode")
+								.font(.system(size: 48))
+								.foregroundColor(.secondary)
+							Text("No Shareable Channels")
+								.font(.title2)
+								.foregroundColor(.secondary)
+							Text("Connect to a radio with channel settings before sharing.")
+								.foregroundColor(.secondary)
+						}
+						.frame(maxWidth: .infinity, maxHeight: .infinity)
 						.padding(.vertical, 24)
 					} else {
 						channelSelectionGrid
 
 						if channelSet.settings.isEmpty {
-							ContentUnavailableView(
-								"No Channels Selected",
-								systemImage: "qrcode",
-								description: Text("Select at least one channel before sharing.")
-							)
+							VStack(spacing: 16) {
+								Image(systemName: "qrcode")
+									.font(.system(size: 48))
+									.foregroundColor(.secondary)
+								Text("No Channels Selected")
+									.font(.title2)
+									.foregroundColor(.secondary)
+								Text("Select at least one channel before sharing.")
+									.foregroundColor(.secondary)
+							}
+							.frame(maxWidth: .infinity, maxHeight: .infinity)
 							.padding(.vertical, 24)
 						} else if channelsUrl.isEmpty {
-							ContentUnavailableView(
-								"Share Link Unavailable",
-								systemImage: "qrcode",
-								description: Text("Select channels again before sharing.")
-							)
+							VStack(spacing: 16) {
+								Image(systemName: "qrcode")
+									.font(.system(size: 48))
+									.foregroundColor(.secondary)
+								Text("Share Link Unavailable")
+									.font(.title2)
+									.foregroundColor(.secondary)
+								Text("Select channels again before sharing.")
+									.foregroundColor(.secondary)
+							}
+							.frame(maxWidth: .infinity, maxHeight: .infinity)
 							.padding(.vertical, 24)
 						} else {
 							let qrImage = qrCodeImage.generateQRCode(from: channelsUrl)
@@ -173,10 +187,6 @@ struct ShareChannels: View {
 			.hostedSheet(isPresented: $showingHelp) {
 				ChannelsHelp()
 					.trackScreen(.channelsHelp)
-					.presentationDetents([.large])
-					#if !targetEnvironment(macCatalyst)
-					.presentationDragIndicator(.visible)
-					#endif
 			}
 			.safeAreaInset(edge: .bottom, alignment: .leading) {
 				HStack {

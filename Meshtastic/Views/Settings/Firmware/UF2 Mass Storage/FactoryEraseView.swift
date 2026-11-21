@@ -21,6 +21,7 @@ import CryptoKit
 import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
+import NavigationStackShim
 
 struct FactoryEraseView: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager
@@ -52,7 +53,7 @@ struct FactoryEraseView: View {
 	@State private var driveURL: URL?
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			ScrollView {
 				VStack(spacing: 20) {
 

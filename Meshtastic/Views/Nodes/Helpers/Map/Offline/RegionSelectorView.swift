@@ -621,7 +621,7 @@ struct RegionSelectorView: View {
 		guard let bounds else { isEstimating = false; return }
 		isEstimating = true
 		// Debounce: cancelled (and restarted) by `.task(id:)` if the area keeps changing.
-		do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
+		do { try await Task.sleep(nanoseconds: 500_000_000) } catch { return }
 		if Task.isCancelled { return }
 		let bytes = await Self.computeEstimate(bounds: bounds, detail: detail, content: content)
 		if Task.isCancelled { return }

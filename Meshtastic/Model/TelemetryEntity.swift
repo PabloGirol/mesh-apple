@@ -22,9 +22,9 @@ public class TelemetryEntity: NSManagedObject {
 	@NSManaged public var numTotalNodes: Int32
 	@NSManaged public var numTxRelay: Int32
 	@NSManaged public var numTxRelayCanceled: Int32
-	@NSManaged public var time: Date?
+	@NSManaged public var time: NSDate?
 
-	// Optional scalars
+	// Optional scalars - use primitive optional types for @NSManaged (NSNumber not representable in ObjC)
 	@NSManaged public var airUtilTx: Float?
 	@NSManaged public var barometricPressure: Float?
 	@NSManaged public var batteryLevel: Int32?
@@ -35,7 +35,7 @@ public class TelemetryEntity: NSManagedObject {
 	@NSManaged public var iaq: Int32?
 	@NSManaged public var irLux: Float?
 	@NSManaged public var lux: Float?
-	@NSManaged public var noiseFloor: Int32?
+	@NSManaged public var noiseFloor: Float?
 	@NSManaged public var powerCh1Current: Float?
 	@NSManaged public var powerCh1Voltage: Float?
 	@NSManaged public var powerCh2Current: Float?
@@ -48,7 +48,7 @@ public class TelemetryEntity: NSManagedObject {
 	@NSManaged public var relativeHumidity: Float?
 	@NSManaged public var rssi: Int32?
 	@NSManaged public var snr: Float?
-	@NSManaged public var soilMoisture: UInt32?
+	@NSManaged public var soilMoisture: Int32?
 	@NSManaged public var soilTemperature: Float?
 	@NSManaged public var temperature: Float?
 	@NSManaged public var uptimeSeconds: Int32?
@@ -64,12 +64,12 @@ public class TelemetryEntity: NSManagedObject {
 	// MARK: - Air Quality Metrics
 	// Particulate matter concentrations (µg/m³) from the firmware's AirQualityMetrics telemetry
 	// variant (metricsType 3), persisted like the other environment telemetry fields. See issue #2040.
-	@NSManaged public var pm10Standard: UInt32?
-	@NSManaged public var pm25Standard: UInt32?
-	@NSManaged public var pm100Standard: UInt32?
-	@NSManaged public var pm10Environmental: UInt32?
-	@NSManaged public var pm25Environmental: UInt32?
-	@NSManaged public var pm100Environmental: UInt32?
+	@NSManaged public var pm10Standard: Float?
+	@NSManaged public var pm25Standard: Float?
+	@NSManaged public var pm100Standard: Float?
+	@NSManaged public var pm10Environmental: Float?
+	@NSManaged public var pm25Environmental: Float?
+	@NSManaged public var pm100Environmental: Float?
 
 	/// The node this reading belongs to. New rows are found by this number rather than through
 	/// `nodeTelemetry`: setting the relationship makes SwiftData load every telemetry row the

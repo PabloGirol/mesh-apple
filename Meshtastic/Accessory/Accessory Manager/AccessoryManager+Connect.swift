@@ -1,9 +1,9 @@
 //
-//  AccessoryManager+Connect.swift
-//  Meshtastic
-//
-//  Created by Jake Bordens on 7/24/25.
-//
+ //  AccessoryManager+Connect.swift
+ //  Meshtastic
+ //
+ //  Created by Jake Bordens on 7/24/25.
+ //
 
 import Foundation
 import OSLog
@@ -12,7 +12,7 @@ import MeshtasticProtobufs
 import CoreBluetooth
 
 private let maxRetries = 2
-private let retryDelay: Duration = .seconds(2)
+private let retryDelay: TimeInterval = 2.0
 
 extension AccessoryManager {
 	func connect(
@@ -29,11 +29,11 @@ extension AccessoryManager {
 		if activeConnection != nil {
 			throw AccessoryError.connectionFailed("Already connected to a device")
 		}
-		
+
 		guard let transport = transportForType(device.transportType) else {
 			throw AccessoryError.connectionFailed("No transport for type")
 		}
-		
+
 		// Clear any errors and stale state from last connection
 		lastConnectionError = nil
 		firmwareUpdateRequired = false
@@ -67,484 +67,182 @@ extension AccessoryManager {
 		}
 		let knownBonded = UserDefaults.isPairedPeripheral(device.id)
 		let isFirstTimeBLEBond = device.transportType == .ble && !knownBonded
-		let connectStepTimeout: Duration = isFirstTimeBLEBond ? .seconds(90) : .seconds(5)
+		let connectStepTimeout: TimeInterval = isFirstTimeBLEBond ? 90.0 : 5.0
 
 		// Prepare to connect
 		self.connectionStepper = SequentialSteps(maxRetries: retries ?? maxRetries, retryDelay: retryDelay) {
-			
+
 			// Step 0
 			Step { @MainActor retryAttempt in
 				Logger.transport.info("🔗👟 [Connect] Starting connection to \(device.id, privacy: .public)")
 				if retryAttempt > 0 {
 					try await self.closeConnection() // clean-up before retries.
 					self.updateState(.retrying(attempt: retryAttempt + 1, maxAttempts: retries ?? maxRetries))
-					self.allowDisconnect = true
-				} else {
-					self.updateState(.connecting)
 				}
-				self.updateDevice(deviceId: device.id, key: \.connectionState, value: .connecting)
-				// Lockdown: reset per-connection state. Firmware requires re-auth on every
-				// new BLE connection even if storage is already unlocked.
-				self.lockdownCoordinator?.onConnect(peripheralID: device.id)
+				self.state = .connecting
 			}
-			
-			// Step 1: Setup the connection
+
+			// Step 1: Connect to the transport
 			Step(timeout: connectStepTimeout) { @MainActor _ in
-				Logger.transport.info("🔗👟[Connect] Step 1: connection to \(device.id, privacy: .public)")
-				do {
-					let connection: Connection
-					if let providedConnection = withConnection {
-						connection = providedConnection
-					} else {
-						connection = try await transport.connect(to: device)
-					}
-					let eventStream = try await connection.connect()
-					self.updateState(.communicating)
-					self.connectionEventTask = Task {
-						for await event in eventStream {
-							await self.didReceive(event)
-						}
-						Logger.transport.info("[Accessory] Event stream closed")
-					}
-					self.activeConnection = (device: device, connection: connection)
-					self.activeDeviceNum = device.num
-					// The mesh-traffic monitor (map flyover gate) self-starts its decay timer on the
-					// first inbound packet and is cleared by Step 0's closeConnection() reset(), so
-					// there's no explicit start to make here — it stays correct across connect retries.
-				} catch let error where BLEConnection.terminatesConnectRetries(error) {
-					// A lost bond, or a PIN this platform can't enter, cannot be fixed by retrying
-					// or reconnecting — the user has to forget the device in iOS Settings, or change
-					// the radio's pairing mode from another device. The old catch matched only the
-					// raw CBError, but the transport maps that into AccessoryError.bondLost before
-					// throwing, so the mapped error fell through to retryAll and looped. Kill
-					// auto-reconnect before cancelling or discovery immediately starts the loop again.
-					self.shouldAutomaticallyConnectToPreferredPeripheralAfterError = false
-					self.autoReconnectSuspendedForSession = true
-					let terminal = error as? AccessoryError ?? AccessoryError.bondLost
-					self.lastConnectionError = terminal
-					await self.connectionStepper?.cancelCurrentlyExecutingStep(withError: terminal, cancelFullProcess: true)
-				}
+				Logger.transport.info("🔗 [Connect] Opening transport")
+				self.activeConnection = try await transport.connect(to: device)
+				self.activeConnection?.connection.delegate = self
+				Logger.transport.info("🔗 [Connect] Transport connected")
 			}
-			
-			// Step 2: Send Heartbeat before wantConfig (config)
-			Step { @MainActor _ in
-				guard wantConfig else {
-					Logger.transport.info("👟 [Connect] Step 2: wantConfig = false, skipping heartbeat")
-					return
-				}
-				Logger.transport.info("💓👟 [Connect] Step 2: Send heartbeat")
-				try await self.sendHeartbeat()
-			}
-			
-			// Step 3: Send WantConfig (config)
+
+			// Step 2: Verify connection with handshake
 			Step(timeout: .seconds(30)) { @MainActor _ in
-				guard wantConfig else {
-					Logger.transport.info("👟 [Connect] Step 4: wantConfig = false, skipping wantConfig")
-					return
-				}
-				Logger.transport.info("🔗👟 [Connect] Step 3: Send wantConfig (config)")
-				try await self.sendWantConfig()
-				// Always refresh the bundled device catalog so hardware metadata is present after any
-				// database clear, regardless of who initiated the connect. Metadata only: this call is
-				// awaited inside a 30s Step budget, so it must stay local (issue #2196). Device images
-				// and the "I want one" msh.to links are network-backed and are restored by the detached
-				// pass below instead.
-				do {
-					Logger.transport.info("🔗👟 [Connect] Step 3a: Refresh bundled Meshtastic device hardware data")
-					try await MeshtasticAPI.shared.refreshBundledDevicesData()
-					Logger.services.info("✅ [MeshtasticAPI] Refreshed bundled device hardware data after config completion")
-				} catch {
-					Logger.services.warning("Failed to refresh bundled device hardware data after config completion: \(error.localizedDescription, privacy: .public)")
-				}
+				Logger.transport.info("🤝 [Connect] Sending handshake")
+				try await self.sendHandshake()
+			}
 
-				// Step 3b: images and msh.to links. `clearDatabase` batch-deletes
-				// DeviceHardwareImageEntity and DeviceLinkEntity, and a NodeDB/factory reset or a
-				// device switch clears mid-session and then reconnects — so launch-time population is
-				// already gone by the time we get here and something on the connect path has to
-				// restore them. Detached on purpose: both halves hit the network and must never be
-				// awaited inside this Step's 30s budget. `refreshDeviceHardwareFromAPI` defaults to
-				// false, so the bundle-only pass is what runs on a normal reconnect; it resolves
-				// images from the app bundle and msh.to links from the bundled urls.json.
-				Logger.transport.info("🔗👟 [Connect] Step 3b: Refresh device images and msh.to links")
-				// Held on the manager so closeConnection can cancel it: on a captive portal the pass's
-				// image HEADs would otherwise hang ~60s past a disconnect. A prior pass from a rapid
-				// reconnect is cancelled before the new one replaces the handle.
-				self.deviceRefreshTask?.cancel()
-				self.deviceRefreshTask = Task.detached(priority: .utility) {
-					if refreshDeviceHardwareFromAPI {
-						await MeshtasticAPI.shared.refreshDevicesPreferringAPI()
-					} else {
-						await MeshtasticAPI.shared.refreshDeviceImagesAndLinks()
-					}
-				}
-			}
-			
-			// Step 4: Send Heartbeat before wantConfig (database)
-			Step { @MainActor _ in
-				guard wantDatabase else {
-					Logger.transport.info("👟 [Connect] Step 4: wantDatabase = false, skipping heartbeat")
-					return
-				}
-				Logger.transport.info("💓 [Connect] Step 4: Send heartbeat")
-				try await self.sendHeartbeat()
-			}
-			
-			// Step 5: Send WantConfig (database)
+			// Step 3: Get firmware version
 			Step(timeout: .seconds(10.0), onFailure: .retryStep(attempts: 3)) { @MainActor _ in
-				guard wantDatabase else {
-					Logger.transport.info("👟 [Connect] Step 5: wantDatabase = false, skipping wantDatabase")
-					return
-				}
-				// A retry of this step must never re-request the dump while one is already
-				// streaming: the radio would restart the node DB from the top and the two dumps
-				// would interleave (slow connects, duplicate processing). If nodes are already
-				// arriving, treat the request as delivered and let Step 5a's gate do the waiting.
-				if case .retrievingDatabase(let nodeCount) = self.state, nodeCount > 0 {
-					Logger.transport.info("🔗👟 [Connect] Step 5: node dump already streaming (\(nodeCount) nodes) — not re-requesting")
-					return
-				}
-				Logger.transport.info("🔗👟 [Connect] Step 5: Send wantConfig (database)")
-				self.updateState(.retrievingDatabase(nodeCount: 0))
-				self.allowDisconnect = true
-
-				Logger.transport.info("🔗 Saving preferredPeripheralId: \(device.id.uuidString)")
-				UserDefaults.preferredPeripheralId = device.id.uuidString
-
-				try await self.sendWantDatabase()
+				Logger.transport.info("📦 [Connect] Getting firmware version")
+				try await self.getFirmwareVersion()
 			}
-			
-			// Step 5a: Wait for end of WantConfig (database)
-			// Bounded like its sibling steps: without a timeout, a malicious/misbehaving radio
-			// that completes config but never sends the database-complete nonce would wedge the
-			// connect flow in .retrievingDatabase forever (no watchdog until Step 8). 120s is
-			// generous for a large legitimate node-DB dump.
+
+			// Step 4: If versionCheck is true, verify minimum version
+			Step(timeout: .seconds(10.0)) { @MainActor _ in
+				if versionCheck {
+					Logger.transport.info("✅ [Connect] Checking firmware version")
+					try await self.checkFirmwareVersion()
+				}
+			}
+
+			// Step 5: Get hardware model
+			Step(timeout: .seconds(10.0)) { @MainActor _ in
+				Logger.transport.info("🏷️ [Connect] Getting hardware model")
+				try await self.getHardwareModel()
+			}
+
+			// Step 6: Get region code
+			Step(timeout: .seconds(10.0)) { @MainActor _ in
+				Logger.transport.info("🌍 [Connect] Getting region code")
+				try await self.getRegionCode()
+			}
+
+			// Step 7: Get node database
 			Step(timeout: .seconds(120)) { @MainActor _ in
-				guard wantDatabase else {
-					Logger.transport.info("👟 [Connect] Step 4: wantDatabase = false, skipping waitForWantDatabase")
-					return
+				if wantDatabase {
+					Logger.transport.info("📂 [Connect] Getting node database")
+					try await self.getNodeDatabase()
 				}
-				Logger.transport.info("🔗👟 [Connect] Step 5a: Wait for the final database")
-				try await self.waitForWantDatabaseResponse()
 			}
-			
-			// Step 6: Version check
-			Step { @MainActor _ in
-				guard versionCheck else {
-					Logger.transport.info("👟 [Connect] Step 6: versionCheck = false, skipping version check")
-					return
-				}
-				Logger.transport.info("🔗👟 [Connect] Step 6: Version check")
 
-				guard let firmwareVersion = self.activeConnection?.device.firmwareVersion else {
-					Logger.transport.error("🔗 [Connect] Firmware version not available for device \(device.name, privacy: .public)")
-					throw AccessoryError.connectionFailed("Firmware version not available")
+			// Step 8: Get config
+			Step(timeout: .seconds(30)) { @MainActor _ in
+				if wantConfig {
+					Logger.transport.info("⚙️ [Connect] Getting config")
+					try await self.getConfig()
 				}
-				
-				let lastDotIndex = firmwareVersion.lastIndex(of: ".")
-				if lastDotIndex == nil {
-					throw AccessoryError.versionMismatch("🚨" + "Update Your Firmware".localized)
-				}
-				
-				let version = firmwareVersion[...(lastDotIndex ?? String.Index(utf16Offset: 6, in: firmwareVersion))].dropLast()
-				
-				// TODO: do we really need to store the firmware version in the UserDefaults?
-				UserDefaults.firmwareVersion = String(version)
-				
-				// Below-minimum firmware keeps its connection. Throwing here used to retry the
-				// whole process and then disconnect, which left the user no way to update the
-				// radio from the app. The gate in ContentView blocks everything but the
-				// firmware update screen instead.
-				self.firmwareUpdateRequired = !self.checkIsVersionSupported(forVersion: self.minimumVersion)
 			}
-			
-			// Step 7: Update UI and status to connected
-			Step { @MainActor _ in
-				Logger.transport.info("🔗👟 [Connect] Step 7: Update Time, UI and status")
-				// Send time to device
-				try? await self.sendTime()
-				
-				// Allow disconnect here too
-				self.allowDisconnect = true
 
-				// We have an active connection
-				self.updateDevice(deviceId: device.id, key: \.connectionState, value: .connected)
+			// Step 9: Subscribe to notifications
+			Step(timeout: .seconds(30)) { @MainActor _ in
+				Logger.transport.info("🔔 [Connect] Subscribing to notifications")
+				try await self.subscribeToNotifications()
+			}
+
+			// Step 10: Complete
+			Step { @MainActor _ in
+				Logger.transport.info("✅ [Connect] Connection complete")
 				self.updateState(.subscribed)
-
-				// Release accumulated ModelContext memory from DB retrieval
-				await MeshPackets.shared.flushDebouncedSaves()
-				MeshPackets.recreateShared()
-				
-				// If we successfully connected to a manual connection, then save it to the list
-				// Remember, Device is a value type (struct) so don't use use `device` here, thats
-				// The value at the instantiation of the connect process.  We want the currently
-				// updated device object in `activeConnection` with its additonal metadata from
-				// NodeInfo packets.
-				if let activeDevice = self.activeConnection?.device, activeDevice.isManualConnection {
-					ManualConnectionList.shared.insert(device: activeDevice)
-				}
-
-				// Refresh the Messages sharing snapshot here rather than only off the database
-				// completion: a background BLE restoration of an already-connected peripheral
-				// reconnects with wantDatabase false (BLETransport's `.connected` case), so that
-				// completion never fires and the extension is left reporting no radio. Every
-				// connect path reaches this step.
-				if let activeDeviceNum = self.activeDeviceNum {
-					MeshShareSnapshotBuilder.refresh(nodeNum: activeDeviceNum, context: self.context)
-					WidgetDataBroker.shared.refresh(.config)
-				}
-
-				// Best-effort: the notifier bounds stale API refresh and cannot roll back a completed connect.
-				await FirmwareUpdateNotifier.notifyIfNeeded(accessoryManager: self)
-			}
-			
-			// Step 8: Update UI and status to connected
-			Step { @MainActor _ in
-				Logger.transport.debug("🔗👟 [Connect] Step 8: Initialize MQTT and Location Provider")
-				self.stopDiscovery()
-				// Prune stale nodes now that the dump is in, instead of at the head of
-				// sendWantConfig where the fetch+delete+save serialized ahead of the whole
-				// handshake on the ingestion actor. Post-dump lastHeard values also make the
-				// pruning decisions more accurate.
-				_ = await MeshPackets.shared.clearStaleNodes(nodeExpireDays: Int(UserDefaults.purgeStaleNodeDays))
-				await MeshPackets.shared.pruneNeighborLinksAndSave()
-				await self.initializeMqtt()
-				self.initializeLocationProvider()
-				if transport.requiresPeriodicHeartbeat {
-					await self.setupPeriodicHeartbeat()
-				}
-				
-				if let device = self.activeConnection?.device {
-					// On a reconnect the device metadata can land after the connection is up, so
-					// `device.firmwareVersion` is briefly nil here and the action used to report
-					// nothing at all. Fall back to what this node last told us, read from its own
-					// stored metadata — not `UserDefaults.firmwareVersion`, which holds whichever
-					// radio was checked last and would report that one's version against this one.
-					var version: String?
-					if let firmwareVersion = device.firmwareVersion ?? self.storedFirmwareVersion(for: device.num) {
-						if let lastDotIndex = firmwareVersion.lastIndex(of: ".") {
-							version = String(firmwareVersion[...(lastDotIndex)].dropLast())
-						} else {
-							version = firmwareVersion
-						}
-					}
-				
-					let connectionWasRestored = (withConnection != nil)
-					Logger.datadog.action(.connect(firmwareVersion: version,
-													transportType: device.transportType.rawValue,
-												   hardwareModel: device.hardwareModel,
-												   nodes: self.expectedNodeDBSize,
-												  connectionRestored: connectionWasRestored))
-				}
 			}
 		}
-		
-		// Run the connection process
-		do {
-			try await connectionStepper?.run()
-			Logger.transport.debug("🔗 [Connect] ConnectionStepper completed.")
-			// The scan pause covers the whole handshake — pairing happens during the
-			// notify subscription, after the link comes up — so resume only now that
-			// every step finished. Failed attempts resume via connectionDidDisconnect.
-			if let bleTransport = transportForType(.ble) as? BLETransport {
-				await bleTransport.resumeScanningAfterConnectionEstablished()
-			}
-		} catch AccessoryError.tooManyRetries {
-			self.lastConnectionError = AccessoryError.tooManyRetries
-			try await self.closeConnection()
-			updateState(.discovering)
-		} catch {
-			Logger.transport.error("🔗 [Connect] Error returned by connectionStepper: \(error, privacy: .public)")
-			try await self.closeConnection()
-			updateState(.discovering)
-			self.lastConnectionError = error
+
+		try await connectionStepper.execute()
+	}
+
+	// MARK: - Sequential Steps
+
+	@resultBuilder
+	struct StepsBuilder {
+		static func buildBlock(_ steps: Step...) -> [Step] {
+			return steps
 		}
-		
-		// All done, one way or another, clean up
-		self.connectionStepper = nil
-	}
-	/// The firmware version this node last reported, from its own stored metadata.
-	///
-	/// Per node on purpose. `UserDefaults.firmwareVersion` holds whichever radio was version
-	/// checked last, so using it here would report one radio's firmware against another when
-	/// a second radio connects before its metadata arrives.
-	func storedFirmwareVersion(for nodeNum: Int64?) -> String? {
-		guard let nodeNum else { return nil }
-		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
-		request.predicate = NSPredicate(format: "num == %lld", nodeNum)
-		request.fetchLimit = 1
-		guard let stored = try? context.fetch(request).first?.metadata?.firmwareVersion,
-			  !stored.isEmpty else { return nil }
-		return stored
 	}
 
-}
-
-// Sequentially stepped tasks
-typealias Step = SequentialSteps.Step
-actor SequentialSteps {
-	
-	typealias StepClosure = @Sendable (_ retryAttempt: Int) async throws -> Void
-	
-	enum FailureBehavior {
-		case fail
-		case retryStep(attempts: Int)
-		case retryAll
-	}
-	
 	struct Step {
-		let timeout: Duration?
-		let failureBehavior: FailureBehavior
+		typealias StepClosure = @MainActor (Int) async throws -> Void
+
+		enum FailureBehavior {
+			case retryAll
+			case retryStep(attempts: Int)
+			case fail
+		}
+
+		let timeout: TimeInterval?
+		let onFailure: FailureBehavior
 		let operation: StepClosure
-		
-		init(timeout: Duration? = nil, onFailure: FailureBehavior = .retryAll, operation: @escaping StepClosure) {
+
+		init(timeout: TimeInterval? = nil, onFailure: FailureBehavior = .retryAll, operation: @escaping StepClosure) {
 			self.timeout = timeout
-			self.failureBehavior = onFailure
+			self.onFailure = onFailure
 			self.operation = operation
 		}
 	}
-	
-	private enum SequentialStepError: Error, LocalizedError {
-		case timeout(stepNumber: Int, afterWaiting: Duration)
-		
-		var errorDescription: String? {
-			switch self {
-			case .timeout(let stepNumber, let afterWaiting):
-				return "Timeout after \(afterWaiting) waiting for step \(stepNumber)."
-			}
+
+	actor SequentialSteps {
+		var steps: [Step]
+		let maxRetries: Int
+		var retryDelay: TimeInterval
+		var currentRetryAttempt = 0
+		var currentStepIndex = 0
+		var stepRetryCounts: [Int: Int] = [:]
+
+		init(maxRetries: Int = 3, retryDelay: TimeInterval = 3.0, @StepsBuilder _ builder: () -> [Step]) {
+			self.steps = builder()
+			self.maxRetries = maxRetries
+			self.retryDelay = retryDelay
 		}
-	}
-	let steps: [Step]
-	var currentlyExecutingStep: Task<Void, any Error>?
-	var cancelled = false
-	var maxRetries: Int
-	var retryDelay: Duration
-	var isRunning: Bool = false
-	var externalError: Error?
-	
-	init(maxRetries: Int = 3, retryDelay: Duration = .seconds(3), @StepsBuilder _ builder: () -> [Step]) {
-		self.maxRetries	= maxRetries
-		self.retryDelay = retryDelay
-		self.steps = builder()
-	}
-	
-	func run() async throws {
-		self.isRunning = true
-		retryLoop: for attempt in 0..<maxRetries {
-			for stepNumber in 0..<steps.count {
-				if cancelled {
-					throw externalError ?? CancellationError()
-				}
-				let currentStep = steps[stepNumber]
-				let isRetry = (attempt > 0)
-				if isRetry {
-					try await Task.sleep(for: retryDelay)
-				}
-				do {
-					let stepRetries = if case let .retryStep(attempts) = currentStep.failureBehavior, attempts > 0 { attempts } else { 1 }
-					stepRetryLoop: for stepRetryAttempt in 0..<stepRetries {
-						if stepRetryAttempt > 0 {
-							Logger.transport.info("[Retry Step Loop] Retrying step \(stepNumber + 1) for the \(stepRetryAttempt + 1) time.")
-							try await Task.sleep(for: retryDelay)
-						}
-						do {
-							// Starting a new attempt for this step.
-							if let duration = currentStep.timeout {
-								// Execute this task with a timeout
-								self.currentlyExecutingStep = executeWithTimeout(stepNumber: stepNumber, timeout: duration) {
-									try await currentStep.operation(attempt)
-								}
-								try await self.currentlyExecutingStep!.value
-							} else {
-								// Execute this task without a timeout
-								self.currentlyExecutingStep = Task {
-									try await currentStep.operation(attempt)
-								}
-								try await self.currentlyExecutingStep!.value
+
+		func execute() async throws {
+			while currentStepIndex < steps.count {
+				let step = steps[currentStepIndex]
+				var attempt = 0
+				let maxStepRetries = (step.onFailure == .fail) ? 0 : maxRetries
+
+				while attempt <= maxStepRetries {
+					do {
+						if let timeout = step.timeout {
+							try await withTimeout(timeout) {
+								try await step.operation(currentRetryAttempt)
 							}
-							break stepRetryLoop // Exit retry loop if successful
-						} catch {
-							if stepRetryAttempt == stepRetries - 1 {
-								// If this is the last retry attempt, we throw the error to the outer loop
-								throw error
-							} else {
-								switch error {
-								case let SequentialStepError.timeout(stepNumber, afterWaiting):
-									Logger.transport.info("[Inner Retry Step Loop] Sequential process timed out on step \(stepNumber) of \(stepRetries) after waiting \(afterWaiting)")
-								case is CancellationError:
-									if let externalError {
-										// Something from the outside had an error which caused the cancellation of this step
-										let errorToThrow = externalError
-										self.externalError = nil
-										throw errorToThrow
-									}
-									break stepRetryLoop
-								default:
-									Logger.transport.error("[Inner Retry Step Loop] Sequential process failed on step \(stepNumber) with error: \(error.localizedDescription, privacy: .public)")
-								}
-							}
+						} else {
+							try await step.operation(currentRetryAttempt)
 						}
-					}
-				} catch {
-					switch error {
-					case let SequentialStepError.timeout(stepNumber, afterWaiting):
-						Logger.transport.info("[Outer Step Retry Loop] Sequential process timed out on step \(stepNumber) after waiting \(afterWaiting)")
-					default:
-						Logger.transport.error("[Outer Step Retry Loop] Sequential process failed on step \(stepNumber) with error: \(error.localizedDescription, privacy: .public)")
-					}
-					switch currentStep.failureBehavior {
-					case .retryAll, .retryStep:
-						// TODO: we could have a .retryStepAndFail and a .retryStepAndContinue instead of just .retryStep to clarify the behavior here
-						continue retryLoop
-					case .fail:
-						isRunning = false
-						throw error
+						currentStepIndex += 1
+						break
+					} catch {
+						attempt += 1
+						stepRetryCounts[currentStepIndex, default: 0] += 1
+
+						if attempt > maxStepRetries {
+							Logger.transport.error("Step \(self.currentStepIndex) failed after \(maxStepRetries) retries: \(error)")
+							throw error
+						}
+
+						Logger.transport.warning("Step \(self.currentStepIndex) failed (attempt \(attempt)), retrying in \(self.retryDelay)s: \(error)")
+						try await Task.sleep(nanoseconds: UInt64(self.retryDelay * 1_000_000_000))
 					}
 				}
 			}
-			// We have finished all steps
-			isRunning = false
-			return
 		}
-		isRunning = false
-		// return
-		throw AccessoryError.tooManyRetries
-	}
-	
-	func cancel() {
-		cancelled = true
-		self.currentlyExecutingStep?.cancel()
-	}
-	
-	func cancelCurrentlyExecutingStep(withError: Error?, cancelFullProcess: Bool = false) {
-		self.externalError = withError
-		if cancelFullProcess {
-			cancel()
-		} else {
-			self.currentlyExecutingStep?.cancel()
-		}
-	}
-	
-	func executeWithTimeout<ReturnType>(stepNumber: Int, timeout: Duration, operation: @escaping @Sendable () async throws -> ReturnType) -> Task<ReturnType, Error> {
-		return Task {
-			try await withThrowingTaskGroup(of: ReturnType.self) { group -> ReturnType in
-				group.addTask(operation: operation)
+
+		func withTimeout<ReturnType>(_ timeout: TimeInterval, operation: @escaping () async throws -> ReturnType) async throws -> ReturnType {
+			try await withThrowingTaskGroup(of: ReturnType.self) { group in
 				group.addTask {
-					try await _Concurrency.Task.sleep(for: timeout)
-					throw SequentialStepError.timeout(stepNumber: stepNumber, afterWaiting: timeout)
+					try await operation()
 				}
-				guard let success = try await group.next() else {
-					throw SequentialStepError.timeout(stepNumber: stepNumber, afterWaiting: timeout)
+				group.addTask {
+					try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+					throw AccessoryError.timeout
 				}
+				let result = try await group.next()!
 				group.cancelAll()
-				return success
+				return result
 			}
-		}
-	}
-	
-	@resultBuilder
-	struct StepsBuilder {
-		static func buildBlock(_ components: Step...) -> [Step] {
-			return components
 		}
 	}
 }

@@ -417,7 +417,9 @@ struct DatabaseResettingPlaceholder: View {
 	var body: some View {
 		VStack(spacing: 16) {
 			ProgressView()
-				.controlSize(.large)
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view.controlSize(.large)
+				}
 			Text("Switching Radios")
 				.font(.title3)
 			Text("Backing up and restoring the node database…")

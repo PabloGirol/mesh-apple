@@ -44,6 +44,9 @@ packages:
     path: MeshtasticProtobufs
   Kp1812:
     path: Packages/Kp1812
+  DGCharts:
+    url: https://github.com/danielgindi/Charts
+    version: "5.1.0"
 
 settings:
   configs:
@@ -106,7 +109,7 @@ settings:
       MTL_FAST_MATH: "YES"
       ONLY_ACTIVE_ARCH: "YES"
       SDKROOT: "iphoneos"
-      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG"
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG MESHTASTIC_IOS15"
       SWIFT_OPTIMIZATION_LEVEL: "-Onone"
       SWIFT_VERSION: "5.9"
     Release:
@@ -168,6 +171,7 @@ settings:
       SWIFT_VERSION: "5.9"
       TARGETED_DEVICE_FAMILY: "1,2,6"
       VALIDATE_PRODUCT: "YES"
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "MESHTASTIC_IOS15"
 
 targets:
   Meshtastic:
@@ -288,6 +292,8 @@ targets:
         product: NordicDFU
       - package: SwiftDraw
         product: SwiftDraw
+      - package: DGCharts
+        product: DGCharts
       - package: swift-markdown
         product: Markdown
       - package: mvt-tools
@@ -367,7 +373,7 @@ targets:
           ENABLE_RESOURCE_ACCESS_USB: "NO"
           # Device models ship in the iPhone, iPad, Mac and Vision Pro app (not TV or Watch, which
           # don't include this folder). Their README (the copyright notice) stays out of every build, as does the model sync manifest.
-          EXCLUDED_SOURCE_FILE_NAMES: "README.md model_manifest.json"
+          EXCLUDED_SOURCE_FILE_NAMES: "README.md model_manifest.json OpenMeshScreenIntent.swift TrackNodeIntent.swift"
           SWIFT_TREAT_WARNINGS_AS_ERRORS: "NO"
           INFOPLIST_FILE: "Meshtastic/Info.plist"
           INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
@@ -391,6 +397,7 @@ targets:
           TARGETED_DEVICE_FAMILY: "1,2,7"
           SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
           SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: "NO"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "MESHTASTIC_IOS15"
         Release:
           ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
           ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
@@ -417,7 +424,7 @@ targets:
           ENABLE_RESOURCE_ACCESS_USB: "NO"
           # Device models ship in the iPhone, iPad, Mac and Vision Pro app (not TV or Watch, which
           # don't include this folder). Their README (the copyright notice) stays out of every build, as does the model sync manifest.
-          EXCLUDED_SOURCE_FILE_NAMES: "README.md model_manifest.json"
+          EXCLUDED_SOURCE_FILE_NAMES: "README.md model_manifest.json OpenMeshScreenIntent.swift TrackNodeIntent.swift"
           SWIFT_TREAT_WARNINGS_AS_ERRORS: "NO"
           INFOPLIST_FILE: "Meshtastic/Info.plist"
           INFOPLIST_KEY_CFBundleDisplayName: "Meshtastic"
@@ -440,6 +447,7 @@ targets:
           TARGETED_DEVICE_FAMILY: "1,2,7"
           SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
           SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: "NO"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "MESHTASTIC_IOS15"
 
   # WidgetsExtension:
   #   type: app-extension

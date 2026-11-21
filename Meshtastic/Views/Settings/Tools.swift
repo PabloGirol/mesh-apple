@@ -92,10 +92,14 @@ struct Tools: View {
 				accessoryManager: accessoryManager
 			)
 			.trackScreen(.saveChannelQRCode)
-			.presentationDetents([.large])
-			#if !targetEnvironment(macCatalyst)
-			.presentationDragIndicator(.visible)
-			#endif
+			.ifAvailable(iOS 16.0) { view in
+				view.presentationDetents([.large])
+			}
+			.ifAvailable(iOS 16.0) { view in
+				#if !targetEnvironment(macCatalyst)
+				view.presentationDragIndicator(.visible)
+				#endif
+			}
 		}
 	}
 
@@ -132,5 +136,5 @@ struct Tools: View {
 #Preview {
 	Tools()
 		.environmentObject(AccessoryManager.shared)
-		.modelContainer(PersistenceController.preview.container)
+		.environment(\.managedObjectContext, CoreDataStackImpl.preview.context)
 }

@@ -31,9 +31,9 @@ struct LoRaSignalStrengthMeter: View {
 					.font(.caption2)
 			}
 		} else {
-			VStack {
-				Gauge(value: Double(signalStrength.rawValue), in: 0...3) {
-				} currentValueLabel: {
+			// iOS 15 fallback: simple progress view
+			VStack(spacing: 4) {
+				HStack {
 					Image(systemName: "dot.radiowaves.left.and.right")
 						.font(.callout)
 						.frame(width: 30)
@@ -42,12 +42,12 @@ struct LoRaSignalStrengthMeter: View {
 						.foregroundColor(.gray)
 						.fixedSize()
 				}
-				.gaugeStyle(.accessoryLinear)
-				.tint(gradient)
-				.font(.caption)
-				.accessibilityLabel(String(localized: "Signal strength", comment: "VoiceOver: label for the LoRa signal strength gauge"))
-				.accessibilityValue(Text("Signal \(signalStrength.description)"))
+				ProgressView(value: Double(signalStrength.rawValue), total: 3)
+					.tint(gradient)
 			}
+			.font(.caption)
+			.accessibilityLabel(String(localized: "Signal strength", comment: "VoiceOver: label for the LoRa signal strength gauge"))
+			.accessibilityValue(Text("Signal \(signalStrength.description)"))
 		}
 	}
 }

@@ -11,6 +11,8 @@ import SwiftUI
 /// over a grouped form of the two names. Skippable.
 struct RadioSetupNamePage: View {
 	let model: RadioSetupModel
+	let onAdvance: () -> Void
+	let onSkip: () -> Void
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@Environment(\.managedObjectContext) private var context
 	@ScaledMetric(relativeTo: .largeTitle) private var previewSize: CGFloat = 96
@@ -33,17 +35,17 @@ struct RadioSetupNamePage: View {
 	var body: some View {
 		OnboardingPage(
 			title: String(localized: "Name Your Radio", comment: "Radio setup name title"),
-			intro: AttributedString(localized: "Other people see these in their node lists and on the map.", comment: "Radio setup name intro"),
+			intro: AttributedString(String(localized: "Other people see these in their node lists and on the map.", comment: "Radio setup name intro")),
 			buttonTitle: model.hasNameChanges
 				? String(localized: "Save and Continue", comment: "Radio setup button")
 				: String(localized: "Continue"),
 			isContinueEnabled: model.canSaveName,
 			errorMessage: model.saveError,
 			secondaryButtonTitle: String(localized: "Skip"),
-			secondaryAction: { model.advance(from: .name) },
+			secondaryAction: onSkip,
 			action: {
 				if await model.saveName(using: accessoryManager, context: context) {
-					model.advance(from: .name)
+					onAdvance()
 				}
 			}
 		) {

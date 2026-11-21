@@ -3,9 +3,9 @@
 //  Meshtastic
 //
 //  Default chart configuration for the AirQualityMetricsLog view (issue #2040).
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import Charts
 import Foundation
 import SwiftUI
 
@@ -20,23 +20,11 @@ private func pmSeries(id: String, keyPath: KeyPath<TelemetryEntity, UInt32?>, na
 		// PM concentrations are reported in micrograms per cubic meter.
 		unit: "µg/m³",
 		visible: visible,
+		chartType: .line,
 		foregroundStyle: { _ in
 			.linearGradient(colors: colors, startPoint: .bottom, endPoint: .top)
-		},
-		chartBody: { series, _, time, value in
-			if let value {
-				LineMark(
-					x: .value("Time", time),
-					y: .value(series.abbreviatedName, value)
-				)
-				// Linear (not Catmull-Rom): raw PM samples are sparse, and spline smoothing can
-				// overshoot between points and imply concentrations that were never measured.
-				.interpolationMethod(.linear)
-				.foregroundStyle(by: .value("Series", series.abbreviatedName))
-				.lineStyle(series.strokeStyle)
-				.alignsMarkStylesWithPlotArea()
-			}
-		})
+		}
+	)
 }
 
 // This is the default configuration used by the AirQualityMetricsLog view for the chart

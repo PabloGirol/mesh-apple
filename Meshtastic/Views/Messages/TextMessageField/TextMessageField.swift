@@ -58,11 +58,11 @@ struct TextMessageField: View {
 									.padding(.top, 10)
 							}
 						}
-						TextField("Message", text: $typingMessage, axis: .vertical)
+						TextEditor(text: $typingMessage)
 							.autocorrectionDisabled(false)
-							.frame(minHeight: 36)
+							.frame(minHeight: 36, maxHeight: 200)
 							.padding(.horizontal, 16)
-							.padding(.vertical, 12)
+							.padding(.vertical, 4)
 							.background(
 								RoundedRectangle(cornerRadius: 20)
 									.strokeBorder(.tertiary, lineWidth: 1)
@@ -80,11 +80,6 @@ struct TextMessageField: View {
 							.keyboardType(.default)
 							.focused($isFocused)
 							.multilineTextAlignment(.leading)
-							.onSubmit {
-#if targetEnvironment(macCatalyst)
-								sendMessage()
-#endif
-							}
 							.foregroundColor(.primary)
 						if !typingMessage.isEmpty {
 							Button(action: sendMessage) {
@@ -231,7 +226,9 @@ private struct FormattingComposeArea: View {
 					.frame(minHeight: 36, maxHeight: 200)
 					.padding(.horizontal, 16)
 					.padding(.vertical, 4)
+					if #available(iOS 16.0, *) {
 					.scrollContentBackground(.hidden)
+				}
 					.background(
 						RoundedRectangle(cornerRadius: 20)
 							.strokeBorder(.tertiary, lineWidth: 1)

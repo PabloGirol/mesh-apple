@@ -6,6 +6,34 @@ import CoreData
 import Translation
 #endif
 
+// MARK: - Markdown to AttributedString (iOS 15 compatible)
+private func attributedStringFromMarkdown(_ markdown: String) -> AttributedString? {
+	// Convert basic markdown to HTML
+	let html = markdown
+		.replacingOccurrences(of: "&", with: "&")
+		.replacingOccurrences(of: "<", with: "<")
+		.replacingOccurrences(of: ">", with: ">")
+		.replacingOccurrences(of: "\n", with: "<br>")
+		.replacingOccurrences(of: "\\*\\*(.+?)\\*\\*", with: "<b>$1</b>", options: .regularExpression)
+		.replacingOccurrences(of: "\\*(.+?)\\*", with: "<i>$1</i>", options: .regularExpression)
+		.replacingOccurrences(of: "`(.+?)`", with: "<code>$1</code>", options: .regularExpression)
+		.replacingOccurrences(of: "\\[(.+?)\\]\\((.+?)\\)", with: "<a href=\"$2\">$1</a>", options: .regularExpression)
+
+	let htmlString = "<span style=\"font-family: -apple-system; font-size: 17px;\">\(html)</span>"
+
+	guard let data = htmlString.data(using: .utf8),
+		  let nsAttributed = try? NSAttributedString(
+			data: data,
+			options: [.documentType: NSAttributedString.DocumentType.html,
+					  .characterEncoding: String.Encoding.utf8.rawValue],
+			documentAttributes: nil
+		  ) else {
+		return nil
+	}
+
+	return AttributedString(nsAttributed)
+}
+
 struct MessageText: View {
 	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
@@ -34,10 +62,6 @@ struct MessageText: View {
 					accessoryManager: accessoryManager
 				)
 				.trackScreen(.saveChannelQRCode)
-				.presentationDetents([.large])
-				#if !targetEnvironment(macCatalyst) && !os(visionOS)
-				.presentationDragIndicator(.visible)
-				#endif
 			}
 			.contactImportSheet($pendingContact, accessoryManager: accessoryManager)
 			.hostedConfirmation(
@@ -110,7 +134,7 @@ struct MessageText: View {
 			context: context
 		)
 		return Group {
-			if let attributed = try? AttributedString(markdown: payload, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+			if let attributed = attributedStringFromMarkdown(payload) {
 				Text(colorLinks(in: attributed))
 			} else {
 				Text(LocalizedStringKey(payload))

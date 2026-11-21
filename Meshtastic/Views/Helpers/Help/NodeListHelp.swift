@@ -6,10 +6,11 @@
 //
 
 import SwiftUI
+import NavigationStackShim
 
 struct NodeListHelp: View {
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			List {
 				Section {
 					HelpItem(
@@ -125,11 +126,10 @@ struct NodeListHelp: View {
 					)
 					HelpItem(
 						symbol: AnyView(
-							Gauge(value: 2.0, in: 0...3) {
-							}
-							.gaugeStyle(.accessoryLinear)
-							.tint(Gradient(colors: [.red, .orange, .yellow, .green]))
-							.frame(width: 32)
+							// iOS 15 fallback: simple progress view
+							ProgressView(value: 2.0, total: 3)
+								.tint(Gradient(colors: [.red, .orange, .yellow, .green]))
+								.frame(width: 32)
 						),
 						title: String(localized: "Signal Strength Meter"),
 						subtitle: String(localized: "The gradient bar in the Complete layout shows overall signal quality from red (no signal) through orange, yellow, to green (good signal). It combines SNR and RSSI relative to your modem preset.")
@@ -190,13 +190,6 @@ struct NodeListHelp: View {
 			.navigationBarTitleDisplayMode(.inline)
 			.sheetCloseButton()
 		}
-		.presentationDetents([.large])
-		.presentationContentInteraction(.scrolls)
-		#if !targetEnvironment(macCatalyst)
-		.presentationDragIndicator(.visible)
-		#endif
-		.presentationBackgroundInteraction(.enabled(upThrough: .large))
-
 	}
 }
 

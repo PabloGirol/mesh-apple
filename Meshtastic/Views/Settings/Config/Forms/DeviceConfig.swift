@@ -195,12 +195,12 @@ private struct DeviceResetSection: View {
 		Task {
 			do {
 				try await accessoryManager.sendNodeDBReset(fromUser: user, toUser: user, preserveFavorites: preserveFavorites)
-				try await Task.sleep(for: .seconds(1))
+				try await Task.sleep(nanoseconds: 1_000_000_000)
 				if let conn = accessoryManager.activeConnection {
 					try await conn.connection.disconnect(withError: nil, shouldReconnect: true)
 				}
 				dismiss()
-				try await Task.sleep(for: .milliseconds(500))
+				try await Task.sleep(nanoseconds: 500_000_000)
 				await MeshPackets.shared.flushDebouncedSaves()
 				await MeshPackets.shared.clearDatabase(includeRoutes: false, preserveFavorites: preserveFavorites)
 				await AccessoryManager.shared.resetDatabaseAfterClear()
@@ -218,14 +218,14 @@ private struct DeviceResetSection: View {
 		Task {
 			do {
 				try await accessoryManager.sendFactoryReset(fromUser: user, toUser: user, resetDevice: resetDevice)
-				try? await Task.sleep(for: .seconds(1))
+				try? await Task.sleep(nanoseconds: 1_000_000_000)
 				if resetDevice {
 					try await accessoryManager.disconnect()
 				} else if let conn = accessoryManager.activeConnection {
 					try await conn.connection.disconnect(withError: nil, shouldReconnect: true)
 				}
 				dismiss()
-				try await Task.sleep(for: .milliseconds(500))
+				try await Task.sleep(nanoseconds: 500_000_000)
 				await MeshPackets.shared.flushDebouncedSaves()
 				await MeshPackets.shared.clearDatabase(includeRoutes: false)
 				await AccessoryManager.shared.resetDatabaseAfterClear()

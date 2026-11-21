@@ -19,7 +19,6 @@ struct NodeStatusBoard: View {
 	@EnvironmentObject private var appState: AppState
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@Environment(\.managedObjectContext) private var context
-	@Environment(\.openWindow) private var openWindow
 	@State private var sheet: Sheet?
 
 	/// The board's sizes in points. CinemaSpace scales the panel to the board in the image, so only
@@ -55,7 +54,7 @@ struct NodeStatusBoard: View {
 				if !appState.isDatabaseResetting {
 					sheet = makeSheet()
 				}
-				try? await Task.sleep(for: Self.refreshInterval)
+				try? await Task.sleep(nanoseconds: UInt64(Self.refreshInterval * 1_000_000_000))
 			}
 		}
 	}
@@ -218,7 +217,6 @@ struct NodeStatusBoard: View {
 	/// forward), and puts the node's detail on the front screen.
 	private func show(_ nodeNum: Int64) {
 		appState.spatialMapFocus = SpatialMapFocusRequest(nodeNum: nodeNum)
-		openWindow(id: SpatialMapScene.id, value: SpatialMapSceneKey.shared)
 		appState.cinemaScreenRequest = .node(nodeNum)
 	}
 }

@@ -65,7 +65,7 @@ struct CinemaModelTag: View {
 			}
 			while !Task.isCancelled {
 				reading = CinemaNodeReading(nodeNum: nodeNum, context: context)
-				try? await Task.sleep(for: .seconds(CinemaNodeReading.refresh))
+				try? await Task.sleep(nanoseconds: UInt64(CinemaNodeReading.refresh * 1_000_000_000))
 			}
 		}
 	}

@@ -9,6 +9,7 @@ import CoreLocation
 import OSLog
 import CoreData
 import Foundation
+import NavigationStackShim
 
 struct NodeList: View {
 	@Environment(\.managedObjectContext) private var context
@@ -38,18 +39,14 @@ struct NodeList: View {
 		return nil
 	}
 
-	@State private var columnVisibility: NavigationSplitViewVisibility = .all
-
 	/// The open iPhone Duo display is regular width but only about 669pt across, which
-	/// is not enough for two real columns. `NavigationSplitView` then draws the sidebar
-	/// as an overlay on top of the detail column, and with `columnVisibility` pinned to
-	/// `.all` it stays there — covering the detail column's navigation bar and the back
-	/// button with it, so a pushed screen like the Local Stats Log cannot be dismissed.
+	/// is not enough for two real columns. A split view would draw the sidebar
+	/// as an overlay on top of the detail column, covering the detail column's navigation
+	/// bar and the back button with it, so a pushed screen like the Local Stats Log
+	/// cannot be dismissed.
 	///
 	/// A phone-idiom device never has room for the two-column layout, so at this width it
-	/// gets the same single stack it gets folded. Compact width still goes through the
-	/// split view, which collapses to a stack on its own and is the path every iPhone
-	/// already takes.
+	/// gets the same single stack it gets folded.
 	private var prefersStackOverOverlaySidebar: Bool {
 		horizontalSizeClass == .regular && UIDevice.current.userInterfaceIdiom == .phone
 	}
@@ -89,33 +86,36 @@ struct NodeList: View {
 		   let node = router.cachedNodeInfo(id: selectedNum, context: context) {
 			nodeDestination(node, nodeNum: selectedNum)
 		} else {
-			ContentUnavailableView("Select a Node", systemImage: "flipphone")
+			VStack(spacing: 16) {
+				Image(systemName: "flipphone")
+					.font(.system(size: 48))
+					.foregroundColor(.secondary)
+				Text("Select a Node")
+					.font(.title2)
+					.foregroundColor(.secondary)
+			}
+			.frame(maxWidth: .infinity, maxHeight: .infinity)
 		}
 	}
 
 	var body: some View {
 		Group {
 			if prefersStackOverOverlaySidebar {
-				NavigationStack(path: nodeDetailPath) {
+				CompatNavigationStackWithPath(path: nodeDetailPath) {
 					sidebarContent
 						// The sidebar's rows are `NavigationLink(value:)`, which the split
 						// view turns into a selection. In a stack they need a destination
 						// to push, and pushing is what gives the detail screens a back button.
-						.navigationDestination(for: Int64.self) { nodeNum in
+						.compatNavigationDestination(for: Int64.self) { nodeNum in
 							if let node = router.cachedNodeInfo(id: nodeNum, context: context) {
 								nodeDestination(node, nodeNum: nodeNum)
 							}
 						}
 				}
 			} else {
-				NavigationSplitView(columnVisibility: $columnVisibility) {
-					sidebarContent
-				} detail: {
-					NavigationStack {
-						detailContent
-					}
+				CompatNavigationStack {
+					detailContent
 				}
-				.navigationSplitViewStyle(.balanced)
 			}
 		}
 		.onAppear {
@@ -147,7 +147,8 @@ struct NodeList: View {
 			nodeForDisplayNameEdit: $nodeForDisplayNameEdit,
 			nodeForStatusMessageEdit: $nodeForStatusMessageEdit,
 			nodeListDensity: $nodeListDensity,
-			selectedNodeNum: $router.selectedNodeNum
+			selectedNodeNum: $router.selectedNodeNum,
+			opensSeededLocalStatsLog: opensSeededLocalStatsLog
 		)
 		.hostedSheet(isPresented: $isEditingFilters) {
 			NodeListFilter(
@@ -209,7 +210,11 @@ struct NodeList: View {
 			.controlSize(.regular)
 			.padding(5)
 		}
-		.searchable(text: $filters.searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find a node")
+		if #available(iOS 16.0, *) {
+			.searchable(text: $filters.searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find a node")
+		} else {
+			.searchable(text: $filters.searchText, placement: .toolbar, prompt: "Find a node")
+		}
 		.autocorrectionDisabled(true)
 		.dismissesKeyboardOnScroll()
 		.listStyle(.plain)
@@ -317,6 +322,35 @@ private struct FilteredNodeList: View {
 	@Binding var nodeListDensity: NodeListDensity
 	@Binding var selectedNodeNum: Int64?
 	var filters: NodeFilterParameters
+	let opensSeededLocalStatsLog: Bool
+
+	/// Creates the detail view for a node. Used for iOS 15 explicit navigation.
+	@ViewBuilder
+	private func nodeDestination(_ node: NodeInfoEntity, nodeNum: Int64) -> some View {
+		if opensSeededLocalStatsLog {
+			LocalStatsLog(node: node)
+		} else {
+			NodeDetail(node: node, nodeNum: nodeNum)
+				.trackScreen(.nodeDetail)
+		}
+	}
+
+	@ViewBuilder
+	private func makeNodeRow(_ entry: NodeListEntry) -> some View {
+		switch nodeListDensity {
+		case .compact:
+			NodeListItemCompact(
+				node: entry.node,
+				isDirectlyConnected: entry.id == accessoryManager.activeDeviceNum,
+				connectedNode: accessoryManager.activeConnection?.device.num ?? -1)
+		case .standard:
+			NodeListItem(
+				node: entry.node,
+				isDirectlyConnected: entry.id == accessoryManager.activeDeviceNum,
+				connectedNode: accessoryManager.activeConnection?.device.num ?? -1
+			)
+		}
+	}
 
 	init(
 		withFilters: NodeFilterParameters,
@@ -327,7 +361,8 @@ private struct FilteredNodeList: View {
 		nodeForDisplayNameEdit: Binding<NodeInfoEntity?>,
 		nodeForStatusMessageEdit: Binding<NodeInfoEntity?>,
 		nodeListDensity: Binding<NodeListDensity>,
-		selectedNodeNum: Binding<Int64?>
+		selectedNodeNum: Binding<Int64?>,
+		opensSeededLocalStatsLog: Bool
 	) {
 		self.filters = withFilters
 		self.connectedNode = connectedNode
@@ -338,6 +373,7 @@ private struct FilteredNodeList: View {
 		self._nodeForStatusMessageEdit = nodeForStatusMessageEdit
 		self._nodeListDensity = nodeListDensity
 		self._selectedNodeNum = selectedNodeNum
+		self.opensSeededLocalStatsLog = opensSeededLocalStatsLog
 	}
 
 	/// Fetch request for the node set, built from this window's `filters` at fetch time so
@@ -441,24 +477,12 @@ private struct FilteredNodeList: View {
 	var body: some View {
 		List(displayedNodes, selection: $selectedNodeNum) { entry in
 			// `!isDeleted` matters as much as the context check: `context.delete()` marks
-			// isDeleted while modelContext stays non-nil until the save completes, and row
-			// bodies re-evaluate mid-save via SwiftData's change notification — reading a
+			// isDeleted while managedObjectContext stays non-nil until the save completes, and row
+			// bodies re-evaluate mid-save via Core Data's change notification — reading a
 			// persisted property in that window traps (the NodeListItem SIGTRAP family).
-			if entry.node.modelContext != nil && !entry.node.isDeleted {
-				NavigationLink(value: entry.id) {
-					switch nodeListDensity {
-					case .compact:
-						NodeListItemCompact(
-							node: entry.node,
-							isDirectlyConnected: entry.id == accessoryManager.activeDeviceNum,
-							connectedNode: accessoryManager.activeConnection?.device.num ?? -1)
-					case .standard:
-						NodeListItem(
-							node: entry.node,
-							isDirectlyConnected: entry.id == accessoryManager.activeDeviceNum,
-							connectedNode: accessoryManager.activeConnection?.device.num ?? -1
-						)
-					}
+			if entry.node.managedObjectContext != nil && !entry.node.isDeleted {
+				NavigationLink(destination: nodeDestination(entry.node, nodeNum: entry.id)) {
+					makeNodeRow(entry)
 				}
 				.contextMenu {
 					contextMenuActions(
@@ -491,7 +515,7 @@ private struct FilteredNodeList: View {
 			// user stays away, and any row re-evaluation in that window hits them.
 			refreshDisplayedNodes()
 			while !Task.isCancelled {
-				try? await Task.sleep(for: .milliseconds(350))
+				try? await Task.sleep(nanoseconds: 350_000_000)
 				if router.selectedTab == .nodes {
 					refreshDisplayedNodes()
 				} else {
@@ -511,10 +535,10 @@ private struct FilteredNodeList: View {
 
 	/// Drops entries whose backing node has been deleted, without the full fetch/sort of a
 	/// real refresh — cheap enough to run while the tab is parked in the background.
-	/// `modelContext`/`isDeleted` are safe to read on a dead object; persisted properties are not.
+	/// `managedObjectContext`/`isDeleted` are safe to read on a dead object; persisted properties are not.
 	private func purgeDeadDisplayedNodes() {
 		guard boundContainerGeneration == CoreDataStackImpl.shared.containerGeneration else { return }
-		let live = displayedNodes.filter { $0.node.modelContext != nil && !$0.node.isDeleted }
+		let live = displayedNodes.filter { $0.node.managedObjectContext != nil && !$0.node.isDeleted }
 		if live.count != displayedNodes.count {
 			displayedNodes = live
 		}

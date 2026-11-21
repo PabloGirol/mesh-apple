@@ -10,6 +10,7 @@ import SwiftUI
 /// Picks the modem preset and writes the LoRa config. The one save of region and preset.
 struct RadioSetupPresetPage: View {
 	let model: RadioSetupModel
+	let onAdvance: () -> Void
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@Environment(\.managedObjectContext) private var context
 
@@ -41,7 +42,7 @@ struct RadioSetupPresetPage: View {
 	var body: some View {
 		OnboardingPage(
 			title: String(localized: "Choose a Preset", comment: "Radio setup preset title"),
-			intro: AttributedString(localized: "Presets trade range for speed. Long Range reaches farther and Short Range sends faster. Everyone on a mesh must use the same one.", comment: "Radio setup preset intro"),
+			intro: AttributedString(String(localized: "Presets trade range for speed. Long Range reaches farther and Short Range sends faster. Everyone on a mesh must use the same one.", comment: "Radio setup preset intro")),
 			footer: footer,
 			buttonTitle: model.hasLoRaChanges
 				? String(localized: "Save and Continue", comment: "Radio setup button")
@@ -49,7 +50,7 @@ struct RadioSetupPresetPage: View {
 			errorMessage: model.saveError,
 			action: {
 				if await model.saveLoRa(using: accessoryManager, context: context) {
-					model.advance(from: .preset)
+					onAdvance()
 				}
 			}
 		) {

@@ -11,6 +11,7 @@ import CoreLocation
 import Foundation
 import OSLog
 import MapKit
+import NavigationStackShim
 
 private struct MeshMapVisiblePositionState {
 	let positions: [PositionEntity]
@@ -21,8 +22,8 @@ struct MeshMapMK: View {
 	private let denseMapPositionLimit = 700
 
 	@Environment(\.managedObjectContext) private var context
-	@Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
-	@Environment(\.openWindow) private var openWindow
+	@State private var supportsMultipleWindows = false
+	@State private var openWindow: OpenWindowAction? = nil
 	@EnvironmentObject var accessoryManager: AccessoryManager
 
 	@ObservedObject
@@ -513,10 +514,13 @@ struct MeshMapMK: View {
 								.trackScreen(.nodeDetail)
 								.sheetCloseButton()
 						}
-						.presentationDetents([.large])
-						#if !targetEnvironment(macCatalyst)
-						.presentationDragIndicator(.visible)
-						#endif
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view
+								.presentationDetents([.large])
+							#if !targetEnvironment(macCatalyst)
+								.presentationDragIndicator(.visible)
+							#endif
+						}
 					}
 				}
 				.hostedSheet(item: $colocatedStack, onDismiss: {
@@ -553,28 +557,37 @@ struct MeshMapMK: View {
 						}
 					}
 					.trackScreen(.mapItemPicker)
-					.presentationDetents([.medium, .large])
-					#if !targetEnvironment(macCatalyst)
-					.presentationDragIndicator(.visible)
-					#endif
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.presentationDetents([.medium, .large])
+						#if !targetEnvironment(macCatalyst)
+							.presentationDragIndicator(.visible)
+						#endif
+					}
 				}
 				.hostedSheet(item: $selectedWaypoint) { selection in
 					WaypointForm(waypoint: selection)
 						.environmentObject(accessoryManager)
 						.trackScreen(.waypoint)
-						.presentationDetents([.large]) // full screen
-						#if !targetEnvironment(macCatalyst)
-						.presentationDragIndicator(.visible)
-						#endif
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view
+								.presentationDetents([.large]) // full screen
+							#if !targetEnvironment(macCatalyst)
+								.presentationDragIndicator(.visible)
+							#endif
+						}
 				}
 				.hostedSheet(item: $editingWaypoint) { selection in
 					WaypointForm(waypoint: selection, editMode: true)
 						.environmentObject(accessoryManager)
 						.trackScreen(.waypoint)
-						.presentationDetents([.large])
-						#if !targetEnvironment(macCatalyst)
-						.presentationDragIndicator(.visible)
-						#endif
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view
+								.presentationDetents([.large])
+							#if !targetEnvironment(macCatalyst)
+								.presentationDragIndicator(.visible)
+							#endif
+						}
 				}
 
 				.hostedSheet(isPresented: $editingSettings) {
@@ -610,20 +623,26 @@ struct MeshMapMK: View {
 				.hostedSheet(isPresented: $showLegend) {
 					MapLegend(isMeshMap: true)
 						.trackScreen(.mapLegend)
-						.presentationDetents([.large])
-						.presentationContentInteraction(.scrolls)
-						#if !targetEnvironment(macCatalyst)
-						.presentationDragIndicator(.visible)
-						#endif
-						.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view
+								.presentationDetents([.large])
+								.presentationContentInteraction(.scrolls)
+							#if !targetEnvironment(macCatalyst)
+								.presentationDragIndicator(.visible)
+							#endif
+								.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+						}
 				}
 				.hostedSheet(item: $coverageSeed) { seed in
 					CoverageEstimateForm(seed: seed, runner: coverageRunner)
 						.trackScreen(.coverageEstimate)
-						.presentationDetents([.large])
-						#if !targetEnvironment(macCatalyst)
-						.presentationDragIndicator(.visible)
-						#endif
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view
+								.presentationDetents([.large])
+							#if !targetEnvironment(macCatalyst)
+								.presentationDragIndicator(.visible)
+							#endif
+						}
 				}
 				.overlay(alignment: .bottomTrailing) {
 					MapControlBar {
@@ -806,7 +825,7 @@ struct MeshMapMK: View {
 				guard isMapVisible else { return }
 				while !Task.isCancelled {
 					refreshPositionState()
-					try? await Task.sleep(for: .seconds(2))
+					try? await Task.sleep(nanoseconds: 2_000_000_000)
 				}
 			}
 			.onChange(of: offlineMapManager.regions) {
@@ -832,7 +851,8 @@ struct MeshMapMK: View {
 						? WeatherRadarTileOverlay(refreshPeriod: WeatherRadar.refreshPeriod())
 						: nil
 					let next = Double(WeatherRadar.refreshPeriod() + 1) * WeatherRadar.refreshInterval
-					try? await Task.sleep(for: .seconds(max(1, next - Date.now.timeIntervalSince1970)))
+					let waitSeconds = max(1, next - Date.now.timeIntervalSince1970)
+					try? await Task.sleep(nanoseconds: UInt64(waitSeconds * 1_000_000_000))
 				}
 			}
 			.onChange(of: showContours) {
@@ -841,7 +861,7 @@ struct MeshMapMK: View {
 	}
 
 	private var mapNavigation: some View {
-		NavigationStack {
+		CompatNavigationStack {
 			ZStack {
 			mapWithSheets
 			}
@@ -851,23 +871,13 @@ struct MeshMapMK: View {
 				}
 				ToolbarItem(placement: .topBarTrailing) {
 					HStack {
-						if supportsMultipleWindows && showOpenWindowButton && !isMapWindowOpen {
-							Button {
-								if router.selectedTab == .map {
-									router.selectedTab = .nodes
-								}
-								openWindow(id: "meshmap-window")
-								isMapWindowOpen = true
-							} label: {
-								Image(systemName: "macwindow.badge.plus")
-							}
-							.accessibilityLabel(String(localized: "Open map in new window", comment: "VoiceOver label for the open map in a new window button"))
-						}
 						ConnectedDevice(deviceConnected: accessoryManager.isConnected, name: accessoryManager.activeConnection?.device.shortName ?? "?")
 					}
 				}
 			}
+			if #available(iOS 16.0, *) {
 			.toolbarBackground(.hidden, for: .navigationBar)
+		}
 		}
 	}
 
@@ -1557,7 +1567,7 @@ struct MeshMapMK: View {
 
 				/// Long-press on empty map -> a new in-memory waypoint at that point, opening the edit form.
 				private func beginNewWaypoint(at coordinate: CLLocationCoordinate2D) {
-					let waypoint = WaypointEntity()
+					let waypoint = WaypointEntity(context: context)
 					waypoint.latitudeI = Int32(coordinate.latitude * 1e7)
 					waypoint.longitudeI = Int32(coordinate.longitude * 1e7)
 					waypoint.expire = Date.now.addingTimeInterval(60 * 480)
@@ -2323,3 +2333,8 @@ private struct RouteEndpointMarker: View {
 			.frame(width: 15, height: 15)
 	}
 }
+
+
+
+
+

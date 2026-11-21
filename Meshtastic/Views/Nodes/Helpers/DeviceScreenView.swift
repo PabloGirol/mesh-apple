@@ -50,11 +50,17 @@ struct DeviceScreenView: View {
 					.frame(maxWidth: .infinity)
 				}
 			} else {
-				ContentUnavailableView(
-					"Not Connected",
-					systemImage: "display",
-					description: Text("Connect to the radio to see its screen.")
-				)
+				VStack(spacing: 16) {
+					Image(systemName: "display")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("Not Connected")
+						.font(.title2)
+						.foregroundColor(.secondary)
+					Text("Connect to the radio to see its screen.")
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			}
 		}
 		.navigationTitle("Device Screen")

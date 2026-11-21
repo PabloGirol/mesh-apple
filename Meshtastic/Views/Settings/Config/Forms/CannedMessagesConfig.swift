@@ -123,7 +123,7 @@ struct CannedMessagesConfig: View {
 				Section(header: Text("Messages")) {
 					HStack {
 						Label("Messages", systemImage: "message.fill")
-						TextField("Messages separate with |", text: $messages, axis: .vertical)
+					TextField("Messages separate with |", text: $messages)
 							.foregroundColor(.gray)
 							.autocorrectionDisabled()
 							.textInputAutocapitalization(.never)

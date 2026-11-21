@@ -141,7 +141,7 @@ final class WidgetTraceRouteRenderer {
 	private func scheduleDeferredRefresh(after delay: TimeInterval) {
 		guard deferredRefresh == nil else { return }
 		deferredRefresh = Task { [weak self] in
-			try? await Task.sleep(for: .seconds(delay))
+			try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
 			// A cancelled task leaves the property alone; whoever cancelled it
 			// already cleared it, and it may hold a newer task by now.
 			guard let self, !Task.isCancelled else { return }

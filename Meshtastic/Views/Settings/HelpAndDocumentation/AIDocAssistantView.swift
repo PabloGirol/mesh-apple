@@ -3,6 +3,7 @@
 import SwiftUI
 import OSLog
 import Foundation
+import NavigationStackShim
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -57,9 +58,8 @@ enum AIDocSearchURLBuilder {
 	}
 }
 
-// MARK: - AIDocAssistantView (iOS 26+ only)
+// MARK: - AIDocAssistantView (iOS 15+ compatible)
 
-@available(iOS 26, *)
 struct AIDocAssistantView: View {
 
 	@Environment(\.dismiss) private var dismiss
@@ -77,7 +77,7 @@ struct AIDocAssistantView: View {
 	// MARK: Body
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			VStack(spacing: 0) {
 				ScrollViewReader { proxy in
 					ScrollView {
@@ -106,11 +106,10 @@ struct AIDocAssistantView: View {
 						}
 						.padding(.bottom, 4)
 					}
-					.dismissesKeyboardOnScroll(.interactively)
-					.onChange(of: messages.count) { _, _ in
+					.onChange(of: messages.count) { _ in
 						withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("bottom", anchor: .bottom) }
 					}
-					.onChange(of: isLoading) { _, newValue in
+					.onChange(of: isLoading) { newValue in
 						if newValue {
 							withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("bottom", anchor: .bottom) }
 						}
@@ -350,30 +349,125 @@ struct AIDocAssistantView: View {
 	// MARK: Input bar
 
 	/// Converts a markdown string to an `AttributedString` for rich rendering in `Text` views.
+	/// iOS 15 compatible implementation using NSRegularExpression.
 	private func markdownAttributedString(_ markdown: String) -> AttributedString {
-		do {
-			let attributed = try AttributedString(
-				markdown: markdown,
-				options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-			)
-			return attributed
-		} catch {
-			return AttributedString(markdown)
+		var result = AttributedString()
+		var currentIndex = markdown.startIndex
+		let fullRange = NSRange(markdown.startIndex..., in: markdown)
+
+		// Find all matches first, then process in order
+		typealias MarkdownMatch = (range: NSRange, type: MarkdownType, capture: String)
+		enum MarkdownType { case bold, italic, code, link }
+
+		var matches: [MarkdownMatch] = []
+
+		// Bold: **text** or __text__
+		if let boldRegex = try? NSRegularExpression(pattern: #"\*\*([^*]+)\*\*|__([^_]+)__"#) {
+			for match in boldRegex.matches(in: markdown, range: fullRange) {
+				if match.numberOfRanges >= 2,
+				   let captureRange = Range(match.range(at: 1), in: markdown) ?? Range(match.range(at: 2), in: markdown) {
+					matches.append((match.range, .bold, String(markdown[captureRange])))
+				}
+			}
 		}
+
+		// Italic: *text* or _text_ (but not bold markers)
+		if let italicRegex = try? NSRegularExpression(pattern: #"(?<!\*)\*([^*]+)\*(?!\*)|(?<!_)_([^_]+)_(?!_)"#) {
+			for match in italicRegex.matches(in: markdown, range: fullRange) {
+				if match.numberOfRanges >= 2,
+				   let captureRange = Range(match.range(at: 1), in: markdown) ?? Range(match.range(at: 2), in: markdown) {
+					matches.append((match.range, .italic, String(markdown[captureRange])))
+				}
+			}
+		}
+
+		// Inline code: `text`
+		if let codeRegex = try? NSRegularExpression(pattern: #"`([^`]+)`"#) {
+			for match in codeRegex.matches(in: markdown, range: fullRange) {
+				if match.numberOfRanges >= 2,
+				   let captureRange = Range(match.range(at: 1), in: markdown) {
+					matches.append((match.range, .code, String(markdown[captureRange])))
+				}
+			}
+		}
+
+		// Link: [text](url)
+		if let linkRegex = try? NSRegularExpression(pattern: #"\[([^\]]+)\]\([^)]+\)"#) {
+			for match in linkRegex.matches(in: markdown, range: fullRange) {
+				if match.numberOfRanges >= 2,
+				   let captureRange = Range(match.range(at: 1), in: markdown) {
+					matches.append((match.range, .link, String(markdown[captureRange])))
+				}
+			}
+		}
+
+		// Sort matches by their position in the string
+		matches.sort { $0.range.location < $1.range.location }
+
+		// Process matches in order, adding plain text between them
+		var lastEnd = markdown.startIndex
+		for match in matches {
+			guard let matchStart = markdown.index(markdown.startIndex, offsetBy: match.range.location, limitedBy: markdown.endIndex),
+				  let matchEnd = markdown.index(markdown.startIndex, offsetBy: match.range.location + match.range.length, limitedBy: markdown.endIndex) else {
+				continue
+			}
+
+			// Add plain text before this match
+			if matchStart > lastEnd {
+				result.append(AttributedString(String(markdown[lastEnd..<matchStart])))
+			}
+
+			// Add styled text for the match
+			var styledAttr = AttributedString(match.capture)
+			switch match.type {
+			case .bold:
+				styledAttr.font = .body.bold()
+			case .italic:
+				styledAttr.font = .body.italic()
+			case .code:
+				styledAttr.font = .system(.body, design: .monospaced)
+				styledAttr.backgroundColor = Color(uiColor: .tertiarySystemFill)
+			case .link:
+				styledAttr.underlineStyle = .single
+				styledAttr.foregroundColor = Color.accentColor
+			}
+			result.append(styledAttr)
+
+			lastEnd = matchEnd
+		}
+
+		// Add any remaining plain text
+		if lastEnd < markdown.endIndex {
+			result.append(AttributedString(String(markdown[lastEnd...])))
+		}
+
+		return result
 	}
 
 	private var inputBar: some View {
 		HStack(alignment: .bottom, spacing: 8) {
-			TextField("Ask Chirpy…", text: $query, axis: .vertical)
-				.lineLimit(1...5)
-				.padding(.horizontal, 12)
-				.padding(.vertical, 8)
-				.background(Color(uiColor: .secondarySystemBackground))
-				.clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-				.focused($isInputFocused)
-				.submitLabel(.send)
-				.onSubmit { Task { await sendQuery() } }
-				.accessibilityLabel(String(localized: "Question input", comment: "VoiceOver label for the AI assistant question text field"))
+			ZStack(alignment: .topLeading) {
+				if query.isEmpty {
+					Text("Ask Chirpy…")
+						.foregroundStyle(Color(uiColor: .placeholderText))
+						.padding(.horizontal, 12)
+						.padding(.vertical, 8)
+						.allowsHitTesting(false)
+				}
+				TextEditor(text: $query)
+					.frame(minHeight: 36, maxHeight: 120)
+					.padding(.horizontal, 8)
+					.padding(.vertical, 4)
+					.background(Color.clear)
+					.focused($isInputFocused)
+					.submitLabel(.send)
+					.onSubmit { Task { await sendQuery() } }
+					.accessibilityLabel(String(localized: "Question input", comment: "VoiceOver label for the AI assistant question text field"))
+			}
+			.padding(.horizontal, 4)
+			.padding(.vertical, 4)
+			.background(Color(uiColor: .secondarySystemBackground))
+			.clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 			Button {
 				Task { await sendQuery() }
 			} label: {

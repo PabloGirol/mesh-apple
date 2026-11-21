@@ -193,12 +193,6 @@ struct AppLogFilter: View {
 			.navigationBarTitleDisplayMode(.inline)
 			.sheetCloseButton()
 		}
-		.presentationDetents([.large], selection: $currentDetent)
-		.presentationContentInteraction(.scrolls)
-		#if !targetEnvironment(macCatalyst)
-		.presentationDragIndicator(.visible)
-		#endif
-		.presentationBackgroundInteraction(.enabled(upThrough: .medium))
 	}
 
 	private func collapsibleSectionHeader(

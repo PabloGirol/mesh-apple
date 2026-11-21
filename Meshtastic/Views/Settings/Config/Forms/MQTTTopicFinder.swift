@@ -7,6 +7,7 @@
 
 import CoreLocation
 import MeshtasticProtobufs
+import NavigationStackShim
 import SwiftUI
 
 /// Listens to the broker for a minute and lists the root topics heard near the user: the geocoded
@@ -174,15 +175,20 @@ struct MQTTTopicFinder: View {
 			let roots = ranked.prefix(30)
 			if roots.isEmpty {
 				if sampler.phase == .finished {
-					ContentUnavailableView {
-						Label("No local topics heard", systemImage: "antenna.radiowaves.left.and.right.slash")
-					} description: {
+					VStack(spacing: 16) {
+						Image(systemName: "antenna.radiowaves.left.and.right.slash")
+							.font(.system(size: 48))
+							.foregroundColor(.secondary)
+						Text("No local topics heard")
+							.font(.title2)
+							.foregroundColor(.secondary)
 						if sampler.activity.isEmpty {
 							Text("Nothing was heard during the sample.")
 						} else {
 							Text("Only the topics above were active during the sample.")
 						}
 					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
 				} else if isSampling {
 					Text("Nothing heard yet")
 						.foregroundStyle(.secondary)

@@ -90,11 +90,25 @@ private struct ContactShareView: View {
 				.tint(.green)
 				.controlSize(.large)
 				} else {
-					ContentUnavailableView(
-						"No Recent Radio",
-						systemImage: "antenna.radiowaves.left.and.right.slash",
-						description: Text("Open Meshtastic and connect once. You can share later while disconnected.")
-					)
+					if #available(iOS 17.0, *) {
+						ContentUnavailableView(
+							"No Recent Radio",
+							systemImage: "antenna.radiowaves.left.and.right.slash",
+							description: Text("Open Meshtastic and connect once. You can share later while disconnected.")
+						)
+					} else {
+						VStack(spacing: 16) {
+							Image(systemName: "antenna.radiowaves.left.and.right.slash")
+								.font(.system(size: 48))
+								.foregroundColor(.secondary)
+							Text("No Recent Radio")
+								.font(.title2)
+								.foregroundColor(.secondary)
+							Text("Open Meshtastic and connect once. You can share later while disconnected.")
+								.foregroundColor(.secondary)
+						}
+						.frame(maxWidth: .infinity, maxHeight: .infinity)
+					}
 					.padding(.top, 30)
 				}
 			}
@@ -185,11 +199,25 @@ private struct ChannelShareView: View {
 						resetSelection(for: snapshot)
 					}
 				} else {
-					ContentUnavailableView(
-						"No Recent Radio",
-						systemImage: "antenna.radiowaves.left.and.right.slash",
-						description: Text("Open Meshtastic and connect once. You can share later while disconnected.")
-					)
+					if #available(iOS 17.0, *) {
+						ContentUnavailableView(
+							"No Recent Radio",
+							systemImage: "antenna.radiowaves.left.and.right.slash",
+							description: Text("Open Meshtastic and connect once. You can share later while disconnected.")
+						)
+					} else {
+						VStack(spacing: 16) {
+							Image(systemName: "antenna.radiowaves.left.and.right.slash")
+								.font(.system(size: 48))
+								.foregroundColor(.secondary)
+							Text("No Recent Radio")
+								.font(.title2)
+								.foregroundColor(.secondary)
+							Text("Open Meshtastic and connect once. You can share later while disconnected.")
+								.foregroundColor(.secondary)
+						}
+						.frame(maxWidth: .infinity, maxHeight: .infinity)
+					}
 				}
 			}
 			.navigationTitle("Share Channels")

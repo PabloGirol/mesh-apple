@@ -3,11 +3,12 @@
 //  Meshtastic
 //
 //  Created by Garth Vander Houwen on 2/25/24.
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import SwiftUI
-import Charts
+import DGCharts
 import OSLog
+import SwiftUI
 
 struct PaxCounterLog: View {
 
@@ -34,54 +35,93 @@ struct PaxCounterLog: View {
 	@State private var totalReadings = 0
 
 	@ViewBuilder
-	private func paxChart(chartData: [PaxCounterEntity], maxValue: Int32) -> some View {
-		Chart {
-			ForEach(chartData, id: \.self) { point in
-				if let pointTime = point.time {
-					Plot {
-						PointMark(
-							x: .value("x", pointTime),
-							y: .value("y", (point.wifi + point.ble))
-						)
-					}
-					.accessibilityLabel(String(localized: "Total PAX at \(pointTime.formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for a total PAX point on the PAX counter chart. %@ is the timestamp."))
-					.accessibilityValue(String(localized: "\((point.wifi + point.ble).formatted()) devices", comment: "VoiceOver value spoken as a device count on the PAX counter chart. %@ is the number."))
-					.foregroundStyle(paxChartColor)
-					.interpolationMethod(.cardinal)
-
-					Plot {
-						PointMark(
-							x: .value("x", pointTime),
-							y: .value("y", point.wifi)
-						)
-					}
-					.accessibilityLabel(String(localized: "Wi-Fi devices at \(pointTime.formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for a Wi-Fi device-count point on the PAX counter chart. %@ is the timestamp."))
-					.accessibilityValue(String(localized: "\(point.wifi.formatted()) devices", comment: "VoiceOver value spoken as a device count on the PAX counter chart. %@ is the number."))
-					.foregroundStyle(wifiChartColor)
-
-					Plot {
-						PointMark(
-							x: .value("x", pointTime),
-							y: .value("y", point.ble)
-						)
-					}
-					.accessibilityLabel(String(localized: "BLE devices at \(pointTime.formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for a BLE device-count point on the PAX counter chart. %@ is the timestamp."))
-					.accessibilityValue(String(localized: "\(point.ble.formatted()) devices", comment: "VoiceOver value spoken as a device count on the PAX counter chart. %@ is the number."))
-					.foregroundStyle(bleChartColor)
-				}
-			}
+	private var chartView: some View {
+		let paxPoints = chartData.compactMap { point -> ChartDataPoint? in
+			guard let time = point.time else { return nil }
+			return ChartDataPoint.fromDate(time, value: Double(point.wifi + point.ble))
 		}
-		.chartXAxis(content: {
-			AxisMarks(position: .top)
-		})
-		.chartXAxis(.automatic)
-		.chartYScale(domain: 0...maxValue)
-		.chartForegroundStyleScale([
-			"BLE".localized: .blue,
-			"WiFi".localized: .orange,
-			"Total PAX".localized: .green
-		])
-		.chartLegend(position: .automatic, alignment: .bottom)
+
+		let wifiPoints = chartData.compactMap { point -> ChartDataPoint? in
+			guard let time = point.time else { return nil }
+			return ChartDataPoint.fromDate(time, value: Double(point.wifi))
+		}
+
+		let blePoints = chartData.compactMap { point -> ChartDataPoint? in
+			guard let time = point.time else { return nil }
+			return ChartDataPoint.fromDate(time, value: Double(point.ble))
+		}
+
+		let paxSeries = ChartSeriesData(
+			id: "total",
+			name: "Total PAX".localized,
+			color: paxChartColor,
+			chartType: .point,
+			points: paxPoints,
+			lineWidth: 0,
+			drawCircles: true,
+			circleRadius: 5.0
+		)
+
+		let wifiSeries = ChartSeriesData(
+			id: "wifi",
+			name: "WiFi".localized,
+			color: wifiChartColor,
+			chartType: .point,
+			points: wifiPoints,
+			lineWidth: 0,
+			drawCircles: true,
+			circleRadius: 5.0
+		)
+
+		let bleSeries = ChartSeriesData(
+			id: "ble",
+			name: "BLE".localized,
+			color: bleChartColor,
+			chartType: .point,
+			points: blePoints,
+			lineWidth: 0,
+			drawCircles: true,
+			circleRadius: 5.0
+		)
+
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .top,
+			labelCount: 6,
+			dateFormat: "MM/dd HH:mm"
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: 6,
+			axisMinimum: 0,
+			axisMaximum: Double(maxValue)
+		)
+
+		let legendConfig = DGChartLegendConfig(
+			isEnabled: true,
+			position: .belowChartCenter,
+			alignment: .center,
+			orientation: .horizontal
+		)
+
+		return ScatterChartView(
+			data: [paxSeries, wifiSeries, bleSeries],
+			xAxisConfig: xAxisConfig,
+			yAxisConfig: yAxisConfig,
+			legendConfig: legendConfig,
+			ruleMarks: [],
+			yDomain: 0...Double(maxValue),
+			visibleXRange: nil,
+			scrollPosition: nil,
+			isScrollable: false,
+			legendHidden: false,
+			frame: nil,
+			selection: nil,
+			onSelectionChanged: nil,
+			backgroundColor: .systemBackground,
+			gridColor: .systemGray4,
+			gridLineWidth: 0.5
+		)
 	}
 
 	var body: some View {
@@ -89,7 +129,7 @@ struct PaxCounterLog: View {
 			if totalReadings > 0 {
 				if chartData.count > 0 {
 					GroupBox(label: Label("\(totalReadings) Readings Total", systemImage: "chart.xyaxis.line")) {
-						paxChart(chartData: chartData, maxValue: maxValue)
+						chartView
 					}
 					.frame(minHeight: 250)
 				}
@@ -171,8 +211,11 @@ struct PaxCounterLog: View {
 							Label("Clear", systemImage: "trash.fill")
 						}
 						.buttonStyle(.bordered)
-						.buttonBorderShape(.capsule)
-						.controlSize(.large)
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view
+								.buttonBorderShape(.capsule)
+								.controlSize(.large)
+						}
 						.padding(.bottom)
 						.padding(.leading)
 						.hostedConfirmation(
@@ -203,43 +246,54 @@ struct PaxCounterLog: View {
 						}
 						.hostedWindowOnly()
 						.buttonStyle(.bordered)
-						.buttonBorderShape(.capsule)
-						.controlSize(.large)
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view
+								.buttonBorderShape(.capsule)
+								.controlSize(.large)
+						}
 						.padding(.bottom)
 						.padding(.trailing)
 					}
-				} else {
-					ContentUnavailableView("No PAX Counter Logs", systemImage: "slash.circle")
+			} else {
+				VStack(spacing: 16) {
+					Image(systemName: "slash.circle")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No PAX Counter Logs")
+						.font(.title2)
+						.foregroundColor(.secondary)
 				}
-			}
-	.onAppear {
-		refreshPaxCounters()
-	}
-	.onChange(of: node.lastHeard) {
-		refreshPaxCounters()
-	}
-		.navigationTitle("PAX Counter Log")
-		.navigationBarTitleDisplayMode(.inline)
-		.toolbar {
-			ToolbarItem(placement: .topBarTrailing) {
-				ConnectedDevice(deviceConnected: accessoryManager.isConnected, name: accessoryManager.activeConnection?.device.shortName ?? "?")
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			}
 		}
-		.fileExporter(
-			isPresented: $isExporting,
-			document: CsvDocument(emptyCsv: exportString),
-			contentType: .commaSeparatedText,
-			defaultFilename: CsvDocument.exportFilename("\(node.user?.longName ?? "Node") \("paxcounter.log".localized) \(Date.now.exportTimestamp)"),
-			onCompletion: { result in
-				switch result {
-				case .success:
-					self.isExporting = false
-					Logger.services.info("PAX Counter log download succeeded")
-				case .failure(let error):
-					Logger.services.error("PAX Counter log download failed: \(error.localizedDescription, privacy: .public)")
+		.onAppear {
+			refreshPaxCounters()
+		}
+		.onChange(of: node.lastHeard) {
+			refreshPaxCounters()
+		}
+			.navigationTitle("PAX Counter Log")
+			.navigationBarTitleDisplayMode(.inline)
+			.toolbar {
+				ToolbarItem(placement: .topBarTrailing) {
+					ConnectedDevice(deviceConnected: accessoryManager.isConnected, name: accessoryManager.activeConnection?.device.shortName ?? "?")
 				}
 			}
-		)
+			.fileExporter(
+				isPresented: $isExporting,
+				document: CsvDocument(emptyCsv: exportString),
+				contentType: .commaSeparatedText,
+				defaultFilename: CsvDocument.exportFilename("\(node.user?.longName ?? "Node") \("paxcounter.log".localized) \(Date.now.exportTimestamp)"),
+				onCompletion: { result in
+					switch result {
+					case .success:
+						self.isExporting = false
+						Logger.services.info("PAX Counter log download succeeded")
+					case .failure(let error):
+						Logger.services.error("PAX Counter log download failed: \(error.localizedDescription, privacy: .public)")
+					}
+				}
+			)
 	}
 
 	private func refreshPaxCounters() {

@@ -65,7 +65,7 @@ extension MeshPackets {
 				}
 			}
 			for (neighbor, snr) in listed {
-				let row = NeighborLinkEntity()
+				let row = NeighborLinkEntity(context: context)
 				row.key = NeighborLinkEntity.key(reporter: reporter, neighbor: neighbor)
 				row.reporterNum = reporter
 				row.neighborNum = neighbor
@@ -73,7 +73,6 @@ extension MeshPackets {
 				row.receivedAt = receivedAt
 				row.reporterIntervalSecs = interval
 				row.viaMqtt = packet.viaMqtt
-				context.insert(row)
 			}
 			savePendingChanges()
 		} catch {

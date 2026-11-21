@@ -7,6 +7,7 @@
 
 import SwiftUI
 import OSLog
+import NavigationStackShim
 
 struct UF2MassStorageView: View {
 	@EnvironmentObject var accessoryManager: AccessoryManager
@@ -18,7 +19,7 @@ struct UF2MassStorageView: View {
 	
 	let fileURL: URL
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			ScrollView {
 				VStack(spacing: 20) {
 					

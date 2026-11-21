@@ -14,7 +14,6 @@ import SwiftUI
 struct TraceRouteBoard: View {
 	@EnvironmentObject private var appState: AppState
 	@Environment(\.managedObjectContext) private var context
-	@Environment(\.openWindow) private var openWindow
 	@State private var card: Card?
 	/// False until the store has been read once, so the empty state doesn't flash first.
 	@State private var loaded = false
@@ -58,7 +57,7 @@ struct TraceRouteBoard: View {
 					await refresh()
 					loaded = true
 				}
-				try? await Task.sleep(for: Self.refreshInterval)
+			try? await Task.sleep(nanoseconds: UInt64(Self.refreshInterval * 1_000_000_000))
 			}
 		}
 	}
@@ -152,7 +151,6 @@ struct TraceRouteBoard: View {
 	private func showRoute(_ routeId: Int64) {
 		appState.cinemaScreenRequest = .traceRoute(routeId)
 		appState.spatialMapRoute = SpatialMapRouteRequest(routeId: routeId)
-		openWindow(id: SpatialMapScene.id, value: SpatialMapSceneKey.shared)
 	}
 }
 

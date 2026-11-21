@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MapKit
+import NavigationStackShim
 
 struct PositionPopover: View {
 
@@ -17,13 +18,13 @@ struct PositionPopover: View {
 	@Environment(\.openURL) var openURL
 	var position: PositionEntity
 	let distanceFormatter = MKDistanceFormatter()
-	
+
 	@State private var navigateToCompass = false
 
 	var body: some View {
 		// Node Color from node.num
 		let nodeColor = UIColor(hex: UInt32(position.nodePosition?.num ?? 0))
-		NavigationStack {
+		CompatNavigationStack {
 			VStack {
 				HStack {
 					CircleText(text: position.nodePosition?.user?.shortName ?? "?", color: Color(nodeColor), circleSize: 65)

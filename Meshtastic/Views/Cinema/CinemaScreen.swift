@@ -261,7 +261,6 @@ struct CinemaScreen: View {
 
 /// Shown on the screen while the radio needs something only the app window can ask for.
 private struct CinemaScreenGate: View {
-	@Environment(\.openWindow) private var openWindow
 	@EnvironmentObject private var appState: AppState
 
 	var body: some View {
@@ -271,11 +270,6 @@ private struct CinemaScreenGate: View {
 				.foregroundStyle(.secondary)
 			Text("Continue in the app window", comment: "Cinema: the front screen while the radio is locked or needs a firmware update, which only the app window can handle")
 				.font(.title)
-			Button {
-				CinemaScene.reopenMainWindow(openWindow, appState: appState)
-			} label: {
-				Label(String(localized: "Open App Window", comment: "Cinema: opens the app's main window from the immersive cinema"), systemImage: "macwindow")
-			}
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity)
 	}

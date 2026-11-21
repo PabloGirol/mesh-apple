@@ -49,7 +49,7 @@ class SerialTransport: Transport {
 						cont.yield(.deviceLost(uuid))
 						portsAlreadyNotified.removeAll(where: {$0 == knownPort})
 					}
-					try? await Task.sleep(for: .seconds(5))
+				try? await Task.sleep(nanoseconds: 5_000_000_000)
 				}
 			}
 			cont.onTermination = { _ in

@@ -1,7 +1,6 @@
 import CoreData
 import OSLog
 import SwiftUI
-import TipKit
 
 /// One main window. Owns that window's navigation. The database, the radio,
 /// and the badge stay on `AppState` and are shared with every other window.
@@ -12,7 +11,6 @@ struct MainScene: View {
 	@EnvironmentObject private var appState: AppState
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@Environment(\.scenePhase) private var scenePhase
-	@Environment(\.openWindow) private var openWindow
 	#if os(visionOS) && DEBUG
 	@Environment(\.openImmersiveSpace) private var openImmersiveSpace
 	@Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
@@ -84,7 +82,6 @@ struct MainScene: View {
 				if let nodeNum = request.nodeNum {
 					appState.spatialMapFocus = SpatialMapFocusRequest(nodeNum: nodeNum)
 				}
-				openWindow(id: SpatialMapScene.id, value: SpatialMapSceneKey.shared)
 			}
 			#endif
 			#if os(visionOS) && DEBUG
@@ -95,11 +92,11 @@ struct MainScene: View {
 				let arguments = CommandLine.arguments
 				if arguments.contains("--meshtastic-open-showcase") {
 					Self.openedShowcaseForLaunchArgument = true
-					try? await Task.sleep(for: .seconds(3))
+					try? await Task.sleep(nanoseconds: 3_000_000_000)
 					await ShowcaseScene.open(openImmersiveSpace, dismissImmersiveSpace: dismissImmersiveSpace, appState: appState)
 				} else if arguments.contains("--meshtastic-open-cinema") {
 					Self.openedShowcaseForLaunchArgument = true
-					try? await Task.sleep(for: .seconds(3))
+					try? await Task.sleep(nanoseconds: 3_000_000_000)
 					await CinemaScene.open(openImmersiveSpace, dismissImmersiveSpace: dismissImmersiveSpace, appState: appState)
 				}
 			}
@@ -107,15 +104,6 @@ struct MainScene: View {
 			.task {
 				// Skip TipKit during marketing screenshot capture so tip popovers never
 				// appear in the shots (unconfigured TipKit displays nothing).
-				if !Self.hasConfiguredTips, !CommandLine.arguments.contains("--marketing-capture") {
-					Self.hasConfiguredTips = true
-					try? Tips.configure(
-						[
-							.datastoreLocation(.applicationDefault),
-							.displayFrequency(.immediate)
-						]
-					)
-				}
 			}
 	}
 
@@ -151,10 +139,6 @@ struct MainScene: View {
 					accessoryManager: accessoryManager
 				)
 				.trackScreen(.saveChannelQRCode)
-				.presentationDetents([.large])
-				#if !targetEnvironment(macCatalyst)
-				.presentationDragIndicator(.visible)
-				#endif
 			}
 			.contactImportSheet($pendingContact, accessoryManager: accessoryManager)
 			.alert("Couldn't Import Map File", isPresented: Binding(

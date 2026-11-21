@@ -1,17 +1,17 @@
 //
-//  NodeDiscovery.swift
-//  Meshtastic TV
-//
-//  Copyright(c) Garth Vander Houwen 7/24/26.
-//
-//  Bonjour discovery of TCP-reachable Meshtastic nodes (`_meshtastic._tcp`), so a
-//  node advertising on the local network appears in the connect list without the
-//  user typing an IP — parity with the iOS/Android apps. Standalone NetServiceBrowser
-//  (tvOS-capable); does not depend on the iOS AccessoryManager transport stack.
-//
-//  Requires NSLocalNetworkUsageDescription + NSBonjourServices (_meshtastic._tcp)
-//  in Info.plist; tvOS shows a local-network permission prompt on first browse.
-//
+ //  NodeDiscovery.swift
+ //  Meshtastic TV
+ //
+ //  Copyright(c) Garth Vander Houwen 7/24/26.
+ //
+ //  Bonjour discovery of TCP-reachable Meshtastic nodes (`_meshtastic._tcp`), so a
+ //  node advertising on the local network appears in the connect list without the
+ //  user typing an IP — parity with the iOS/Android apps. Standalone NetServiceBrowser
+ //  (tvOS-capable); does not depend on the iOS AccessoryManager transport stack.
+ //
+ //  Requires NSLocalNetworkUsageDescription + NSBonjourServices (_meshtastic._tcp)
+ //  in Info.plist; tvOS shows a local-network permission prompt on first browse.
+ //
 
 import Foundation
 import OSLog
@@ -55,7 +55,7 @@ extension NetServiceBrowser: ServiceBrowsing {
 }
 
 @MainActor
-final class NodeDiscovery: NSObject, ObservableObject, @preconcurrency NetServiceBrowserDelegate, @preconcurrency NetServiceDelegate {
+final class NodeDiscovery: NSObject, @preconcurrency NetServiceBrowserDelegate, @preconcurrency NetServiceDelegate {
 
 	@Published private(set) var discovered: [DiscoveredNode] = []
 	@Published private(set) var isBrowsing = false
@@ -209,4 +209,49 @@ final class NodeDiscovery: NSObject, ObservableObject, @preconcurrency NetServic
 		}
 		service.delegate = nil
 	}
+}
+
+/// ObservableObject wrapper for NodeDiscovery to avoid NSObject + ObservableObject multiple inheritance.
+@MainActor
+final class NodeDiscoveryObservable: ObservableObject {
+	static let shared = NodeDiscoveryObservable()
+
+	private let discovery = NodeDiscovery()
+
+	var discovered: [DiscoveredNode] {
+		get { discovery.discovered }
+		set { discovery.discovered = newValue }
+	}
+
+	var isBrowsing: Bool {
+		get { discovery.isBrowsing }
+		set { discovery.isBrowsing = newValue }
+	}
+
+	var errorMessage: String? {
+		get { discovery.errorMessage }
+		set { discovery.errorMessage = newValue }
+	}
+
+	func start() {
+		discovery.start()
+	}
+
+	func stop() {
+		discovery.stop()
+	}
+
+	func retry() {
+		discovery.retry()
+	}
+
+	func handle(scenePhase: ScenePhase) {
+		discovery.handle(scenePhase: scenePhase)
+	}
+
+	func record(_ node: DiscoveredNode) {
+		discovery.record(node)
+	}
+
+	private init() {}
 }

@@ -296,7 +296,7 @@ private struct StringRow<M: ConfigSchemaMessage>: View {
 				// and cannot check by reading it back.
 				SecureInput(label, text: $text, isValid: .constant(true))
 			} else {
-				TextField(label, text: $text, axis: .vertical)
+				TextField(label, text: $text)
 					.foregroundColor(.gray)
 					.multilineTextAlignment(.trailing)
 					// Config strings are identifiers - topics, addresses, a TZ rule, never prose.

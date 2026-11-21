@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreData
 import CoreLocation
 import MapKit
 import MeshtasticProtobufs
@@ -76,7 +77,7 @@ extension PositionEntity {
 	/// finer precision than the default) neither precise nor reduced-precision, so they were dropped
 	/// from the map entirely instead of showing as a fuzzed pin. Centralized here so the map's
 	/// filter/render/snapshot paths can't drift if the range ever changes.
-	nonisolated(unsafe) static let reducedPrecisionBits: ClosedRange<Int32> = 2...24
+	nonisolated static let reducedPrecisionBits: ClosedRange<Int32> = 2...24
 
 	var isReducedPrecision: Bool {
 		PositionEntity.reducedPrecisionBits ~= precisionBits

@@ -1,15 +1,15 @@
 //
-//  NymeaProvisioningManager.swift
-//  Meshtastic
-//
-//  Orchestrates Wi-Fi provisioning for mPWRD-OS devices running nymea-networkmanager.
-//
-//  NOTE: AccessorySetupKit cannot be used alongside a global CBCentralManager created
-//  via NSBluetoothAlwaysUsageDescription (ASK's showPicker throws "CBManagers active
-//  with global permissions"). Meshtastic must keep its global BLE access for Meshtastic
-//  radio connectivity, so this manager uses a dedicated CBCentralManager with a custom
-//  device-picker UI instead.
-//
+ //  NymeaProvisioningManager.swift
+ //  Meshtastic
+ //
+ //  Orchestrates Wi-Fi provisioning for mPWRD-OS devices running nymea-networkmanager.
+ //
+ //  NOTE: AccessorySetupKit cannot be used alongside a global CBCentralManager created
+ //  via NSBluetoothAlwaysUsageDescription (ASK's showPicker throws "CBManagers active
+ //  with global permissions"). Meshtastic must keep its global BLE access for Meshtastic
+ //  radio connectivity, so this manager uses a dedicated CBCentralManager with a custom
+ //  device-picker UI instead.
+ //
 
 import Foundation
 @preconcurrency import CoreBluetooth
@@ -81,16 +81,16 @@ enum ProvisioningState: Equatable {
 // MARK: - NymeaProvisioningManager
 
 @MainActor
-final class NymeaProvisioningManager: NSObject, ObservableObject {
+final class NymeaProvisioningManager: NSObject {
 
 	static let shared = NymeaProvisioningManager()
 
-	@Published private(set) var state: ProvisioningState = .idle
+	private(set) var state: ProvisioningState = .idle
 
 	/// Devices currently visible to the passive (background) scan. Updated whenever a
 	/// scan is running — passive or active — so the Connect view can list nearby
 	/// nymea devices even before the user opens the provisioning sheet.
-	@Published private(set) var discoverable: [NymeaDiscoveredDevice] = []
+	private(set) var discoverable: [NymeaDiscoveredDevice] = []
 
 	// MARK: Scanning
 
@@ -336,7 +336,7 @@ final class NymeaProvisioningManager: NSObject, ObservableObject {
 	private func startCleanupTask() {
 		cleanupTask = Task { [weak self] in
 			while !Task.isCancelled {
-				try? await Task.sleep(nanoseconds: 10_000_000_000) // 10 s
+				try? await Task.sleep(nanoseconds: 10_000_000_000)
 				await self?.pruneStaleDevices()
 			}
 		}
@@ -461,6 +461,60 @@ final class NymeaProvisioningManager: NSObject, ObservableObject {
 		Logger.nymea.debug("🔧 State → \(String(describing: newState))")
 		state = newState
 	}
+}
+
+/// ObservableObject wrapper for NymeaProvisioningManager to avoid NSObject + ObservableObject multiple inheritance.
+@MainActor
+final class NymeaProvisioningManagerObservable: ObservableObject {
+	static let shared = NymeaProvisioningManagerObservable()
+
+	private let manager = NymeaProvisioningManager()
+
+	var state: ProvisioningState {
+		manager.state
+	}
+
+	var discoverable: [NymeaDiscoveredDevice] {
+		manager.discoverable
+	}
+
+	func startProvisioning() {
+		manager.startProvisioning()
+	}
+
+	func beginProvisioning(with device: NymeaDiscoveredDevice) {
+		manager.beginProvisioning(with: device)
+	}
+
+	func startDiscovery() {
+		manager.startDiscovery()
+	}
+
+	func stopDiscovery() {
+		manager.stopDiscovery()
+	}
+
+	func selectDevice(_ device: NymeaDiscoveredDevice) {
+		manager.selectDevice(device)
+	}
+
+	func selectNetwork(_ network: NymeaWifiNetwork, password: String) {
+		manager.selectNetwork(network, password: password)
+	}
+
+	func selectHiddenNetwork(ssid: String, password: String) {
+		manager.selectHiddenNetwork(ssid: ssid, password: password)
+	}
+
+	func cancel() {
+		manager.cancel()
+	}
+
+	func reset() {
+		manager.reset()
+	}
+
+	private init() {}
 }
 
 // MARK: - CBCentralManager Delegate Bridge

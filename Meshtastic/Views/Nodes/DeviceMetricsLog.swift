@@ -3,13 +3,14 @@
 //  Meshtastic
 //
 //  Copyright(c) Garth Vander Houwen 7/7/22.
+//  Updated for DGCharts iOS 15 compatibility
 //
-import SwiftUI
-import Charts
+
+import DGCharts
 import OSLog
+import SwiftUI
 
 struct DeviceMetricsLog: View {
-
 	@Environment(\.managedObjectContext) private var context
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -39,73 +40,7 @@ struct DeviceMetricsLog: View {
 			if totalReadings > 0 {
 				if chartData.count > 0 {
 					GroupBox(label: Label("\(totalReadings) Readings Total", systemImage: "chart.xyaxis.line")) {
-						Chart {
-							ForEach(chartData, id: \.self) { point in
-								if let pointTime = point.time {
-									if let batteryLevel = point.batteryLevel {
-										Plot {
-											LineMark(
-												x: .value("x", pointTime),
-												y: .value("y", batteryLevel)
-											)
-										}
-										.accessibilityLabel(String(localized: "Battery level at \(pointTime.formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for a battery-level point on the device metrics chart. %@ is the timestamp."))
-										.accessibilityValue(String(localized: "\(batteryLevel.formatted()) percent", comment: "VoiceOver value spoken as a percentage reading on a chart. %@ is the number."))
-										.foregroundStyle(batteryChartColor)
-										.interpolationMethod(.linear)
-									}
-									if let channelUtilization = point.channelUtilization {
-										Plot {
-											PointMark(
-												x: .value("x", pointTime),
-												y: .value("y", channelUtilization)
-											)
-											.symbolSize(25)
-										}
-										.accessibilityLabel(String(localized: "Channel utilization at \(pointTime.formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for a channel-utilization point on the device metrics chart. %@ is the timestamp."))
-										.accessibilityValue(String(localized: "\(channelUtilization.formatted()) percent", comment: "VoiceOver value spoken as a percentage reading on a chart. %@ is the number."))
-										.foregroundStyle(channelUtilizationChartColor)
-									}
-									if let chartSelection {
-										RuleMark(x: .value("Second", chartSelection, unit: .second))
-											.foregroundStyle(.tertiary.opacity(0.5))
-											.accessibilityHidden(true)
-									}
-									if let airUtilTx = point.airUtilTx {
-										Plot {
-											PointMark(
-												x: .value("x", pointTime),
-												y: .value("y", airUtilTx)
-											)
-											.symbolSize(25)
-										}
-										.accessibilityLabel(String(localized: "Airtime at \(pointTime.formatted(date: .abbreviated, time: .shortened))", comment: "VoiceOver label for an airtime point on the device metrics chart. %@ is the timestamp."))
-										.accessibilityValue(String(localized: "\(airUtilTx.formatted()) percent", comment: "VoiceOver value spoken as a percentage reading on a chart. %@ is the number."))
-										.foregroundStyle(airtimeChartColor)
-									}
-								}
-							}
-							RuleMark(y: .value("Network Status Orange", 25))
-								.lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 10]))
-								.foregroundStyle(.orange)
-								.accessibilityHidden(true)
-							RuleMark(y: .value("Network Status Red", 50))
-								.lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 10]))
-								.foregroundStyle(.red)
-								.accessibilityHidden(true)
-						}
-						.chartXAxis(content: {
-							AxisMarks(position: .top)
-						})
-						.chartXAxis(.automatic)
-						.chartXSelection(value: $chartSelection)
-						.chartYScale(domain: 0...100)
-						.chartForegroundStyleScale([
-							(horizontalSizeClass == .regular ? "Battery Level".localized : "Battery".localized): batteryChartColor,
-							"Channel Utilization".localized: channelUtilizationChartColor,
-							"Airtime".localized: airtimeChartColor
-						])
-						.chartLegend(position: .automatic, alignment: .bottom)
+						chartView
 					}
 					.frame(minHeight: 240)
 				}
@@ -196,8 +131,11 @@ struct DeviceMetricsLog: View {
 						Label("Clear Log", systemImage: "trash.fill")
 					}
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+					}
 					.padding(.bottom)
 					.padding(.leading)
 					.hostedConfirmation(
@@ -228,8 +166,11 @@ struct DeviceMetricsLog: View {
 					}
 					.hostedWindowOnly()
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(horizontalSizeClass == .regular ? .large : .regular)
+					}
 					.padding(.bottom)
 					.padding(.trailing)
 				}
@@ -240,7 +181,15 @@ struct DeviceMetricsLog: View {
 					chartSelection = metrics.time
 				}
 			} else {
-				ContentUnavailableView("No Device Metrics", systemImage: "slash.circle")
+				VStack(spacing: 16) {
+					Image(systemName: "slash.circle")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Device Metrics")
+						.font(.title2)
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			}
 		}
 		.onAppear {
@@ -271,6 +220,121 @@ struct DeviceMetricsLog: View {
 					}
 				}
 			)
+	}
+
+	private var chartView: some View {
+		let batteryPoints = chartData.compactMap { point -> ChartDataPoint? in
+			guard let time = point.time, let batteryLevel = point.batteryLevel else { return nil }
+			return ChartDataPoint.fromDate(time, value: Double(batteryLevel))
+		}
+
+		let channelUtilPoints = chartData.compactMap { point -> ChartDataPoint? in
+			guard let time = point.time, let channelUtil = point.channelUtilization else { return nil }
+			return ChartDataPoint.fromDate(time, value: Double(channelUtil))
+		}
+
+		let airtimePoints = chartData.compactMap { point -> ChartDataPoint? in
+			guard let time = point.time, let airUtil = point.airUtilTx else { return nil }
+			return ChartDataPoint.fromDate(time, value: Double(airUtil))
+		}
+
+		let batterySeries = ChartSeriesData(
+			id: "battery",
+			name: horizontalSizeClass == .regular ? "Battery Level".localized : "Battery".localized,
+			color: batteryChartColor,
+			chartType: .line,
+			points: batteryPoints,
+			lineWidth: 2.0
+		)
+
+		let channelUtilSeries = ChartSeriesData(
+			id: "channelUtil",
+			name: "Channel Utilization".localized,
+			color: channelUtilizationChartColor,
+			chartType: .point,
+			points: channelUtilPoints,
+			lineWidth: 0,
+			drawCircles: true,
+			circleRadius: 5.0
+		)
+
+		let airtimeSeries = ChartSeriesData(
+			id: "airtime",
+			name: "Airtime".localized,
+			color: airtimeChartColor,
+			chartType: .point,
+			points: airtimePoints,
+			lineWidth: 0,
+			drawCircles: true,
+			circleRadius: 5.0
+		)
+
+		var ruleMarks: [DGRuleMark] = []
+		// Add network status reference lines
+		ruleMarks.append(DGRuleMark(
+			position: 25,
+			axis: .y,
+			color: .orange,
+			lineWidth: 1.0,
+			dashPattern: [5, 10]
+		))
+		ruleMarks.append(DGRuleMark(
+			position: 50,
+			axis: .y,
+			color: .red,
+			lineWidth: 1.0,
+			dashPattern: [5, 10]
+		))
+
+		if let chartSelection = chartSelection {
+			ruleMarks.append(DGRuleMark(
+				position: chartSelection.timeIntervalSince1970,
+				axis: .x,
+				color: .tertiary,
+				lineWidth: 1.0,
+				dashPattern: nil
+			))
+		}
+
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .top,
+			labelCount: 6,
+			dateFormat: "MM/dd HH:mm"
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: 6,
+			axisMinimum: 0,
+			axisMaximum: 100
+		)
+
+		let legendConfig = DGChartLegendConfig(
+			isEnabled: true,
+			position: .belowChartCenter,
+			alignment: .center,
+			orientation: .horizontal
+		)
+
+		return CombinedChartView(
+			data: [batterySeries, channelUtilSeries, airtimeSeries],
+			xAxisConfig: xAxisConfig,
+			yAxisConfig: yAxisConfig,
+			legendConfig: legendConfig,
+			ruleMarks: ruleMarks,
+			yDomain: 0...100,
+			visibleXRange: nil,
+			scrollPosition: nil,
+			isScrollable: false,
+			legendHidden: false,
+			frame: nil,
+			selection: nil,
+			onSelectionChanged: nil,
+			backgroundColor: .systemBackground,
+			gridColor: .systemGray4,
+			gridLineWidth: 0.5,
+			drawOrder: [.bar, .bubble, .line, .scatter, .candle]
+		)
 	}
 
 	private func refreshMetrics() {

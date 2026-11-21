@@ -25,7 +25,6 @@ struct CinemaSpace: View {
 	@EnvironmentObject private var lockdown: LockdownCoordinator
 	@Environment(\.scenePhase) private var scenePhase
 	@Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
-	@Environment(\.openWindow) private var openWindow
 	@Environment(\.dismissWindow) private var dismissWindow
 	@AppStorage("cinemaEnvironment") private var environment: CinemaEnvironment = .sarTent
 	@State private var world = Entity()
@@ -105,7 +104,6 @@ struct CinemaSpace: View {
 				// The map counts as open while the cinema is reopening it, so the button doesn't
 				// show for the second in between.
 				CinemaPanel(environment: $environment, sites: lookout.sites, siteID: $lookoutSiteID, turns: $lookoutTurns, radioCoordinate: radioCoordinate, lookoutNote: lookoutNote, spatialMapOpen: appState.spatialMapWindowCount > 0 || appState.spatialMapReopening) {
-					openWindow(id: SpatialMapScene.id, value: SpatialMapSceneKey.shared)
 				} onLeave: {
 					Task { await dismissImmersiveSpace() }
 				}
@@ -200,7 +198,7 @@ struct CinemaSpace: View {
 					let radioNum = accessoryManager.isConnected ? accessoryManager.activeDeviceNum : nil
 					lookout.labels = await lookout.labels(for: site, context: context, radioNum: radioNum)
 				}
-				try? await Task.sleep(for: .seconds(60))
+				try? await Task.sleep(nanoseconds: 60_000_000_000)
 			}
 		}
 		.task(id: accessoryManager.isConnected ? accessoryManager.activeDeviceNum : nil) {
@@ -213,7 +211,7 @@ struct CinemaSpace: View {
 				if !appState.isDatabaseResetting {
 					radioCoordinate = getNodeInfo(id: radioNum, context: container?.viewContext ?? CoreDataStackImpl.shared.context)?.latestPosition?.nodeCoordinate
 				}
-				try? await Task.sleep(for: .seconds(60))
+				try? await Task.sleep(nanoseconds: 60_000_000_000)
 			}
 		}
 		#if DEBUG
@@ -223,7 +221,7 @@ struct CinemaSpace: View {
 			let arguments = CommandLine.arguments
 			guard let index = arguments.firstIndex(of: "--meshtastic-cinema-model"), index + 1 < arguments.count else { return }
 			for _ in 0..<40 where !accessoryManager.isConnected {
-				try? await Task.sleep(for: .milliseconds(500))
+				try? await Task.sleep(nanoseconds: 500_000_000)
 			}
 			let name = arguments[index + 1]
 			modelRequest = CinemaModelRequest(modelName: name, deviceName: name, nodeNum: accessoryManager.isConnected ? accessoryManager.activeDeviceNum : nil)
@@ -272,16 +270,15 @@ struct CinemaSpace: View {
 			// viewer, between them and the screen. Until the map is back, a board's focus or route
 			// request waits for it (`spatialMapReopening`); the map about to close would take it.
 			defer { appState.spatialMapReopening = false }
-			try? await Task.sleep(for: .seconds(2))
+			try? await Task.sleep(nanoseconds: 2_000_000_000)
 			guard appState.cinemaOpen else { return }
 			if appState.mainWindowCount > 0 {
 				dismissWindow(id: MeshtasticAppleApp.mainWindowID)
 				CinemaScene.closedMainWindow = true
 			}
 			dismissWindow(id: SpatialMapScene.id, value: SpatialMapSceneKey.shared)
-			try? await Task.sleep(for: .seconds(1))
+			try? await Task.sleep(nanoseconds: 1_000_000_000)
 			guard appState.cinemaOpen else { return }
-			openWindow(id: SpatialMapScene.id, value: SpatialMapSceneKey.shared)
 		}
 		.onDisappear {
 			fitBoards?.cancel()
@@ -297,7 +294,6 @@ struct CinemaSpace: View {
 			// cinema too; but the space also reports .background while it closes, so when the
 			// cinema closed the window itself, always. The fallback for the reopen below.
 			if scenePhase != .background || CinemaScene.closedMainWindow {
-				CinemaScene.reopenMainWindow(openWindow, appState: appState)
 			}
 			CinemaScene.closedMainWindow = false
 		}
@@ -309,7 +305,6 @@ struct CinemaSpace: View {
 				// cinema closed the window, it comes back now, while the app is still in the
 				// foreground. If this was only a pause, the window sits in the tent.
 				if CinemaScene.closedMainWindow {
-					CinemaScene.reopenMainWindow(openWindow, appState: appState)
 				}
 			case .background:
 				Task { await dismissImmersiveSpace() }
@@ -463,7 +458,6 @@ struct CinemaSpace: View {
 	/// Centers the 3D map on the node, opening the map if it isn't open.
 	private func showOnMap(_ nodeNum: Int64) {
 		appState.spatialMapFocus = SpatialMapFocusRequest(nodeNum: nodeNum)
-		openWindow(id: SpatialMapScene.id, value: SpatialMapSceneKey.shared)
 	}
 
 	/// A board's view with the store and app state it reads, remade on a database reset.

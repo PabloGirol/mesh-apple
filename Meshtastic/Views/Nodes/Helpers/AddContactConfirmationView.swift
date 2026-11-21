@@ -91,7 +91,7 @@ struct AddContactConfirmationView: View {
 		ScrollView {
 			content
 		}
-		.scrollBounceBehavior(.basedOnSize)
+		.modifier(ScrollBounceBehaviorModifier())
 		.hostedSheet(item: $replyShareItem, onDismiss: { dismiss() }) { item in
 			ContactReplyActivityView(url: item.url)
 		}
@@ -193,7 +193,9 @@ struct AddContactConfirmationView: View {
 				}
 				.buttonStyle(.borderedProminent)
 				.tint(.accentFill)
-				.controlSize(.large)
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view.controlSize(.large)
+				}
 				.disabled(isAdding || !canSubmit || !hasShareableSnapshot)
 				// Sharing back needs the share sheet, which only the app window can show.
 				.hostedWindowOnly()
@@ -204,7 +206,9 @@ struct AddContactConfirmationView: View {
 						.frame(maxWidth: .infinity)
 				}
 				.buttonStyle(.bordered)
-				.controlSize(.large)
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view.controlSize(.large)
+				}
 				.disabled(isAdding || !canSubmit)
 			} else {
 				Button {
@@ -215,11 +219,15 @@ struct AddContactConfirmationView: View {
 				}
 				.buttonStyle(.borderedProminent)
 				.tint(.accentFill)
-				.controlSize(.large)
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view.controlSize(.large)
+				}
 				.disabled(isAdding || !canSubmit)
 			}
 			Button("Cancel") { dismiss() }
-				.controlSize(.large)
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view.controlSize(.large)
+				}
 				.padding(.bottom)
 		}
 		.padding()
@@ -307,10 +315,23 @@ extension View {
 				accessoryManager: accessoryManager
 			)
 			.trackScreen(.addContact)
-			.presentationDetents([.medium, .large])
-			#if !targetEnvironment(macCatalyst)
-			.presentationDragIndicator(.visible)
-			#endif
+			.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+				view
+					.presentationDetents([.medium, .large])
+					#if !targetEnvironment(macCatalyst)
+					.presentationDragIndicator(.visible)
+					#endif
+			}
+		}
+	}
+}
+
+private struct ScrollBounceBehaviorModifier: ViewModifier {
+	func body(content: Content) -> some View {
+		if #available(iOS 16.4, *) {
+			content.scrollBounceBehavior(.basedOnSize)
+		} else {
+			content
 		}
 	}
 }
@@ -336,7 +357,7 @@ struct AddContactConfirmationView_Previews: PreviewProvider {
 		)
 		// The sheet reads the node db to see whether the import would replace a stored key,
 		// so the preview needs a container the way the app's scene provides one.
-		.modelContainer(PersistenceController.preview.container)
+		.environment(\.managedObjectContext, CoreDataStackImpl.preview.context)
 	}
 }
 #endif

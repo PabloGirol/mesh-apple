@@ -3,14 +3,15 @@
 //  Meshtastic
 //
 //  Particulate-matter (PM) air quality telemetry log (issue #2040).
+//  Updated for DGCharts iOS 15 compatibility
 //
-import Charts
+
 import CoreData
+import DGCharts
 import OSLog
 import SwiftUI
 
 struct AirQualityMetricsLog: View {
-
 	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -43,19 +44,7 @@ struct AirQualityMetricsLog: View {
 				VStack {
 					if chartData.count > 0 {
 						GroupBox(label: Label("\(totalReadings) Readings Total", systemImage: "chart.xyaxis.line")) {
-							Chart(seriesList.visible) { series in
-								ForEach(chartData, id: \.objectID) { dataPoint in
-									series.body(dataPoint, inChartRange: chartRange)
-								}
-							}
-							.chartXAxis(content: {
-								AxisMarks(position: .top)
-							})
-							.chartYScale(domain: chartRange)
-							.chartForegroundStyleScale { (seriesName: String) -> AnyShapeStyle in
-								return seriesList.foregroundStyle(forAbbreviatedName: seriesName, chartRange: chartRange) ?? AnyShapeStyle(Color.clear)
-							}
-							.chartLegend(position: .automatic, alignment: .bottom)
+							chartView(chartRange: chartRange)
 						}
 					}
 
@@ -104,8 +93,11 @@ struct AirQualityMetricsLog: View {
 							.imageScale(imageScale)
 					}
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(buttonSize)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(buttonSize)
+					}
 					.padding(.bottom)
 					.padding(.leading)
 					.hostedSheet(isPresented: self.$isEditingColumnConfiguration) {
@@ -118,8 +110,11 @@ struct AirQualityMetricsLog: View {
 							.imageScale(imageScale)
 					}
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(buttonSize)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(buttonSize)
+					}
 					.padding(.bottom)
 					.hostedConfirmation(
 						"Are you sure?",
@@ -149,14 +144,25 @@ struct AirQualityMetricsLog: View {
 					}
 					.hostedWindowOnly()
 					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.controlSize(buttonSize)
+					.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+						view
+							.buttonBorderShape(.capsule)
+							.controlSize(buttonSize)
+					}
 					.padding(.bottom)
 					.padding(.trailing)
 				}
 
 			} else {
-				ContentUnavailableView("No Air Quality Metrics", systemImage: "slash.circle")
+				VStack(spacing: 16) {
+					Image(systemName: "slash.circle")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Air Quality Metrics")
+						.font(.title2)
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			}
 		}
 		.onAppear {
@@ -208,4 +214,86 @@ struct AirQualityMetricsLog: View {
 			.filter { ($0.time ?? Date.distantPast) >= oneWeekAgo }
 			.sorted { ($0.time ?? .distantPast) > ($1.time ?? .distantPast) }
 	}
+
+	@ViewBuilder
+	private func chartView(chartRange: ClosedRange<Float>) -> some View {
+		let visibleSeries = seriesList.visible
+
+		// Convert series to DGCharts data
+		let chartSeriesData = visibleSeries.compactMap { series -> ChartSeriesData? in
+			let points = chartData.compactMap { entity -> ChartDataPoint? in
+				guard let time = entity.time, let value = series.valueFor(entity) else { return nil }
+				return ChartDataPoint(x: time.timeIntervalSince1970, y: Double(value))
+			}
+			guard !points.isEmpty else { return nil }
+
+			return series.toChartSeriesData(points: points)
+		}
+
+		guard !chartSeriesData.isEmpty else {
+			return Text("No data to display")
+				.frame(height: 200)
+				.foregroundStyle(.secondary)
+		}
+
+		let xAxisConfig = DGChartXAxisConfig(
+			position: .top,
+			labelCount: 6,
+			dateFormat: "MM/dd HH:mm"
+		)
+
+		let yAxisConfig = DGChartYAxisConfig(
+			position: .left,
+			labelCount: 6,
+			axisMinimum: chartRange.lowerBound,
+			axisMaximum: chartRange.upperBound
+		)
+
+		let legendConfig = DGChartLegendConfig(
+			isEnabled: true,
+			position: .belowChartCenter,
+			alignment: .center,
+			orientation: .horizontal
+		)
+
+		return AnyView(LineChartView(
+			data: chartSeriesData,
+			xAxisConfig: xAxisConfig,
+			yAxisConfig: yAxisConfig,
+			legendConfig: legendConfig,
+			ruleMarks: [],
+			yDomain: chartRange.lowerBound...chartRange.upperBound,
+			visibleXRange: nil,
+			scrollPosition: nil,
+			isScrollable: false,
+			legendHidden: false,
+			frame: nil,
+			selection: nil,
+			onSelectionChanged: nil,
+			backgroundColor: .systemBackground,
+			gridColor: .systemGray4,
+			gridLineWidth: 0.5,
+			drawCircles: false,
+			circleRadius: 4.0,
+			mode: .linear,
+			cubicIntensity: 0.2,
+			drawFilled: false,
+			fillAlpha: 0.3
+		))
+	}
 }
+
+// TODO: Fix preview for SwiftData
+/*
+#Preview {
+	let node = NodeInfoEntity()
+	node.num = 123456789
+	let user = UserEntity()
+	user.longName = "Test Node"
+	user.shortName = "TN"
+	node.user = user
+	AirQualityMetricsLog(node: node)
+		.environmentObject(AccessoryManager.shared)
+		.modelContainer(PersistenceController.preview.container)
+}
+*/

@@ -43,8 +43,8 @@ enum DisplayInputMapping {
 	static let longPressDuration: TimeInterval = 0.5
 	/// Hold-to-repeat: first repeat after this delay, then at `repeatInterval`. Slower than
 	/// key repeat on purpose so presses can't outrun the radio's screen.
-	static let repeatDelay: Duration = .milliseconds(500)
-	static let repeatInterval: Duration = .milliseconds(100)
+	static let repeatDelay: TimeInterval = 0.5
+	static let repeatInterval: TimeInterval = 0.1
 
 	/// Maps a point on the drawn mirror to the radio pixel under it, clamped to the panel.
 	static func panelPoint(for location: CGPoint, in renderedSize: CGSize, panelWidth: Int, panelHeight: Int) -> DisplayTouchPoint? {

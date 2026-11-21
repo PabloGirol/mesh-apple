@@ -129,42 +129,15 @@ extension View {
 // MARK: - NavigationPath Compatibility
 
 /// Lightweight wrapper for NavigationPath on iOS 16+, empty on iOS 15.
-@available(iOS 15.0, *)
+/// On iOS 15, this is a stub with no-op methods since NavigationPath doesn't exist.
 struct CompatNavigationPath {
-    @available(iOS 16.0, *)
-    private var path: NavigationPath = NavigationPath()
-
-    @available(iOS 16.0, *)
-    mutating func append<V: Hashable>(_ value: V) {
-        path.append(value)
-    }
-
-    @available(iOS 16.0, *)
-    mutating func removeLast(_ k: Int = 1) {
-        path.removeLast(k)
-    }
-
-    @available(iOS 16.0, *)
-    var isEmpty: Bool {
-        path.isEmpty
-    }
-
-    @available(iOS 16.0, *)
-    var count: Int {
-        path.count
-    }
-
     // iOS 15 stubs
-    @available(iOS, introduced: 15.0, deprecated: 16.0, message: "Use native NavigationPath on iOS 16+")
     mutating func append<V: Hashable>(_ value: V) {}
 
-    @available(iOS, introduced: 15.0, deprecated: 16.0, message: "Use native NavigationPath on iOS 16+")
     mutating func removeLast(_ k: Int = 1) {}
 
-    @available(iOS, introduced: 15.0, deprecated: 16.0, message: "Use native NavigationPath on iOS 16+")
     var isEmpty: Bool { true }
 
-    @available(iOS, introduced: 15.0, deprecated: 16.0, message: "Use native NavigationPath on iOS 16+")
     var count: Int { 0 }
 }
 

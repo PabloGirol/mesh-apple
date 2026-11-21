@@ -1,9 +1,9 @@
 //
-//  DownloadNewMapView.swift
-//  Meshtastic
-//
-//  Search for a place (or use the current location) to seed the area selector.
-//
+ //  DownloadNewMapView.swift
+ //  Meshtastic
+ //
+ //  Search for a place (or use the current location) to seed the area selector.
+ //
 
 import SwiftUI
 import MapKit
@@ -13,7 +13,7 @@ import OSLog
 struct DownloadNewMapView: View {
 	@Environment(\.dismiss) private var dismiss
 	@ObservedObject private var manager = OfflineMapManager.shared
-	@StateObject private var search = MapSearchCompleter()
+	@StateObject private var search = MapSearchCompleterObservable()
 	@State private var query = ""
 	@State private var target: OfflineRegionTarget?
 	@State private var resolving = false
@@ -134,7 +134,7 @@ struct DownloadNewMapView: View {
 
 /// Wraps `MKLocalSearchCompleter` as an observable source of autocomplete results.
 @MainActor
-final class MapSearchCompleter: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
+final class MapSearchCompleter: NSObject, MKLocalSearchCompleterDelegate {
 	@Published var results: [MKLocalSearchCompletion] = []
 	private let completer = MKLocalSearchCompleter()
 
@@ -161,4 +161,21 @@ final class MapSearchCompleter: NSObject, ObservableObject, MKLocalSearchComplet
 	nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
 		Task { @MainActor in self.results = [] }
 	}
+}
+
+/// ObservableObject wrapper for MapSearchCompleter to avoid NSObject + ObservableObject multiple inheritance.
+@MainActor
+final class MapSearchCompleterObservable: ObservableObject {
+	private let completer = MapSearchCompleter()
+
+	var results: [MKLocalSearchCompletion] {
+		get { completer.results }
+		set { completer.results = newValue }
+	}
+
+	func update(_ text: String) {
+		completer.update(text)
+	}
+
+	private init() {}
 }

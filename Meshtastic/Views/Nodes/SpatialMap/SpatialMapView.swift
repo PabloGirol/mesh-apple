@@ -111,7 +111,10 @@ struct SpatialMapView: View {
 			.gesture(doubleTap)
 			.gesture(drag)
 			.gesture(pinch)
-			.onChange(of: proxy.size, initial: true) { _, size in
+			.onAppear {
+				volumeSize = proxy.size
+			}
+			.onChange(of: proxy.size) { _, size in
 				volumeSize = size
 			}
 			.onChange(of: isDragging) { _, dragging in
@@ -190,7 +193,7 @@ struct SpatialMapView: View {
 				liveZoom = zoom
 				pinchSettle?.cancel()
 				pinchSettle = Task {
-					try? await Task.sleep(for: .milliseconds(500))
+					try? await Task.sleep(nanoseconds: 500_000_000)
 					guard !Task.isCancelled else { return }
 					model.setZoom(zoom)
 				}

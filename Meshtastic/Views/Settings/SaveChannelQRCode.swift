@@ -8,6 +8,7 @@ import SwiftUI
 import CoreData
 import OSLog
 import MeshtasticProtobufs
+import NavigationStackShim
 
 struct SaveChannelLinkData: Identifiable {
 	let id = UUID()
@@ -62,7 +63,7 @@ struct SaveChannelQRCode: View {
 	}
 
 	var body: some View {
-		SheetNavigationStack {
+		CompatNavigationStack {
 			ScrollView {
 				VStack(alignment: .leading, spacing: 18) {
 					header
@@ -146,7 +147,17 @@ struct SaveChannelQRCode: View {
 				.font(.headline)
 
 			if incomingChannels.isEmpty {
-				ContentUnavailableView("No Channels", systemImage: "qrcode", description: Text("This QR code did not contain channel settings."))
+				VStack(spacing: 16) {
+					Image(systemName: "qrcode")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("No Channels")
+						.font(.title2)
+						.foregroundColor(.secondary)
+					Text("This QR code did not contain channel settings.")
+						.foregroundColor(.secondary)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			} else {
 				ForEach(Array(incomingChannels.enumerated()), id: \.offset) { index, channel in
 					channelRow(index: index, channel: channel)

@@ -51,7 +51,15 @@ struct TraceRouteLog: View {
 					}
 				}
 				if traceRoutes.isEmpty {
-					ContentUnavailableView("No Trace Routes", systemImage: "signpost.right.and.left")
+					VStack(spacing: 16) {
+						Image(systemName: "signpost.right.and.left")
+							.font(.system(size: 48))
+							.foregroundColor(.secondary)
+						Text("No Trace Routes")
+							.font(.title2)
+							.foregroundColor(.secondary)
+					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
 				} else {
 					header
 					Section {
@@ -89,12 +97,12 @@ struct TraceRouteLog: View {
 			if Self.touchesTraceRoutes(notification) { refreshTraceRoutes() }
 		}
 		.navigationTitle("Trace Route Log")
-		.navigationDestination(item: $openRouteID) { id in
-			if let route = traceRoutes.first(where: { $0.objectID == id }) {
-				TraceRouteDetail(route: route)
+			.navigationDestination(item: $openRouteID) { id in
+				if let route = traceRoutes.first(where: { $0.objectID == id }) {
+					TraceRouteDetail(route: route)
+				}
 			}
-		}
-		.toolbar {
+			.toolbar {
 			ToolbarItem(placement: .topBarTrailing) {
 				ConnectedDevice(deviceConnected: accessoryManager.isConnected, name: accessoryManager.activeConnection?.device.shortName ?? "?")
 			}

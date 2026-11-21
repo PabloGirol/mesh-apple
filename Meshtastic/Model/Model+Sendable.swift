@@ -59,5 +59,4 @@ extension UserEntity: @unchecked Sendable {}
 extension WaypointEntity: @unchecked Sendable {}
 extension DiscoverySessionEntity: @unchecked Sendable {}
 extension DiscoveryPresetResultEntity: @unchecked Sendable {}
-extension DeviceLinkEntity: @unchecked Sendable {}
 extension EventFirmwareEntity: @unchecked Sendable {}

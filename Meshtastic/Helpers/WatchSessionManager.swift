@@ -1,9 +1,9 @@
 //
-//  WatchSessionManager.swift
-//  Meshtastic
-//
-//  Copyright(c) Meshtastic 2025.
-//
+ //  WatchSessionManager.swift
+ //  Meshtastic
+ //
+ //  Copyright(c) Meshtastic 2025.
+ //
 
 import Foundation
 import WatchConnectivity
@@ -16,9 +16,7 @@ import os
 ///
 /// Call `sendNodesToWatch()` whenever node data changes (e.g., after
 /// receiving position updates from the radio).
-final class WatchSessionManager: NSObject, ObservableObject {
-
-	static let shared = WatchSessionManager()
+final class WatchSessionManager: NSObject {
 
 	private let logger = Logger(subsystem: "gvh.MeshtasticClient", category: "⌚ Watch")
 	private var session: WCSession?
@@ -82,7 +80,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
 				watchUpdateTask = Task { @MainActor in
 					let delay = Self.watchUpdateInterval - Date().timeIntervalSince(self.lastWatchSendTime)
 					if delay > 0 {
-						try? await Task.sleep(for: .seconds(delay))
+						try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
 					}
 					guard !Task.isCancelled else { return }
 					await self.performSendNodesToWatch()
@@ -130,6 +128,31 @@ final class WatchSessionManager: NSObject, ObservableObject {
 
 	/// Maximum distance in meters to include a node (0.5 miles).
 	private static let maxDistanceMeters: Double = 804.672
+}
+
+/// ObservableObject wrapper for WatchSessionManager to avoid NSObject + ObservableObject multiple inheritance.
+@MainActor
+final class WatchSessionManagerObservable: ObservableObject {
+	static let shared = WatchSessionManagerObservable()
+
+	private let manager = WatchSessionManager()
+
+	/// Whether a paired Watch with the Meshtastic app installed is available.
+	var isWatchAvailable: Bool {
+		manager.isWatchAvailable
+	}
+
+	/// Send a specific node to the Watch as a foxhunt target.
+	func sendNodeForFoxhunt(_ nodeNum: Int64) {
+		manager.sendNodeForFoxhunt(nodeNum)
+	}
+
+	/// Throttled: schedules a Watch update at most once per 60 seconds.
+	func sendNodesToWatch() {
+		manager.sendNodesToWatch()
+	}
+
+	private init() {}
 }
 
 // MARK: - WCSessionDelegate

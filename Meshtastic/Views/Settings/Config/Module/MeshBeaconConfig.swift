@@ -179,11 +179,17 @@ struct MeshBeaconConfig: View {
 	// MARK: - Unsupported (older firmware)
 
 	private var unsupportedState: some View {
-		ContentUnavailableView {
-			Label("Mesh Beacons Not Supported", systemImage: "dot.radiowaves.left.and.right")
-		} description: {
+		VStack(spacing: 16) {
+			Image(systemName: "dot.radiowaves.left.and.right")
+				.font(.system(size: 48))
+				.foregroundColor(.secondary)
+			Text("Mesh Beacons Not Supported")
+				.font(.title2)
+				.foregroundColor(.secondary)
 			Text("Mesh beacons require firmware 2.8 or newer.")
+				.foregroundColor(.secondary)
 		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity)
 	}
 
 	// MARK: - Editor
@@ -273,7 +279,7 @@ struct MeshBeaconConfig: View {
 
 	private var messageSection: some View {
 		Section(header: Text("Beacon Message")) {
-			TextField("Message", text: $broadcastMessage, axis: .vertical)
+			TextField("Message", text: $broadcastMessage)
 				.autocorrectionDisabled()
 			HStack {
 				Text("\(MeshBeaconValidation.messageByteCount(broadcastMessage)) / \(MeshBeaconValidation.maxMessageBytes) bytes")
@@ -512,5 +518,5 @@ struct MeshBeaconConfig: View {
 #Preview {
 	MeshBeaconConfig(node: nil)
 		.environmentObject(AccessoryManager.shared)
-		.modelContainer(PersistenceController.preview.container)
+		.environment(\.managedObjectContext, CoreDataStackImpl.preview.context)
 }

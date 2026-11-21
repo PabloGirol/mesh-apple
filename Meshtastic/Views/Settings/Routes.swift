@@ -9,10 +9,10 @@ import SwiftUI
 import CoreData
 import MapKit
 import OSLog
+import NavigationStackShim
 
 struct Routes: View {
 
-	@State private var columnVisibility = NavigationSplitViewVisibility.doubleColumn
 	@Environment(\.managedObjectContext) private var context
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@EnvironmentObject var accessoryManager: AccessoryManager
@@ -37,8 +37,8 @@ struct Routes: View {
 	)
 	var routes: FetchedResults<RouteEntity>
 	var body: some View {
-
-		VStack {
+		CompatNavigationStack {
+			VStack {
 			if selectedRoute == nil {
 				Button("Import Route") {
 					importing = true
@@ -81,8 +81,7 @@ struct Routes: View {
 								}
 							}
 							if latIndex >= 0 && longIndex >= 0 {
-								let newRoute = RouteEntity()
-								context.insert(newRoute)
+								let newRoute = RouteEntity(context: context)
 								newRoute.name = String(routeName)
 								newRoute.id = Int32.random(in: Int32(Int8.max) ... Int32.max)
 								newRoute.color = Int64(UIColor.random.hex)
@@ -94,8 +93,7 @@ struct Routes: View {
 									if data.count > 1 {
 										let latitude = latIndex >= 0 ? data[latIndex].trimmingCharacters(in: .whitespaces) : "0"
 										let longitude = longIndex >= 0 ? data[longIndex].trimmingCharacters(in: .whitespaces) : "0"
-										let loc = LocationEntity()
-										context.insert(loc)
+										let loc = LocationEntity(context: context)
 										// Clamp to valid coordinate ranges (and reject non-finite) before scaling:
 										// a malformed CSV cell (huge value, 1e400 -> inf, or nan) would otherwise
 										// make Int32(Double) trap and crash the import. Clamped × 1e7 stays well
@@ -188,10 +186,10 @@ struct Routes: View {
 						})
 						Form {
 							TextField(
-								"Name",
-								text: $name,
-								axis: .vertical
-							)
+							"Name",
+							text: $name,
+							axis: .vertical
+						)
 							.foregroundColor(Color.gray)
 							.onChange(of: name) {
 								var totalBytes = name.utf8.count
@@ -211,10 +209,10 @@ struct Routes: View {
 							ColorPicker("Color", selection: $color, supportsOpacity: false)
 
 							TextField(
-								"Notes",
-								text: $notes,
-								axis: .vertical
-							)
+							"Notes",
+							text: $notes,
+							axis: .vertical
+						)
 							.lineLimit(3...5)
 							.foregroundColor(Color.gray)
 						}
@@ -265,31 +263,14 @@ struct Routes: View {
 						.onChange(of: color) {
 							hasChanges = true
 						}
-						Map {
-							Annotation(String(localized: "Start"), coordinate: lineCoords.first ?? LocationsHandler.DefaultLocation) {
-								ZStack {
-									Circle()
-										.fill(Color(.green))
-										.strokeBorder(.white, lineWidth: 3)
-										.frame(width: 15, height: 15)
-								}
-							}
-							.annotationTitles(.automatic)
-							Annotation(String(localized: "Finish ", comment: "Space at the end has been added to not interfere with translations for 'Finish' in RouteRecorder"), coordinate: lineCoords.last ?? LocationsHandler.DefaultLocation) {
-								ZStack {
-									Circle()
-										.fill(Color(.black))
-										.strokeBorder(.white, lineWidth: 3)
-										.frame(width: 15, height: 15)
-								}
-							}
-							.annotationTitles(.automatic)
-							let solid = StrokeStyle(
-								lineWidth: 3,
-								lineCap: .round, lineJoin: .round
-							)
-							MapPolyline(coordinates: lineCoords)
-								.stroke(Color(UIColor(hex: UInt32(selectedRoute?.color ?? 0))), style: solid)
+						// iOS 15/16 fallback: empty view or legacy Map
+						VStack {
+							Image(systemName: "map")
+								.font(.system(size: 48))
+								.foregroundColor(.secondary)
+							Text("Map preview requires iOS 17+")
+								.font(.caption)
+								.foregroundColor(.secondary)
 						}
 						.frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
 						.safeAreaInset(edge: .bottom, alignment: horizontalSizeClass == .regular ? .trailing : .leading) {
@@ -326,6 +307,7 @@ struct Routes: View {
 			}
 		}
 		.navigationTitle(selectedRoute != nil ? name : String(localized: "Route List"))
-		.navigationBarTitleDisplayMode(.inline)
+			.navigationBarTitleDisplayMode(.inline)
+		}
 	}
 }

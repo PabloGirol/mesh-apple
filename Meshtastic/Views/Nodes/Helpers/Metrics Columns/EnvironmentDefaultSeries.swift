@@ -3,9 +3,9 @@
 //  Meshtastic
 //
 //  Created by Jake Bordens on 12/11/24.
+//  Updated for DGCharts iOS 15 compatibility
 //
 
-import Charts
 import Foundation
 import SwiftUI
 
@@ -20,7 +20,8 @@ extension MetricsSeriesList {
 				name: "Temperature",
 				abbreviatedName: "Temp",
 				unit: "°",
-				minumumYAxisSpan: 50.0,
+				minimumYAxisSpan: 50.0,
+				chartType: .combinedLineArea,
 				conversion: { t in t.map { Float($0.localeTemperature()) } },
 				foregroundStyle: { chartRange in
 					let locale = NSLocale.current as NSLocale
@@ -31,30 +32,10 @@ extension MetricsSeriesList {
 					let stops: [Gradient.Stop] = generateStops(minTemp: lowerBound, maxTemp: upperBound, tempUnit: format, opacity: 1.0)
 					return LinearGradient(stops: stops, startPoint: .bottom, endPoint: .top)
 				},
-				chartBody: { series, chartRange, time, temperature in
-					if let temperature {
-						AreaMark(
-							x: .value("Time", time),
-							yStart: .value(series.abbreviatedName, chartRange?.lowerBound.doubleValue ?? 0.0),
-							yEnd: .value(
-								series.abbreviatedName, temperature.localeTemperature())
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.alignsMarkStylesWithPlotArea()
-						.accessibilityHidden(true)
-						.opacity(0.6)
-						LineMark(
-							x: .value("Time", time),
-							y: .value(
-								series.abbreviatedName, temperature.localeTemperature())
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.temperature.map { Float($0.localeTemperature()) }
+				}
+			),
 
 			// Relative Humidity Series Configuration
 			MetricsChartSeries(
@@ -64,24 +45,17 @@ extension MetricsSeriesList {
 				abbreviatedName: "Hum",
 				unit: "%",
 				initialYAxisRange: 0.0...100.0,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.purple.darker(componentDelta: 0.2)), .purple],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.purple.darker(componentDelta: 0.2)), .purple],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, humidity in
-					if let humidity {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, humidity)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.relativeHumidity
+				}
+			),
 
 			MetricsChartSeries(
 				id: "dewPoint",
@@ -89,9 +63,11 @@ extension MetricsSeriesList {
 				name: "Dew Point",
 				abbreviatedName: "Dew",
 				unit: "°",
-				minumumYAxisSpan: 50.0,
+				minimumYAxisSpan: 50.0,
+				chartType: .line,
+				lineWidth: 2.0,
+				dashPattern: [2, 2],
 				conversion: { t in t.map { Float($0.localeTemperature()) } },
-				strokeStyle: StrokeStyle(lineWidth: 4, dash: [2, 2]),
 				foregroundStyle: { chartRange in
 					let locale = NSLocale.current as NSLocale
 					let localeUnit = locale.object(forKey: NSLocale.Key(rawValue: "kCFLocaleTemperatureUnitKey"))
@@ -101,20 +77,11 @@ extension MetricsSeriesList {
 					let stops: [Gradient.Stop] = generateStops(minTemp: lowerBound, maxTemp: upperBound, tempUnit: format, opacity: 1.0)
 					return LinearGradient(stops: stops, startPoint: .bottom, endPoint: .top)
 				},
-				chartBody: { series, _, time, dewPoint in
-					if let dewPoint {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(
-								series.abbreviatedName, dewPoint.localeTemperature())
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
-			
+				valueExtractor: { entity in
+					entity.dewPoint.map { Float($0.localeTemperature()) }
+				}
+			),
+
 			// Barometric Pressure Series Configuration
 			MetricsChartSeries(
 				id: "barometricPressure",
@@ -128,24 +95,17 @@ extension MetricsSeriesList {
 				// (e.g. high-altitude stations). Per meshtastic/design#53 / Meshtastic-Apple#2046.
 				initialYAxisRange: 950.0...1050.0,
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.green.darker(componentDelta: 0.3)), .green],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.green.darker(componentDelta: 0.3)), .green],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, pressure in
-					if let pressure {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, pressure)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.barometricPressure
+				}
+			),
 
 			// Indoor Air Quality Series Configuration
 			MetricsChartSeries(
@@ -154,26 +114,12 @@ extension MetricsSeriesList {
 				name: "Indoor Air Quality",
 				abbreviatedName: "IAQ",
 				visible: false,
+				chartType: .point,
 				foregroundStyle: { _ in .gray },
-				chartBody: { series, _, time, iaq in
-					if let iaq {
-						let iaqEnum = Iaq.getIaq(for: Int(iaq))
-						PointMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, Float(iaq))
-						)
-						.symbol(Circle())
-						.foregroundStyle(iaqEnum.color)
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, Float(iaq))
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.iaq
+				}
+			),
 
 			// Lux
 			MetricsChartSeries(
@@ -183,24 +129,17 @@ extension MetricsSeriesList {
 				abbreviatedName: "Lux",
 				unit: "lx",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.cyan.lighter(componentDelta: 0.3)), .cyan],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.cyan.lighter(componentDelta: 0.3)), .cyan],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, lux in
-					if let lux {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, lux)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.lux
+				}
+			),
 
 			// White Lux
 			MetricsChartSeries(
@@ -210,24 +149,17 @@ extension MetricsSeriesList {
 				abbreviatedName: "White",
 				unit: "lx",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.cyan.lighter(componentDelta: 0.5)), Color(UIColor.cyan.lighter(componentDelta: 0.2))],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.cyan.lighter(componentDelta: 0.5)), Color(UIColor.cyan.lighter(componentDelta: 0.2))],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, lux in
-					if let lux {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, lux)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.whiteLux
+				}
+			),
 
 			// UV Lux
 			MetricsChartSeries(
@@ -237,24 +169,17 @@ extension MetricsSeriesList {
 				abbreviatedName: "UV",
 				unit: "lx",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.systemIndigo.lighter(componentDelta: 0.4)), Color(UIColor.systemIndigo.lighter(componentDelta: 0.2))],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.systemIndigo.lighter(componentDelta: 0.4)), Color(UIColor.systemIndigo.lighter(componentDelta: 0.2))],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, lux in
-					if let lux {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, lux)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.uvLux
+				}
+			),
 
 			// IR Lux
 			MetricsChartSeries(
@@ -264,24 +189,17 @@ extension MetricsSeriesList {
 				abbreviatedName: "IR",
 				unit: "lx",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.red.darker(componentDelta: 0.5)), .red],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.red.darker(componentDelta: 0.5)), .red],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, lux in
-					if let lux {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, lux)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.irLux
+				}
+			),
 
 			// Radiation
 			MetricsChartSeries(
@@ -290,26 +208,19 @@ extension MetricsSeriesList {
 				name: "Radiation",
 				abbreviatedName: "☢️",
 				unit: "µR/h",
-				minumumYAxisSpan: 20.0,
+				minimumYAxisSpan: 20.0,
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.orange.darker(componentDelta: 0.4)), .orange],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.orange.darker(componentDelta: 0.4)), .orange],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, radiation in
-					if let radiation {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, radiation)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.radiation
+				}
+			),
 
 			// Combined Wind Speed and Direction Series Configuration -- For use in Chart only
 			MetricsChartSeries(
@@ -319,40 +230,19 @@ extension MetricsSeriesList {
 				abbreviatedName: "Speed/Dir",
 				unit: "m/s",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.yellow.darker(componentDelta: 0.3)), Color(UIColor.yellow.darker(componentDelta: 0.1))],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.yellow.darker(componentDelta: 0.3)), Color(UIColor.yellow.darker(componentDelta: 0.1))],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, wsad in
-					if let wsad {
-						// debug data: var wsad = WindSpeedAndDirection(windSpeed:Float.random(in:0...25), windDirection: Int32.random(in:0..<3)*90 )
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, wsad.windSpeed)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-						PointMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, wsad.windSpeed)
-						)
-						.symbol {
-							if let wd = wsad.windDirection {
-								Image(systemName: "location.north.circle.fill")
-									.symbolRenderingMode(.palette)
-									.foregroundStyle(Color.white, Color(UIColor.yellow.darker(componentDelta: 0.3)))
-									.rotationEffect(
-										.degrees(Double(wd)))
-							}
-						}.foregroundStyle(.yellow)
-					}
-				}),
+				valueExtractor: { entity in
+					entity.windSpeedAndDirection?.windSpeed
+				}
+			),
 
-			// Rainfaill 1-hour
+			// Rainfall 1-hour
 			MetricsChartSeries(
 				id: "rainfall1H",
 				keyPath: \.rainfall1H,
@@ -360,26 +250,19 @@ extension MetricsSeriesList {
 				abbreviatedName: "Rain 1H",
 				unit: "mm",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.systemBlue.darker(componentDelta: 0.5)), .blue],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.systemBlue.darker(componentDelta: 0.5)), .blue],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, rainfall in
-					if let rainfall {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, rainfall)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.rainfall1H
+				}
+			),
 
-			// Rainfaill 24-hour
+			// Rainfall 24-hour
 			MetricsChartSeries(
 				id: "rainfall24H",
 				keyPath: \.rainfall24H,
@@ -387,24 +270,17 @@ extension MetricsSeriesList {
 				abbreviatedName: "Rain 24H",
 				unit: "mm",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.systemBlue.darker(componentDelta: 0.5)), .cyan],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.systemBlue.darker(componentDelta: 0.5)), .cyan],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, rainfall in
-					if let rainfall {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, rainfall)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.rainfall24H
+				}
+			),
 
 			// Weight
 			MetricsChartSeries(
@@ -414,24 +290,17 @@ extension MetricsSeriesList {
 				abbreviatedName: "kg",
 				unit: "kg",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.systemPink.darker(componentDelta: 0.5)), .pink],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.systemPink.darker(componentDelta: 0.5)), .pink],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, weight in
-					if let weight {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, weight)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.weight
+				}
+			),
 
 			// Distance
 			MetricsChartSeries(
@@ -441,24 +310,17 @@ extension MetricsSeriesList {
 				abbreviatedName: "Dist",
 				unit: "mm",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.systemTeal.darker(componentDelta: 0.7)), Color(UIColor.systemTeal)],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.systemTeal.darker(componentDelta: 0.7)), Color(UIColor.systemTeal)],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, distance in
-					if let distance {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, distance)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.distance
+				}
+			),
 
 			// Soil Temperature
 			MetricsChartSeries(
@@ -468,26 +330,19 @@ extension MetricsSeriesList {
 				abbreviatedName: "Soil Temp",
 				unit: "°",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.brown.darker(componentDelta: 0.4)), .brown],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.brown.darker(componentDelta: 0.4)), .brown],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, soilTemp in
-					if let soilTemp {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, soilTemp)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				}),
+				valueExtractor: { entity in
+					entity.soilTemperature.map { Float($0.localeTemperature()) }
+				}
+			),
 
-			// Soil Temperature
+			// Soil Moisture
 			MetricsChartSeries(
 				id: "soilMoisture",
 				keyPath: \.soilMoisture,
@@ -495,80 +350,17 @@ extension MetricsSeriesList {
 				abbreviatedName: "Moist",
 				unit: "%",
 				visible: false,
+				chartType: .line,
 				foregroundStyle: { _ in
-						.linearGradient(
-							colors: [Color(UIColor.blue.darker(componentDelta: 0.4)), .brown],
-							startPoint: .bottom, endPoint: .top
-						)
+					.linearGradient(
+						colors: [Color(UIColor.blue.darker(componentDelta: 0.4)), .brown],
+						startPoint: .bottom, endPoint: .top
+					)
 				},
-				chartBody: { series, _, time, soilMoisture in
-					if let soilMoisture {
-						LineMark(
-							x: .value("Time", time),
-							y: .value(series.abbreviatedName, soilMoisture)
-						)
-						.interpolationMethod(.catmullRom)
-						.foregroundStyle(by: .value("Series", series.abbreviatedName))
-						.lineStyle(series.strokeStyle)
-						.alignsMarkStylesWithPlotArea()
-					}
-				})
+				valueExtractor: { entity in
+					entity.soilMoisture
+				}
+			)
 		])
 	}
-}
-
-// Extension to combine windspeed and direction into one attribute for rendering
-// for rendering on the chart.
-@objc class WindSpeedAndDirection: NSObject, Plottable, Comparable {
-
-	let windSpeed: Float
-	let windDirection: Int32?
-	init(windSpeed: Float, windDirection: Int32?) {
-		self.windSpeed = windSpeed
-		self.windDirection = windDirection
-	}
-
-	// Plottable Conformance
-	required init?(primitivePlottable: Float) { nil }
-	var primitivePlottable: Float { windSpeed  }
-
-	static func < (lhs: WindSpeedAndDirection, rhs: WindSpeedAndDirection) -> Bool {
-		lhs.windSpeed < rhs.windSpeed
-	}
-}
-
-@objc extension TelemetryEntity {
-	var windSpeedAndDirection: WindSpeedAndDirection? {
-		guard let windSpeed = self.windSpeed else { return nil }
-
-		return WindSpeedAndDirection(windSpeed: windSpeed, windDirection: self.windDirection)
-	}
-}
-
-// From: https://github.com/meshtastic/Meshtastic-Apple/pull/1013/commits/bc932567c742c8fa9fd30752237b10cb762c5ef3
-// Set up gradient stops relative to the scale of the temperature chart
-func generateStops(minTemp: Double, maxTemp: Double, tempUnit: UnitTemperature, opacity: Double) -> [Gradient.Stop] {
-	var gradientStops = [Gradient.Stop]()
-
-	let stopTargets: [(Double, Color)] = [
-		((tempUnit == .celsius ? 0 : 32), .blue),
-		((tempUnit == .celsius ? 20 : 68), .yellow),
-		((tempUnit == .celsius ? 30 : 86), .orange),
-		((tempUnit == .celsius ? 55 : 125), .red)
-	]
-	for (stopValue, color) in stopTargets {
-		let stopLocation = transform(stopValue, from: minTemp...maxTemp, to: 0...1)
-		gradientStops.append(Gradient.Stop(color: color.opacity(opacity), location: stopLocation))
-	}
-	return gradientStops
-}
-
-// Map inputRange to outputRange
-func transform<T: FloatingPoint>(_ input: T, from inputRange: ClosedRange<T>, to outputRange: ClosedRange<T>) -> T {
-	// need to determine what that value would be in (to.low, to.high)
-	// difference in output range / difference in input range = slope
-	let slope = (outputRange.upperBound - outputRange.lowerBound) / (inputRange.upperBound - inputRange.lowerBound)
-	// slope * normalized input + output lower
-	let output = slope * (input - inputRange.lowerBound) + outputRange.lowerBound
-	return output
 }

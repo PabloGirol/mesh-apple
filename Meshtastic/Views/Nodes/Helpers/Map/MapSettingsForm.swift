@@ -256,7 +256,15 @@ struct MapSettingsForm: View {
 								overlayFileRow(file)
 							}
 						} else {
-							ContentUnavailableView("No map data files uploaded", systemImage: "exclamationmark.triangle")
+							VStack(spacing: 16) {
+								Image(systemName: "exclamationmark.triangle")
+									.font(.system(size: 48))
+									.foregroundColor(.secondary)
+								Text("No map data files uploaded")
+									.font(.title2)
+									.foregroundColor(.secondary)
+							}
+							.frame(maxWidth: .infinity, maxHeight: .infinity)
 						}
 					}
 
@@ -299,12 +307,15 @@ struct MapSettingsForm: View {
 				Text(uploadErrorMessage)
 			}
 		}
-		.presentationDetents([.large], selection: $currentDetent)
-		.presentationContentInteraction(.scrolls)
-		#if !targetEnvironment(macCatalyst)
-		.presentationDragIndicator(.visible)
-		#endif
-		.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+		.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+			view
+				.presentationDetents([.large], selection: $currentDetent)
+				.presentationContentInteraction(.scrolls)
+				#if !targetEnvironment(macCatalyst)
+				.presentationDragIndicator(.visible)
+				#endif
+				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+		}
 		.onChange(of: offlineMapManager.regions) {
 			resetTerraintogglesIfOrphaned()
 		}

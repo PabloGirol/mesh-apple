@@ -134,7 +134,7 @@ struct ESP32BLEOTASheet: View {
 					Logger.services.info("📡 [ESP32 BLE OTA] Reboot command accepted")
 					
 					// Give some time for any final incoming notifications
-					try await Task.sleep(for: .seconds(1.0))
+					try await Task.sleep(nanoseconds: 1_000_000_000)
 
 					// 3. Disconnect app so the ViewModel can grab the new OTA-Mode advertisement
 					Logger.services.info("📡 [ESP32 BLE OTA] Step 3: disconnecting")
@@ -142,7 +142,7 @@ struct ESP32BLEOTASheet: View {
 					Logger.services.info("📡 [ESP32 BLE OTA] Disconnected")
 
 					// 4. Wait briefly for device to reboot
-					try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+					try await Task.sleep(nanoseconds: 2_000_000_000)
 				}
 				
 				// The sheet can be dismissed during either sleep above, which cancels this task

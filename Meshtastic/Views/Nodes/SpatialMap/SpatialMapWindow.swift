@@ -86,7 +86,7 @@ struct SpatialMapWindow: View {
 				if downloadPrompt.shouldOffer(positionedNodes: model.nodes.count, hasDownloadedMap: model.downloadedMapCircle != nil, autoDownload: autoTerrain, isBusy: OfflineMapManager.shared.isBusy) {
 					showingMapSearch = true
 				}
-				try? await Task.sleep(for: .seconds(2))
+				try? await Task.sleep(nanoseconds: 2_000_000_000)
 			}
 		}
 		.task(id: showWeatherRadar) {
@@ -97,7 +97,8 @@ struct SpatialMapWindow: View {
 			guard showWeatherRadar else { return }
 			while !Task.isCancelled {
 				let next = Double(WeatherRadar.refreshPeriod() + 1) * WeatherRadar.refreshInterval
-				guard (try? await Task.sleep(for: .seconds(max(1, next - Date.now.timeIntervalSince1970)))) != nil else { return }
+				let waitSeconds = max(1, next - Date.now.timeIntervalSince1970)
+				guard (try? await Task.sleep(nanoseconds: UInt64(waitSeconds * 1_000_000_000))) != nil else { return }
 				await refreshWeatherRadarAvailability()
 			}
 		}
@@ -118,17 +119,17 @@ struct SpatialMapWindow: View {
 		.onReceive(accessoryManager.packetEvents) { event in
 			traffic.handle(event)
 		}
-		.onChange(of: accessoryManager.isHighMeshTraffic, initial: true) { _, isHigh in
+		.onChange(of: accessoryManager.isHighMeshTraffic) { _, isHigh in
 			traffic.isHighTraffic = isHigh
 		}
-		.onChange(of: showTraffic, initial: true) { _, show in
+		.onChange(of: showTraffic) { _, show in
 			traffic.showPulses = show
 			traffic.showGlow = show
 		}
-		.onChange(of: showLabels, initial: true) { _, show in
+		.onChange(of: showLabels) { _, show in
 			model.showLabels = show
 		}
-		.onChange(of: coverageOpacity, initial: true) { _, opacity in
+		.onChange(of: coverageOpacity) { _, opacity in
 			model.coverageOpacity = Float(opacity)
 		}
 		.onChange(of: connectivity.isNetworkAvailable) { wasAvailable, isAvailable in
@@ -158,7 +159,7 @@ struct SpatialMapWindow: View {
 		.onChange(of: appState.cinemaOpen) { _, open in
 			guard !open else { return }
 			Task {
-				try? await Task.sleep(for: .seconds(1.5))
+				try? await Task.sleep(nanoseconds: 1_500_000_000)
 				if !appState.cinemaOpen, UIApplication.shared.applicationState != .background {
 					CinemaScene.reopenMainWindow(openWindow, appState: appState)
 				}
@@ -170,13 +171,19 @@ struct SpatialMapWindow: View {
 			appState.spatialMapWindowCount += 1
 			claimFocus()
 			claimRoute()
+			// iOS 15 fallback: initial evaluation for onChange(initial: true)
+			traffic.isHighTraffic = accessoryManager.isHighMeshTraffic
+			traffic.showPulses = showTraffic
+			traffic.showGlow = showTraffic
+			model.showLabels = showLabels
+			model.coverageOpacity = Float(coverageOpacity)
 			// On its own, as when the app was killed with the cinema open (which had closed the
 			// app's window) and launched again: bring the window back. Closing the volume instead
 			// left nothing to open. A moment first, in case the window is on its way, and never
 			// while a space is open, since those close the window on purpose.
 			if !Self.mainWindowIsOpen {
 				Task {
-					try? await Task.sleep(for: .seconds(1.5))
+					try? await Task.sleep(nanoseconds: 1_500_000_000)
 					if appState.mainWindowCount == 0, !appState.cinemaOpen, !appState.showcaseOpen, UIApplication.shared.applicationState != .background {
 						CinemaScene.reopenMainWindow(openWindow, appState: appState)
 					}
@@ -213,7 +220,7 @@ struct SpatialMapWindow: View {
 		let index = arguments.indices.contains(flagIndex + 1) ? Int(arguments[flagIndex + 1]) ?? 0 : 0
 		var waited = 0
 		while model.routes.count <= index || model.placement == nil, waited < 60 {
-			guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }
+			guard (try? await Task.sleep(nanoseconds: 1_000_000_000)) != nil else { return }
 			waited += 1
 		}
 		guard model.routes.indices.contains(index) else { return }
@@ -221,7 +228,7 @@ struct SpatialMapWindow: View {
 		Logger.services.info("🧪 [Spatial] Showing route \(route.id, privacy: .public) (launch argument)")
 		if arguments.contains("--meshtastic-spatial-route-zoom"), let relay = route.layout.badges.first?.num ?? route.layout.targetNum {
 			model.zoomIn(on: relay)
-			guard (try? await Task.sleep(for: .seconds(4))) != nil else { return }
+			guard (try? await Task.sleep(nanoseconds: 4_000_000_000)) != nil else { return }
 		}
 		model.shownRoute = route
 		traffic.startFlyover(route, speed: 10)
@@ -234,10 +241,10 @@ struct SpatialMapWindow: View {
 		let arguments = ProcessInfo.processInfo.arguments
 		guard let flagIndex = arguments.firstIndex(of: "--meshtastic-spatial-close"), arguments.indices.contains(flagIndex + 1),
 			  let seconds = Double(arguments[flagIndex + 1]) else { return }
-		guard (try? await Task.sleep(for: .seconds(seconds))) != nil else { return }
+		guard (try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))) != nil else { return }
 		var waited = 0
 		while !model.isBuildingTerrain, waited < 3000 {
-			guard (try? await Task.sleep(for: .milliseconds(20))) != nil else { return }
+			guard (try? await Task.sleep(nanoseconds: 20_000_000)) != nil else { return }
 			waited += 1
 		}
 		Logger.services.info("🧪 [Spatial] Closing the volume during a terrain build, radar offered \(model.weatherRadarOffered, privacy: .public) (launch argument)")
@@ -350,7 +357,7 @@ struct SpatialMapWindow: View {
 			}
 			var waited = 0
 			while scene.placement == nil, waited < 30 {
-				guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }
+				guard (try? await Task.sleep(nanoseconds: 1_000_000_000)) != nil else { return }
 				waited += 1
 			}
 			guard scene.placement != nil else {

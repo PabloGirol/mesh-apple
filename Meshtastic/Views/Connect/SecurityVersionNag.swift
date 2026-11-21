@@ -69,17 +69,23 @@ struct SecurityVersionNag: View {
 							Label("Open Web Flasher", systemImage: "bolt.fill")
 								.frame(maxWidth: .infinity)
 						}
-						.buttonStyle(.borderedProminent)
-						.tint(.accentFill)
-						.controlSize(.regular)
-						.buttonBorderShape(.capsule)
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view
+								.buttonStyle(.borderedProminent)
+								.tint(.accentFill)
+								.controlSize(.regular)
+								.buttonBorderShape(.capsule)
+						}
 						Link(destination: URL(string: "https://meshtastic.org/docs/getting-started/flashing-firmware/")!) {
 							Label("Firmware Update Docs", systemImage: "book.fill")
 								.frame(maxWidth: .infinity)
 						}
-						.buttonStyle(.bordered)
-						.controlSize(.regular)
-						.buttonBorderShape(.capsule)
+						.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+							view
+								.buttonStyle(.bordered)
+								.controlSize(.regular)
+								.buttonBorderShape(.capsule)
+						}
 					}
 					.padding()
 					.background(Color(.secondarySystemBackground))
@@ -95,10 +101,13 @@ struct SecurityVersionNag: View {
 				Text("Dismiss")
 					.frame(maxWidth: .infinity)
 			}
-			.buttonStyle(.borderedProminent)
-			.tint(.accentFill)
-			.buttonBorderShape(.capsule)
-			.controlSize(.large)
+			.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+				view
+					.buttonStyle(.borderedProminent)
+					.tint(.accentFill)
+					.buttonBorderShape(.capsule)
+					.controlSize(.large)
+			}
 			.padding()
 		}
 	}

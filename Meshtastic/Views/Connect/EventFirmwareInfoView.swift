@@ -5,6 +5,7 @@
 
 import Foundation
 import SwiftUI
+import NavigationStackShim
 
 struct EventFirmwareInfoView: View {
 
@@ -50,7 +51,7 @@ struct EventFirmwareInfoView: View {
 	}
 
 	var body: some View {
-		NavigationStack {
+		CompatNavigationStack {
 			VStack(spacing: 0) {
 				header
 				if useEventTheme {
@@ -75,7 +76,9 @@ struct EventFirmwareInfoView: View {
 					themeToggleSection
 					firmwareSection
 				}
-				.scrollContentBackground(.hidden)
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view.scrollContentBackground(.hidden)
+				}
 				.background(Color(.systemGroupedBackground))
 			}
 			.tint(useEventTheme ? highlight : .accentColor)
@@ -83,7 +86,9 @@ struct EventFirmwareInfoView: View {
 			// title and close button follow the SYSTEM scheme — black over DEF CON's navy
 			// in light mode, well under the 4.5:1 text contrast minimum. Force the bar's
 			// content scheme to match the header foreground instead.
-			.toolbarColorScheme(headerForeground == .black ? .light : .dark, for: .navigationBar)
+			.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+				view.toolbarColorScheme(headerForeground == .black ? .light : .dark, for: .navigationBar)
+			}
 			.navigationTitle(Text("Event"))
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {

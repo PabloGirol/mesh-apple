@@ -10,8 +10,43 @@ import Foundation
 import CoreData
 import MeshtasticProtobufs
 import SwiftUI
-import RegexBuilder
 import OSLog
+
+// Simple extension to concisely pass values through a has_XXX boolean check
+fileprivate extension Bool {
+	func then<T>(_ value: T) -> T? {
+		self ? value : nil
+	}
+}
+
+/// Identifies one locally initiated automatic config refresh. The radio protocol reserves a
+/// single config nonce, so this ownership stays local rather than appearing on the wire.
+struct AutomaticChannelRefreshOwner: Equatable, Sendable {
+	let sessionID: UUID
+	let generation: UInt64
+}
+
+struct ChannelRefreshSnapshot: Equatable, Sendable {
+	let id: Int32
+	let index: Int32
+	let uplinkEnabled: Bool
+	let downlinkEnabled: Bool
+	let name: String
+	let role: Int32
+	let psk: Data
+	let positionPrecision: Int32
+	let mute: Bool
+}
+
+private struct ChannelRefreshStage {
+	let id = UUID()
+	let owner: AutomaticChannelRefreshOwner?
+	let baseline: [ChannelRefreshSnapshot]
+	var channels: [Int32: StagedChannel] = [:]
+}
+
+private struct StagedChannel: Sendable {
+}
 
 /// A context-bound actor replacing the former @ModelActor. Holds a private
 /// NSManagedObjectContext created from the shared container so packet handlers
@@ -57,17 +92,10 @@ actor MeshPackets {
         request.includesPendingChanges = false
         return request
     }
-
-    private struct StagedChannel: Sendable {
-
-// Simple extension to concisely pass values through a has_XXX boolean check
-fileprivate extension Bool {
-	func then<T>(_ value: T) -> T? {
-		self ? value : nil
-	}
 }
 
-func generateMessageMarkdown(message: String) -> String {
+/// Generate markdown links from detected addresses, phone numbers, and URLs in a message.
+fileprivate func generateMessageMarkdown(message: String) -> String {
 	guard !message.isEmoji() else { return message }
 	let types: NSTextCheckingResult.CheckingType = [.address, .link, .phoneNumber]
 	guard let detector = try? NSDataDetector(types: types.rawValue) else {
@@ -111,76 +139,39 @@ func generateMessageMarkdown(message: String) -> String {
 	return messageWithMarkdown
 }
 
-/// Identifies one locally initiated automatic config refresh. The radio protocol reserves a
-/// single config nonce, so this ownership stays local rather than appearing on the wire.
-struct AutomaticChannelRefreshOwner: Equatable, Sendable {
-	let sessionID: UUID
-	let generation: UInt64
+private struct TelemetryPruneKey: Hashable {
+	let nodeNum: Int64
+	let metricsType: Int32
 }
 
-struct ChannelRefreshSnapshot: Equatable, Sendable {
-	let id: Int32
-	let index: Int32
-	let uplinkEnabled: Bool
-	let downlinkEnabled: Bool
-	let name: String
-	let role: Int32
-	let psk: Data
-	let positionPrecision: Int32
-	let mute: Bool
+/// Always the current shared container. Computed (not cached) so that after a data clear
+/// recreates the container, the next `recreateShared()` rebuilds the actor on the new one
+/// rather than a stale, torn-down container. Only read on the main actor (recreateShared and
+/// the initial `_shared` are both reached from @MainActor code).
+private static var _container: NSPersistentContainer {
+	MainActor.assumeIsolated { CoreDataStackImpl.shared.container }
 }
 
-		let id: Int32
-		let index: Int32
-		let uplinkEnabled: Bool
-		let downlinkEnabled: Bool
-		let name: String
-		let role: Int32
-		let psk: Data
-		let positionPrecision: Int32
-		let mute: Bool
-	}
+/// The current shared instance. Access via `MeshPackets.shared`.
+/// Periodically recreated to release accumulated ModelContext memory.
+nonisolated private static var _shared: MeshPackets = MeshPackets(modelContainer: _container)
+private static let _lock = NSLock()
 
-	private struct ChannelRefreshStage {
-		let id = UUID()
-		let owner: AutomaticChannelRefreshOwner?
-		let baseline: [ChannelRefreshSnapshot]
-		var channels: [Int32: StagedChannel] = [:]
-	}
-
-	private struct TelemetryPruneKey: Hashable {
-		let nodeNum: Int64
-		let metricsType: Int32
-	}
-
-	/// Always the current shared container. Computed (not cached) so that after a data clear
-	/// recreates the container, the next `recreateShared()` rebuilds the actor on the new one
-	/// rather than a stale, torn-down container. Only read on the main actor (recreateShared and
-	/// the initial `_shared` are both reached from @MainActor code).
-	private static var _container: ModelContainer {
-		MainActor.assumeIsolated { CoreDataStackImpl.shared.container }
-	}
-
-	/// The current shared instance. Access via `MeshPackets.shared`.
-	/// Periodically recreated to release accumulated ModelContext memory.
-	nonisolated(unsafe) private static var _shared: MeshPackets = MeshPackets(modelContainer: _container)
-	private static let _lock = NSLock()
-
-	/// Staged automatic channel refreshes, keyed by node number. Deliberately static rather
-	/// than actor state: `recreateShared()` swaps the shared instance to release memory, and a
-	/// stage tied to the retired instance would silently orphan an in-flight refresh. Static
-	/// storage makes recreation orthogonal — the successor actor stages into and commits from
-	/// the same map. The lock covers the two executors that touch it: this actor (staging
-	/// incoming channel frames) and the main actor (begin/commit/discard from AccessoryManager).
-	nonisolated(unsafe) private static var channelRefreshStages: [Int64: ChannelRefreshStage] = [:]
-	private static let channelRefreshStagesLock = NSLock()
+/// Staged automatic channel refreshes, keyed by node number. Deliberately static rather
+/// than actor state: `recreateShared()` swaps the shared instance to release memory, and a
+/// stage tied to the retired instance would silently orphan an in-flight refresh. Static
+/// storage makes recreation orthogonal — the successor actor stages into and commits from
+/// the same map. The lock covers the two executors that touch it: this actor (staging
+/// incoming channel frames) and the main actor (begin/commit/discard from AccessoryManager).
+nonisolated private static var channelRefreshStages: [Int64: ChannelRefreshStage] = [:]
+private static let channelRefreshStagesLock = NSLock()
 
 	// Main-thread views read node/user/position entities during body evaluation, and a
 	// cap eviction on this actor cascades all of them away — the invalid-entity trap
 	// that tops the crash reports (Settings, node detail, node list rows). Evictions
 	// wait for the app to background; while foregrounded only a doubled cap applies,
 	// so a device that never backgrounds (a wall display) still stays bounded.
-	nonisolated(unsafe) private static var _appIsActive = true
+	nonisolated private static var _appIsActive = true
 	private static let appActiveLock = NSLock()
 	nonisolated static var appIsActive: Bool {
 		get { appActiveLock.withLock { _appIsActive } }
@@ -194,8 +185,8 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 	/// the other. A pass takes a number from `beginMaintenance()` and hands it back to
 	/// `expireMaintenance(_:)`; a stale number is ignored, and starting a pass supersedes any
 	/// earlier expiry without anyone having to clear it.
-	nonisolated(unsafe) private static var _maintenanceGeneration = 0
-	nonisolated(unsafe) private static var _expiredGeneration = -1
+	nonisolated private static var _maintenanceGeneration = 0
+	nonisolated private static var _expiredGeneration = -1
 
 	/// Starts a maintenance pass and returns the number its expiration handler must quote.
 	@discardableResult
@@ -220,19 +211,6 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 	nonisolated static var backgroundTimeExpired: Bool {
 		appActiveLock.withLock { _expiredGeneration == _maintenanceGeneration }
 	}
-	#if DEBUG
-	/// Deterministic concurrency checkpoint used by the refresh boundary regression test. Production
-	/// callers leave this nil, so validation and replacement execute without suspension.
-	@MainActor static var channelRefreshCommitValidationHook: (@MainActor @Sendable () async -> Void)?
-
-	/// Test-only: the static stage storage outlives any per-test actor, so suites reset it
-	/// alongside `recreateShared()`.
-	static func resetChannelRefreshStagesForTesting() {
-		channelRefreshStagesLock.lock()
-		defer { channelRefreshStagesLock.unlock() }
-		channelRefreshStages.removeAll()
-	}
-	#endif
 
 	static var shared: MeshPackets {
 		_lock.lock()
@@ -269,175 +247,6 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 		debounceSaveTask = nil
 	}
 
-	/// Begins a staged refresh for `nodeNum`, capturing the baseline the commit will later
-	/// validate against. Returns false when a stage already exists — unless `owner` is a newer
-	/// generation of the same refresh session, which supersedes the older stage atomically
-	/// (stale-owner cleanup stays owner-scoped, so it cannot discard the successor).
-	@discardableResult
-	func beginChannelRefreshStage(
-		for nodeNum: Int64,
-		owner: AutomaticChannelRefreshOwner? = nil,
-		baseline: [ChannelRefreshSnapshot]? = nil
-	) -> Bool {
-		let resolvedBaseline = baseline ?? currentChannelSnapshot(for: nodeNum)
-		Self.channelRefreshStagesLock.lock()
-		defer { Self.channelRefreshStagesLock.unlock() }
-		if let existingStage = Self.channelRefreshStages[nodeNum] {
-			guard Self.canReplaceChannelRefreshStage(existingStage, with: owner) else { return false }
-		}
-		Self.channelRefreshStages[nodeNum] = ChannelRefreshStage(owner: owner, baseline: resolvedBaseline)
-		return true
-	}
-
-	private static func canReplaceChannelRefreshStage(
-		_ existingStage: ChannelRefreshStage,
-		with owner: AutomaticChannelRefreshOwner?
-	) -> Bool {
-		guard let existingOwner = existingStage.owner,
-			  let owner,
-			  existingOwner.sessionID == owner.sessionID else { return false }
-		return existingOwner.generation < owner.generation
-	}
-
-	func discardChannelRefreshStage(for nodeNum: Int64, owner: AutomaticChannelRefreshOwner? = nil) {
-		Self.channelRefreshStagesLock.lock()
-		defer { Self.channelRefreshStagesLock.unlock() }
-		guard let stage = Self.channelRefreshStages[nodeNum],
-			  owner == nil || stage.owner == owner else { return }
-		Self.channelRefreshStages.removeValue(forKey: nodeNum)
-	}
-
-	func commitChannelRefreshStage(for nodeNum: Int64, owner: AutomaticChannelRefreshOwner? = nil) async {
-		Self.channelRefreshStagesLock.lock()
-		guard let stage = Self.channelRefreshStages[nodeNum],
-			  owner == nil || stage.owner == owner else {
-			Self.channelRefreshStagesLock.unlock()
-			return
-		}
-		Self.channelRefreshStagesLock.unlock()
-		defer { Self.endChannelRefreshStage(for: nodeNum, stageID: stage.id) }
-		guard isCompleteChannelRefresh(stage.channels) else {
-			Logger.data.error("💥 Refusing incomplete staged channel refresh for: \(nodeNum.toHex(), privacy: .public)")
-			return
-		}
-		await Self.commitChannelRefreshStageOnMainActor(
-			for: nodeNum,
-			baseline: stage.baseline,
-			stagedChannels: stage.channels,
-			modelContext: modelContext
-		)
-	}
-
-	/// UI channel edits are main-context mutations. Running both baseline validation and the
-	/// destructive replacement on that same executor makes them one non-reentrant critical section.
-	@MainActor
-	private static func commitChannelRefreshStageOnMainActor(
-		for nodeNum: Int64,
-		baseline: [ChannelRefreshSnapshot],
-		stagedChannels: [Int32: StagedChannel],
-		modelContext: NSManagedObjectContext
-	) async {
-		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
-		request.predicate = NSPredicate(format: "myNodeNum == %lld", nodeNum)
-		request.fetchLimit = 1
-		do {
-			guard let myInfo = try modelContext.fetch(request).first else {
-				Logger.data.error("💥Trying to commit staged channels to a MyInfo that does not exist: \(nodeNum.toHex(), privacy: .public)")
-				return
-			}
-			guard channelSnapshot(from: myInfo) == baseline else {
-				Logger.data.info("💾 Discarded staged channel refresh after local channel changes for: \(nodeNum.toHex(), privacy: .public)")
-				return
-			}
-			#if DEBUG
-			if let hook = channelRefreshCommitValidationHook {
-				await hook()
-			}
-			#endif
-			guard channelSnapshot(from: myInfo) == baseline else {
-				Logger.data.info("💾 Discarded staged channel refresh after a serialized local channel change for: \(nodeNum.toHex(), privacy: .public)")
-				return
-			}
-			for channel in myInfo.channels {
-				modelContext.delete(channel)
-			}
-			myInfo.channels.removeAll()
-			let enabledChannels = stagedChannels.values
-				.filter { $0.role != Int32(Channel.Role.disabled.rawValue) }
-				.sorted(by: { $0.index < $1.index })
-			for staged in enabledChannels {
-				let channel = ChannelEntity(context: modelContext)
-				apply(stagedChannel: staged, to: channel)
-				myInfo.channels.append(channel)
-			}
-			try modelContext.save()
-			Logger.data.info("💾 Committed \(enabledChannels.count, privacy: .public) staged channel(s) for: \(nodeNum, privacy: .public)")
-		} catch {
-			modelContext.rollback()
-			let nsError = error as NSError
-			Logger.data.error("💥 Error committing staged channels from ADMIN_APP \(nsError, privacy: .public)")
-		}
-	}
-
-	@MainActor
-	private static func channelSnapshot(from myInfo: MyInfoEntity) -> [ChannelRefreshSnapshot] {
-		myInfo.channels.map(Self.channelRefreshSnapshot).sorted(by: channelSnapshotIsOrderedBefore)
-	}
-
-	@MainActor
-	static func captureChannelRefreshBaselines(in context: NSManagedObjectContext) -> [Int64: [ChannelRefreshSnapshot]] {
-		let request = NSFetchRequest<MyInfoEntity>(entityName: "MyInfoEntity")
-		let myInfos = (try? context.fetch(request)) ?? []
-		return myInfos.reduce(into: [:]) { baselines, myInfo in
-			baselines[myInfo.myNodeNum] = channelSnapshot(from: myInfo)
-		}
-	}
-
-	private static func channelSnapshotIsOrderedBefore(
-		_ lhs: ChannelRefreshSnapshot,
-		_ rhs: ChannelRefreshSnapshot
-	) -> Bool {
-		if lhs.index != rhs.index { return lhs.index < rhs.index }
-		if lhs.id != rhs.id { return lhs.id < rhs.id }
-		if lhs.role != rhs.role { return lhs.role < rhs.role }
-		if lhs.name != rhs.name { return lhs.name < rhs.name }
-		if lhs.psk != rhs.psk { return lhs.psk.lexicographicallyPrecedes(rhs.psk) }
-		if lhs.uplinkEnabled != rhs.uplinkEnabled { return !lhs.uplinkEnabled }
-		if lhs.downlinkEnabled != rhs.downlinkEnabled { return !lhs.downlinkEnabled }
-		if lhs.positionPrecision != rhs.positionPrecision { return lhs.positionPrecision < rhs.positionPrecision }
-		return !lhs.mute && rhs.mute
-	}
-
-	@MainActor
-	private static func apply(stagedChannel: StagedChannel, to channel: ChannelEntity) {
-		applyChannelRefresh(stagedChannel, to: channel)
-	}
-
-	nonisolated private static func channelRefreshSnapshot(from channel: ChannelEntity) -> ChannelRefreshSnapshot {
-		ChannelRefreshSnapshot(
-			id: channel.id,
-			index: channel.index,
-			uplinkEnabled: channel.uplinkEnabled,
-			downlinkEnabled: channel.downlinkEnabled,
-			name: channel.name ?? "",
-			role: channel.role,
-			psk: channel.psk ?? Data(),
-			positionPrecision: channel.positionPrecision,
-			mute: channel.mute
-		)
-	}
-
-	nonisolated private static func applyChannelRefresh(_ stagedChannel: StagedChannel, to channel: ChannelEntity) {
-		channel.id = stagedChannel.id
-		channel.index = stagedChannel.index
-		channel.uplinkEnabled = stagedChannel.uplinkEnabled
-		channel.downlinkEnabled = stagedChannel.downlinkEnabled
-		channel.name = stagedChannel.name
-		channel.role = stagedChannel.role
-		channel.psk = stagedChannel.psk
-		channel.positionPrecision = stagedChannel.positionPrecision
-		channel.mute = stagedChannel.mute
-	}
 
 	/// Saves any pending changes in the model context. Call once at the end of each
 	/// top-level packet handler to batch all mutations from a single packet into one write.
@@ -806,7 +615,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 			return
 		}
 		debounceSaveTask = Task {
-			try? await Task.sleep(for: Self.debounceInterval)
+			try? await Task.sleep(nanoseconds: 2_000_000_000)
 			guard !Task.isCancelled else { return }
 			self.savePendingChanges(caller: "debouncedFlush")
 			self.lastDebouncedSaveTime = .now
@@ -953,8 +762,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 			// Not Found Insert
 			if fetchedMyInfo.isEmpty {
 
-				let myInfoEntity = MyInfoEntity()
-				modelContext.insert(myInfoEntity)
+				let myInfoEntity = MyInfoEntity(context: modelContext)
 				myInfoEntity.peripheralId = peripheralId
 				myInfoEntity.myNodeNum = Int64(myInfo.myNodeNum)
 				myInfoEntity.rebootCount = Int32(truncatingIfNeeded: myInfo.rebootCount)
@@ -1054,8 +862,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 					if let existing {
 						newChannel = existing
 					} else {
-						newChannel = ChannelEntity()
-						modelContext.insert(newChannel)
+						newChannel = ChannelEntity(context: modelContext)
 						fetchedMyInfo[0].channels.append(newChannel)
 					}
 					apply(stagedChannel: stagedChannel(from: channel), to: newChannel)
@@ -1125,9 +932,8 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 				let fetchedNode = try fetch(request)
 				guard fromNum > 0 else { return }
 				let node = fetchedNode.first ?? findOrCreateNode(num: fromNum, context: modelContext)
-				let storedMetadata = node.metadata ?? DeviceMetadataEntity()
+				let storedMetadata = node.metadata ?? DeviceMetadataEntity(context: modelContext)
 				if node.metadata == nil {
-					modelContext.insert(storedMetadata)
 					node.metadata = storedMetadata
 				}
 				storedMetadata.update(from: metadata)
@@ -1204,8 +1010,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 					newNode.heardOnCurrentLora = Self.heardOnCurrentLora(nodeInfo, reported: reportsHeardOnCurrentLora, connectedNodeNum: connectedNodeNum)
 
 					if nodeInfo.hasDeviceMetrics {
-						let telemetry = TelemetryEntity()
-						modelContext.insert(telemetry)
+						let telemetry = TelemetryEntity(context: modelContext)
 						telemetry.batteryLevel = Int32(truncatingIfNeeded: nodeInfo.deviceMetrics.batteryLevel)
 						telemetry.voltage = nodeInfo.deviceMetrics.voltage
 						telemetry.channelUtilization = nodeInfo.deviceMetrics.channelUtilization
@@ -1266,8 +1071,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 					}
 
 					if nodeInfo.position.hasValidCoordinates {
-						let position = PositionEntity()
-						modelContext.insert(position)
+						let position = PositionEntity(context: modelContext)
 						position.latest = true
 						position.seqNo = Int32(truncatingIfNeeded: nodeInfo.position.seqNumber)
 						position.latitudeI = nodeInfo.position.latitudeI
@@ -1391,8 +1195,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 
 					if nodeInfo.hasDeviceMetrics {
 
-						let newTelemetry = TelemetryEntity()
-						modelContext.insert(newTelemetry)
+						let newTelemetry = TelemetryEntity(context: modelContext)
 						newTelemetry.batteryLevel = Int32(truncatingIfNeeded: nodeInfo.deviceMetrics.batteryLevel)
 						newTelemetry.voltage = nodeInfo.deviceMetrics.voltage
 						newTelemetry.channelUtilization = nodeInfo.deviceMetrics.channelUtilization
@@ -1404,8 +1207,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 
 						if nodeInfo.position.hasValidCoordinates {
 
-							let position = PositionEntity()
-							modelContext.insert(position)
+							let position = PositionEntity(context: modelContext)
 							position.latitudeI = nodeInfo.position.latitudeI
 							position.longitudeI = nodeInfo.position.longitudeI
 							position.altitude = nodeInfo.position.altitude
@@ -1602,8 +1404,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 				// telemetryPacket — an unlinked reading would persist as an orphan row.
 				let node = fetchedNode.first ?? findOrCreateNode(num: packetFrom, context: modelContext)
 
-				let newPax = PaxCounterEntity()
-				modelContext.insert(newPax)
+				let newPax = PaxCounterEntity(context: modelContext)
 				newPax.ble = Int32(truncatingIfNeeded: paxMessage.ble)
 				newPax.wifi = Int32(truncatingIfNeeded: paxMessage.wifi)
 				newPax.uptime = Int32(truncatingIfNeeded: paxMessage.uptime)
@@ -1742,8 +1543,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 			// (no node to show it under) that the UI can never query. `num` is @Attribute(.unique), so this
 			// returns the existing node or a minimal stub that a later NodeInfo packet enriches.
 			let node = findOrCreateNode(num: packetFrom, context: modelContext)
-			let telemetry = TelemetryEntity()
-			modelContext.insert(telemetry)
+			let telemetry = TelemetryEntity(context: modelContext)
 			/// Currently only Device Metrics and Environment Telemetry are supported in the app
 			if telemetryMessage.variant == Telemetry.OneOf_Variant.deviceMetrics(telemetryMessage.deviceMetrics) {
 				// Device Metrics
@@ -1999,27 +1799,19 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 		appState: AppState?
 	) async {
 		var messageText = String(bytes: packet.decoded.payload, encoding: .utf8)
-			let rangeRef = Reference(Int.self)
-			let rangeTestRegex = Regex {
-				"seq "
-				TryCapture(as: rangeRef) {
-					OneOrMore(.digit)
-				} transform: { match in
-					Int(match)
-				}
-			}
-			let rangeTest = messageText?.contains(rangeTestRegex) ?? false && messageText?.starts(with: "seq ") ?? false
+		let rangeTestRegex = try! NSRegularExpression(pattern: "seq \\d+")
+		let rangeTest = (messageText?.range(of: "seq ") != nil) && (messageText?.contains(rangeTestRegex) ?? false)
 
-			if !wantRangeTestPackets && rangeTest {
-				return
-			}
-			var storeForwardBroadcast = false
-			// The identity of the message being replayed. A router gives each replay a fresh
-			// outer packet id and carries the original in `original_id`, so that is what the
-			// message is stored and deduped under. Zero means a router that still reuses the
-			// outer id, where the outer id is the identity.
-			var storeForwardOriginalId: UInt32 = 0
-			if storeForward {
+		if !wantRangeTestPackets && rangeTest {
+			return
+		}
+		var storeForwardBroadcast = false
+		// The identity of the message being replayed. A router gives each replay a fresh
+		// outer packet id and carries the original in `original_id`, so that is what the
+		// message is stored and deduped under. Zero means a router that still reuses the
+		// outer id, where the outer id is the identity.
+		var storeForwardOriginalId: UInt32 = 0
+		if storeForward {
 				if let storeAndForwardMessage = try? StoreAndForward(serializedBytes: packet.decoded.payload) {
 					messageText = String(bytes: storeAndForwardMessage.text, encoding: .utf8)
 					if storeAndForwardMessage.rr == .routerTextBroadcast {
@@ -2083,8 +1875,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 					// messages that were never locally stored).
 					let isFromSelf = Int64(packet.from) == connectedNode
 
-					let newMessage = MessageEntity()
-					modelContext.insert(newMessage)
+					let newMessage = MessageEntity(context: modelContext)
 					newMessage.messageId = packetId
 					if packet.rxTime > 0 {
 						newMessage.messageTimestamp = Int32(bitPattern: packet.rxTime)
@@ -2417,8 +2208,7 @@ struct ChannelRefreshSnapshot: Equatable, Sendable {
 				}
 				if fetchedWaypoint.isEmpty {
 					// Create a new waypoint
-					let waypoint = WaypointEntity()
-					modelContext.insert(waypoint)
+					let waypoint = WaypointEntity(context: modelContext)
 					waypoint.id = Int64(waypointMessage.id) // Use waypointMessage.id
 					waypoint.name = waypointMessage.name
 					waypoint.longDescription = waypointMessage.description_p

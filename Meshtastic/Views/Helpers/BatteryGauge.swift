@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Charts
 
 struct BatteryGauge: View {
 
@@ -29,32 +28,17 @@ struct BatteryGauge: View {
 				PluggedInIndicator()
 			} else {
 				let gradient = Gradient(colors: [.red, .orange, .green])
-				Gauge(value: batteryLevel, in: minValue...maxValue) {
-					// Accessibility for battery gauge
-					if batteryLevel >= 0.0 && batteryLevel < 10 {
-						Label("Battery Level %", systemImage: "battery.0")
-					} else if batteryLevel >= 10.0 && batteryLevel < 25.00 {
-						Label("Battery Level %", systemImage: "battery.25")
-					} else if batteryLevel >= 25.0 && batteryLevel < 50.00 {
-						Label("Battery Level %", systemImage: "battery.50")
-					} else if batteryLevel >= 50.0 && batteryLevel < 75.00 {
-						Label("Battery Level %", systemImage: "battery.75")
-					} else if batteryLevel >= 75.0 && batteryLevel <= 99.00 {
-						Label("Battery Level %", systemImage: "battery.100")
-					} else {
-						Label("Battery Level %", systemImage: "battery.100.bolt")
-					}
-				} currentValueLabel: {
-					if batteryLevel == 0.0 {
-						Text("< 1%")
-					} else {
+				// iOS 15 fallback: simple progress view
+				VStack(spacing: 4) {
+					HStack {
+						Image(systemName: batteryLevel >= 75 ? "battery.100" : batteryLevel >= 50 ? "battery.75" : batteryLevel >= 25 ? "battery.50" : "battery.25")
+							.foregroundColor(batteryLevel >= 75 ? .green : batteryLevel >= 50 ? .orange : .red)
 						Text(Int(batteryLevel), format: .percent)
+							.font(.caption)
 					}
+					ProgressView(value: batteryLevel, total: 100)
+						.tint(gradient)
 				}
-				.accessibilityLabel(NSLocalizedString("Battery Level", comment: "VoiceOver label for battery gauge"))
-				.accessibilityValue(String(format: NSLocalizedString("Battery Level %d", comment: "VoiceOver value for battery level"), Int(batteryLevel)))
-				.tint(gradient)
-				.gaugeStyle(.accessoryCircular)
 			}
 			if mostRecent?.voltage ?? 0 > 0 {
 				Text(String(format: "%.2f", mostRecent?.voltage ?? 0) + " V")

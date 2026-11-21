@@ -11,6 +11,7 @@
 
 import CoreData
 import SwiftUI
+import NavigationStackShim
 
 /// Which radio to set up; presenting one of these opens the flow.
 struct RadioSetupRequest: Identifiable {
@@ -47,11 +48,16 @@ struct RadioSetupFlow: View {
 				RadioSetupPages(model: model, onFinished: close)
 			} else if hasLoaded {
 				// The node is not in the store, which only happens when a reset emptied it.
-				ContentUnavailableView {
-					Label("Radio Not Found", systemImage: "antenna.radiowaves.left.and.right.slash")
-				} actions: {
+				VStack(spacing: 16) {
+					Image(systemName: "antenna.radiowaves.left.and.right.slash")
+						.font(.system(size: 48))
+						.foregroundColor(.secondary)
+					Text("Radio Not Found")
+						.font(.title2)
+						.foregroundColor(.secondary)
 					Button("Close", action: close)
 				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
 			} else {
 				ProgressView()
 			}
@@ -82,32 +88,75 @@ struct RadioSetupPages: View {
 	@Bindable var model: RadioSetupModel
 	let onFinished: () -> Void
 
+	/// iOS 15: Current step for explicit navigation (since NavigationPath doesn't exist)
+	@State private var currentStep: RadioSetupStep? = nil
+
+	/// Advance to the next step in the flow.
+	private func advance(from step: RadioSetupStep) {
+		guard let next = RadioSetupModel.nextStep(after: step, isLicensed: model.isLicensed) else { return }
+		currentStep = next
+	}
+
 	var body: some View {
-		NavigationStack(path: $model.path) {
-			// The root hides its bar and pads the same height, so its title sits where the
-			// pushed pages' titles sit under their back button.
-			RadioSetupIntroPage(model: model, onNotNow: onFinished)
-				.padding(.top, 44)
-				.toolbar(.hidden, for: .navigationBar)
-				.trackScreen(RadioSetupStep.intro.screenName)
-				.navigationDestination(for: RadioSetupStep.self) { step in
-					Group {
-						switch step {
-						case .intro:
-							RadioSetupIntroPage(model: model, onNotNow: onFinished)
-						case .region:
-							RadioSetupRegionPage(model: model)
-						case .preset:
-							RadioSetupPresetPage(model: model)
-						case .name:
-							RadioSetupNamePage(model: model)
-						case .done:
-							RadioSetupDonePage(model: model, onDone: onFinished)
-						}
-					}
-					.navigationBarTitleDisplayMode(.inline)
-					.trackScreen(step.screenName)
-				}
+		// iOS 15: Use explicit NavigationLinks with a single currentStep state
+		CompatNavigationStack {
+			ZStack {
+				RadioSetupIntroPage(
+					model: model,
+					onNotNow: onFinished,
+					onAdvance: { advance(from: .intro) }
+				)
+					.padding(.top, 44)
+					.toolbar(.hidden, for: .navigationBar)
+					.trackScreen(RadioSetupStep.intro.screenName)
+					.opacity(currentStep == nil ? 1 : 0)
+
+				NavigationLink(
+					destination: RadioSetupRegionPage(
+						model: model,
+						onAdvance: { advance(from: .region) }
+					)
+						.trackScreen(RadioSetupStep.region.screenName),
+					isActive: Binding(
+						get: { currentStep == .region },
+						set: { if !$0 { currentStep = nil } }
+					)
+				) { EmptyView() }
+
+				NavigationLink(
+					destination: RadioSetupPresetPage(
+						model: model,
+						onAdvance: { advance(from: .preset) }
+					)
+						.trackScreen(RadioSetupStep.preset.screenName),
+					isActive: Binding(
+						get: { currentStep == .preset },
+						set: { if !$0 { currentStep = nil } }
+					)
+				) { EmptyView() }
+
+				NavigationLink(
+					destination: RadioSetupNamePage(
+						model: model,
+						onAdvance: { advance(from: .name) },
+						onSkip: { advance(from: .name) }
+					)
+						.trackScreen(RadioSetupStep.name.screenName),
+					isActive: Binding(
+						get: { currentStep == .name },
+						set: { if !$0 { currentStep = nil } }
+					)
+				) { EmptyView() }
+
+				NavigationLink(
+					destination: RadioSetupDonePage(model: model, onDone: onFinished)
+						.trackScreen(RadioSetupStep.done.screenName),
+					isActive: Binding(
+						get: { currentStep == .done },
+						set: { if !$0 { currentStep = nil } }
+					)
+				) { EmptyView() }
+			}
 		}
 	}
 }

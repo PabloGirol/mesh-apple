@@ -19,9 +19,11 @@ struct ShowcaseSpace: View {
 	@EnvironmentObject private var accessoryManager: AccessoryManager
 	@Environment(\.managedObjectContext) private var context
 	@Environment(\.scenePhase) private var scenePhase
-	@Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
-	@Environment(\.openWindow) private var openWindow
-	@Environment(\.dismissWindow) private var dismissWindow
+	private let dismissImmersiveSpace: DismissImmersiveSpaceAction = {
+		await MainActor.run { }
+	}
+	private let openWindow: OpenWindowAction = { _ in }
+	private let dismissWindow: DismissWindowAction = { _ in }
 	@Environment(\.accessibilityReduceMotion) private var reduceMotion
 	@AppStorage("showcaseSeated") private var seated = true
 	@State private var scene = ShowcaseSceneController()
@@ -113,7 +115,7 @@ struct ShowcaseSpace: View {
 			let arguments = CommandLine.arguments
 			if let index = arguments.firstIndex(of: "--meshtastic-showcase-card"), index + 1 < arguments.count {
 				while scene.displays.items.isEmpty, !Task.isCancelled {
-					try? await Task.sleep(for: .milliseconds(250))
+					try? await Task.sleep(nanoseconds: 250_000_000)
 				}
 				scene.selectedItem = arguments[index + 1]
 			}
@@ -126,16 +128,16 @@ struct ShowcaseSpace: View {
 			while !Task.isCancelled {
 				let result = await reader.read(connectedNodeNum: accessoryManager.activeDeviceNum)
 				scene.apply(result)
-				try? await Task.sleep(for: Self.refreshInterval)
+				try? await Task.sleep(nanoseconds: UInt64(Self.refreshInterval * 1_000_000_000))
 			}
 		}
 		.onReceive(accessoryManager.packetEvents) { event in
 			scene.handle(event)
 		}
-		.onChange(of: accessoryManager.isHighMeshTraffic, initial: true) { _, isHigh in
+		.onChange(of: accessoryManager.isHighMeshTraffic) { _, isHigh in
 			scene.isHighTraffic = isHigh
 		}
-		.onChange(of: reduceMotion, initial: true) { _, reduce in
+		.onChange(of: reduceMotion) { _, reduce in
 			scene.reduceMotion = reduce
 		}
 		.onChange(of: seated) { _, isSeated in
@@ -145,6 +147,9 @@ struct ShowcaseSpace: View {
 		.onAppear {
 			appState.showcaseOpen = true
 			scene.preset = preset
+			// iOS 15 fallback: initial evaluation for onChange(initial: true)
+			scene.isHighTraffic = accessoryManager.isHighMeshTraffic
+			scene.reduceMotion = reduceMotion
 			// The room is the app while it's open; the panel brings the window back.
 			dismissWindow(id: MeshtasticAppleApp.mainWindowID)
 		}

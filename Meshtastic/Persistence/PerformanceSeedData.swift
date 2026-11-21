@@ -217,7 +217,7 @@ enum PerformanceSeedData {
 		context: NSManagedObjectContext
 	) {
 		let nodeNum = seededNodeNum(baseNodeNum: baseNodeNum, index: index)
-		let node = NodeInfoEntity()
+		let node = NodeInfoEntity(context: context)
 		node.id = nodeNum
 		node.num = nodeNum
 		node.channel = Int32(index % 8)
@@ -230,7 +230,7 @@ enum PerformanceSeedData {
 		node.snr = Float((index % 32) - 18)
 		node.viaMqtt = index.isMultiple(of: 4)
 
-		let user = UserEntity()
+		let user = UserEntity(context: context)
 		user.num = nodeNum
 		user.numString = String(nodeNum)
 		user.userId = nodeNum.toHex()   // toHex() already prefixes "!"
@@ -244,7 +244,7 @@ enum PerformanceSeedData {
 		user.unmessagable = index.isMultiple(of: 23)
 		node.user = user
 
-		let metadata = DeviceMetadataEntity()
+		let metadata = DeviceMetadataEntity(context: context)
 		metadata.hwModel = user.hwModel
 		metadata.firmwareVersion = "2.7.\(index % 10)"
 		metadata.hasBluetooth = true
@@ -267,15 +267,11 @@ enum PerformanceSeedData {
 			metadata.time = now
 		}
 
-		context.insert(node)
-		context.insert(user)
-		context.insert(metadata)
 		if index == 0 {
-			let myInfo = MyInfoEntity()
+			let myInfo = MyInfoEntity(context: context)
 			myInfo.myNodeNum = nodeNum
 			myInfo.registered = true
 			myInfo.myInfoNode = node
-			context.insert(myInfo)
 		}
 
 		insertTelemetry(for: node, index: index, now: now, configuration: configuration, context: context)
@@ -298,7 +294,7 @@ enum PerformanceSeedData {
 		for sample in 0..<configuration.telemetryHistoryPerNode {
 			let timestamp = now.addingTimeInterval(TimeInterval(-(sample * 300 + index % 300)))
 
-			let deviceMetrics = TelemetryEntity()
+			let deviceMetrics = TelemetryEntity(context: context)
 			deviceMetrics.metricsType = 0
 			deviceMetrics.time = timestamp
 			deviceMetrics.batteryLevel = configuration.style == .marketing
@@ -311,9 +307,8 @@ enum PerformanceSeedData {
 				? Int32(86_400 * (3 + index % 40) + sample * 300)   // 3–43 days, like a real long-lived node
 				: Int32(index * 60 + sample)
 			deviceMetrics.nodeNum = node.num
-			context.insert(deviceMetrics)
 
-			let environmentMetrics = TelemetryEntity()
+			let environmentMetrics = TelemetryEntity(context: context)
 			environmentMetrics.metricsType = 1
 			environmentMetrics.time = timestamp
 			environmentMetrics.temperature = 15 + Float((index + sample) % 240) / 10
@@ -321,8 +316,6 @@ enum PerformanceSeedData {
 			environmentMetrics.barometricPressure = 980 + Float((index + sample) % 70)
 			environmentMetrics.gasResistance = Float((index + sample) % 500)
 			environmentMetrics.nodeNum = node.num
-			context.insert(environmentMetrics)
-		}
 
 		for sample in 0..<configuration.localStatsHistoryPerNode {
 			let timestamp = if configuration.localStatsSameHourSeed {
@@ -330,7 +323,7 @@ enum PerformanceSeedData {
 			} else {
 				now.addingTimeInterval(TimeInterval(-(sample * 900 + index % 600)))
 			}
-			let localStats = TelemetryEntity()
+			let localStats = TelemetryEntity(context: context)
 			localStats.metricsType = 4
 			localStats.time = timestamp
 			localStats.noiseFloor = syntheticNoiseFloor(nodeIndex: index, sample: sample)
@@ -346,9 +339,9 @@ enum PerformanceSeedData {
 			localStats.numTotalNodes = Int32(configuration.nodeCount)
 			localStats.uptimeSeconds = Int32(86_400 + index * 60 + sample * 900)
 			localStats.nodeNum = node.num
-			context.insert(localStats)
 		}
 	}
+}
 
 	private static func localStatsSameHourTimestamp(now: Date, sample: Int) -> Date {
 		let calendar = Calendar.current
@@ -385,7 +378,7 @@ enum PerformanceSeedData {
 		let sampleWalk = configuration.style == .clusterDemo ? 0.0 : 0.0001
 
 		for sample in 0..<configuration.positionHistoryPerNode {
-			let position = PositionEntity()
+			let position = PositionEntity(context: context)
 			position.altitude = Int32(5 + (index % 600))
 			position.heading = Int32((index * 17 + sample * 23) % 360)
 			position.latest = sample == 0
@@ -400,7 +393,6 @@ enum PerformanceSeedData {
 			position.time = now.addingTimeInterval(TimeInterval(-(sample * 180 + index % 180)))
 			position.nodePosition = node
 			if position.latest { node.latestPositionCache = position }
-			context.insert(position)
 		}
 	}
 
@@ -437,7 +429,7 @@ enum PerformanceSeedData {
 	}
 
 	private static func insertTraceRoute(for node: NodeInfoEntity, index: Int, now: Date, baseNodeNum: Int64, context: NSManagedObjectContext) {
-		let traceRoute = TraceRouteEntity()
+		let traceRoute = TraceRouteEntity(context: context)
 		traceRoute.id = Int64(index)
 		traceRoute.response = true
 		traceRoute.sent = true
@@ -447,7 +439,6 @@ enum PerformanceSeedData {
 		traceRoute.node = node
 		traceRoute.fromNum = baseNodeNum
 		traceRoute.toNum = node.num
-		context.insert(traceRoute)
 
 		// Forward path: originator -> several earlier seeded nodes -> target. More intermediate hops
 		// make a richer flyover; only reference nodes that already exist (num < target) so the
@@ -478,21 +469,20 @@ enum PerformanceSeedData {
 		func snapshot(_ num: Int64, _ hopNode: NodeInfoEntity?) {
 			guard !snapshotted.contains(num), let position = hopNode?.latestPosition, position.nodeCoordinate != nil else { return }
 			snapshotted.insert(num)
-			let snap = TraceRouteNodePositionEntity()
+			let snap = TraceRouteNodePositionEntity(context: context)
 			snap.num = num
 			snap.latitudeI = position.latitudeI
 			snap.longitudeI = position.longitudeI
 			snap.altitude = position.altitude
 			snap.time = position.time
 			snap.traceRoute = traceRoute
-			context.insert(snap)
 			traceRoute.hasPositions = true
 		}
 
 		// Forward hops (toward the target).
 		for (hopIndex, num) in forwardNums.enumerated() {
 			let hopNode = num == node.num ? node : getNodeInfo(id: num, context: context)
-			let hop = TraceRouteHopEntity()
+			let hop = TraceRouteHopEntity(context: context)
 			hop.back = false
 			hop.index = Int32(hopIndex)
 			hop.num = num
@@ -500,14 +490,13 @@ enum PerformanceSeedData {
 			hop.snr = snrSpread[(index + hopIndex) % snrSpread.count]
 			hop.time = traceRoute.time
 			hop.traceRoute = traceRoute
-			context.insert(hop)
 			snapshot(num, hopNode)
 		}
 
 		// Return hops (back toward the originator) — intermediate nodes only, with distinct SNRs.
 		for (hopIndex, num) in returnIntermediates.enumerated() {
 			let hopNode = getNodeInfo(id: num, context: context)
-			let hop = TraceRouteHopEntity()
+			let hop = TraceRouteHopEntity(context: context)
 			hop.back = true
 			hop.index = Int32(hopIndex)
 			hop.num = num
@@ -515,7 +504,6 @@ enum PerformanceSeedData {
 			hop.snr = snrSpread[(index + hopIndex + 3) % snrSpread.count]
 			hop.time = traceRoute.time
 			hop.traceRoute = traceRoute
-			context.insert(hop)
 			snapshot(num, hopNode)
 		}
 	}
@@ -576,7 +564,8 @@ enum PerformanceSeedData {
 				index: index,
 				now: now,
 				channel: 0,
-				payloadPrefix: "Direct perf message"
+				payloadPrefix: "Direct perf message",
+				context: context
 			)
 			if index.isMultiple(of: 2) {
 				message.fromUser = localUser
@@ -587,7 +576,6 @@ enum PerformanceSeedData {
 				message.fromUser = remoteUser
 				message.toUser = localUser
 			}
-			context.insert(message)
 			insertPerfTapbackIfNeeded(for: message, idBase: 0x0E00_0000, index: index, from: remoteUser, to: localUser, context: context)
 		}
 		remoteUser.lastMessage = now
@@ -607,10 +595,10 @@ enum PerformanceSeedData {
 				index: index,
 				now: now,
 				channel: channel.index,
-				payloadPrefix: "Channel perf message"
+				payloadPrefix: "Channel perf message",
+				context: context
 			)
 			message.fromUser = index.isMultiple(of: 3) ? localUser : remoteUser
-			context.insert(message)
 			insertPerfTapbackIfNeeded(for: message, idBase: 0x1000_0000, index: index, from: remoteUser, to: nil, context: context)
 		}
 	}
@@ -620,9 +608,10 @@ enum PerformanceSeedData {
 		index: Int,
 		now: Date,
 		channel: Int32,
-		payloadPrefix: String
+		payloadPrefix: String,
+		context: NSManagedObjectContext
 	) -> MessageEntity {
-		let message = MessageEntity()
+		let message = MessageEntity(context: context)
 		message.messageId = idBase + Int64(index)
 		message.channel = channel
 		message.messageTimestamp = Int32(now.addingTimeInterval(TimeInterval(-(countdownOffset(index)))).timeIntervalSince1970)
@@ -643,7 +632,7 @@ enum PerformanceSeedData {
 		context: NSManagedObjectContext
 	) {
 		guard index > 0 && index.isMultiple(of: 20) else { return }
-		let tapback = MessageEntity()
+		let tapback = MessageEntity(context: context)
 		tapback.messageId = idBase + Int64(index)
 		tapback.channel = message.channel
 		tapback.isEmoji = true
@@ -653,7 +642,6 @@ enum PerformanceSeedData {
 		tapback.fromUser = from
 		tapback.toUser = to
 		tapback.read = true
-		context.insert(tapback)
 	}
 
 	private static func countdownOffset(_ index: Int) -> Int {
@@ -677,13 +665,12 @@ enum PerformanceSeedData {
 			}
 			return existing
 		}
-		let channel = ChannelEntity()
+		let channel = ChannelEntity(context: context)
 		channel.id = index
 		channel.index = index
 		channel.name = name
 		channel.role = 1
 		channel.myInfoChannel = myInfo
-		context.insert(channel)
 		return channel
 	}
 
@@ -762,7 +749,7 @@ extension PerformanceSeedData {
 
 		let now = Date()
 		let presets = ModemPresets.userSelectable
-		let session = DiscoverySessionEntity()
+		let session = DiscoverySessionEntity(context: context)
 		session.timestamp = now
 		session.presetsScanned = presets.map { $0.description }.joined(separator: ", ")
 		session.totalUniqueNodes = 120
@@ -777,7 +764,6 @@ extension PerformanceSeedData {
 		session.aiSummaryText = marketing
 			? "Swept every selectable preset around Seattle — a public beacon on each, plus three neighborhood community channels and the nodes heard nearby. LongFast has the busiest mesh; MediumFast is the quietest of the long-range presets."
 			: "Seeded DEF CON discovery session: swept every selectable preset (a public beacon on each), plus custom-channel beacons and discovered nodes."
-		context.insert(session)
 
 		// One dwell result per selectable preset, so the session looks like a full sweep.
 		var resultsByPreset: [String: DiscoveryPresetResultEntity] = [:]
@@ -872,7 +858,7 @@ extension PerformanceSeedData {
 		util: Double,
 		noise: Double
 	) -> DiscoveryPresetResultEntity {
-		let result = DiscoveryPresetResultEntity()
+		let result = DiscoveryPresetResultEntity(context: context)
 		result.presetName = name
 		result.dwellDurationSeconds = dwell
 		result.uniqueNodesFound = unique
@@ -897,7 +883,7 @@ extension PerformanceSeedData {
 		presetResult: DiscoveryPresetResultEntity?,
 		context: NSManagedObjectContext
 	) {
-		let node = DiscoveredNodeEntity()
+		let node = DiscoveredNodeEntity(context: context)
 		node.nodeNum = 0x0D00_0000 + Int64(index)
 		node.shortName = "N" + String(format: "%03d", index)
 		node.longName = "Discovered Node \(index)"
@@ -920,7 +906,6 @@ extension PerformanceSeedData {
 		node.presetName = presetName
 		node.session = session
 		node.presetResult = presetResult
-		context.insert(node)
 	}
 
 	private static func insertBeacon(
@@ -930,7 +915,7 @@ extension PerformanceSeedData {
 		now: Date,
 		context: NSManagedObjectContext
 	) {
-		let beacon = DiscoveredBeaconEntity()
+		let beacon = DiscoveredBeaconEntity(context: context)
 		beacon.nodeNum = beaconSeedBase + spec.idx
 		beacon.shortName = spec.short
 		beacon.longName = spec.long
@@ -953,7 +938,6 @@ extension PerformanceSeedData {
 		beacon.timestamp = now
 		beacon.session = session
 		beacon.presetResult = presetResult
-		context.insert(beacon)
 	}
 }
 
@@ -1173,14 +1157,13 @@ enum MarketingSeed {
 	/// third, with a spread of signal and age so the lines show each color and fade.
 	static func insertNeighborReports(now: Date, context: NSManagedObjectContext) {
 		func add(_ reporter: Int, _ neighbor: Int, snr: Float, ago: TimeInterval) {
-			let row = NeighborLinkEntity()
+			let row = NeighborLinkEntity(context: context)
 			row.reporterNum = nodeNum(for: reporter)
 			row.neighborNum = nodeNum(for: neighbor)
 			row.key = NeighborLinkEntity.key(reporter: row.reporterNum, neighbor: row.neighborNum)
 			row.snr = snr
 			row.receivedAt = now.addingTimeInterval(-ago)
 			row.reporterIntervalSecs = 21_600
-			context.insert(row)
 		}
 		for (index, pair) in neighborPairs.enumerated() {
 			let ago = TimeInterval([1, 3, 9, 16][index % 4] * 3_600)
@@ -1380,7 +1363,7 @@ enum MarketingSeed {
 		// Direct-message thread between the connected node and one nearby node.
 		let dmStart = now.addingTimeInterval(-TimeInterval(directMessages.count) * 240 - 120)
 		for (i, text) in directMessages.enumerated() {
-			let message = MessageEntity()
+			let message = MessageEntity(context: context)
 			message.messageId = 0x0D00_0000 + Int64(i)
 			message.channel = 0
 			message.messageTimestamp = Int32(dmStart.addingTimeInterval(TimeInterval(i) * 240).timeIntervalSince1970)
@@ -1398,7 +1381,6 @@ enum MarketingSeed {
 				message.fromUser = remoteUser
 				message.toUser = localUser
 			}
-			context.insert(message)
 		}
 		remoteUser.lastMessage = now.addingTimeInterval(-240)
 
@@ -1408,7 +1390,7 @@ enum MarketingSeed {
 		let chatters = ((try? context.fetch(request)) ?? []).filter { $0.num != localUser.num }
 		let channelStart = now.addingTimeInterval(-TimeInterval(channelMessages.count) * 360 - 60)
 		for (i, text) in channelMessages.enumerated() {
-			let message = MessageEntity()
+			let message = MessageEntity(context: context)
 			message.messageId = 0x0F00_0000 + Int64(i)
 			message.channel = channel.index
 			message.messageTimestamp = Int32(channelStart.addingTimeInterval(TimeInterval(i) * 360).timeIntervalSince1970)
@@ -1424,7 +1406,6 @@ enum MarketingSeed {
 			} else {
 				message.fromUser = chatters[i % chatters.count]
 			}
-			context.insert(message)
 		}
 	}
 

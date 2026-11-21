@@ -8,7 +8,6 @@
 import SwiftUI
 import CoreData
 import OSLog
-import TipKit
 import MeshtasticProtobufs
 
 // MARK: - SettingsNodeSnapshot
@@ -304,46 +303,46 @@ struct Settings: View {
 					.foregroundColor(.gray)
 			}
 
-			NavigationLink(value: SettingsNavigationState.lora) {
-				Label {
-					Text("LoRa")
-				} icon: {
-					Image(systemName: "dot.radiowaves.left.and.right")
-						.rotationEffect(.degrees(-90))
-				}
+			NavigationLink(destination: LoRaConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
+			Label {
+				Text("LoRa")
+			} icon: {
+				Image(systemName: "dot.radiowaves.left.and.right")
+					.rotationEffect(.degrees(-90))
 			}
+		}
 
-			NavigationLink(value: SettingsNavigationState.channels) {
-				Label {
-					Text("Channels")
-				} icon: {
-					Image(systemName: "fibrechannel")
-				}
+		NavigationLink(destination: Channels(node: liveNode(for: preferredNodeNum) ?? nodeSnapshot(for: preferredNodeNum)!)) {
+			Label {
+				Text("Channels")
+			} icon: {
+				Image(systemName: "fibrechannel")
 			}
-			.disabled(selectedNode > 0 && selectedNode != preferredNodeNum)
+		}
+		.disabled(selectedNode > 0 && selectedNode != preferredNodeNum)
 
-			NavigationLink(value: SettingsNavigationState.security) {
-				Label {
-					Text("Security")
-				} icon: {
-					Image(systemName: "lock.shield")
-				}
+		NavigationLink(destination: SecurityConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
+			Label {
+				Text("Security")
+			} icon: {
+				Image(systemName: "lock.shield")
 			}
+		}
 
-			NavigationLink(value: SettingsNavigationState.shareQRCode) {
-				Label {
-					Text("Share QR Code")
-				} icon: {
-					Image(systemName: "qrcode")
-				}
+		NavigationLink(destination: ShareChannels(node: liveNode(for: preferredNodeNum))) {
+			Label {
+				Text("Share QR Code")
+			} icon: {
+				Image(systemName: "qrcode")
 			}
-			.disabled(selectedNode > 0 && selectedNode != preferredNodeNum)
+		}
+		.disabled(selectedNode > 0 && selectedNode != preferredNodeNum)
 		}
 	}
 
 	var deviceConfigurationSection: some View {
 		Section("Device Configuration") {
-			NavigationLink(value: SettingsNavigationState.user) {
+			NavigationLink(destination: UserConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 				Label {
 					Text("User")
 				} icon: {
@@ -351,7 +350,7 @@ struct Settings: View {
 				}
 			}
 
-			NavigationLink(value: SettingsNavigationState.bluetooth) {
+			NavigationLink(destination: BluetoothConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 				Label {
 					Text("Bluetooth")
 				} icon: {
@@ -359,7 +358,7 @@ struct Settings: View {
 				}
 			}
 
-			NavigationLink(value: SettingsNavigationState.device) {
+			NavigationLink(destination: DeviceConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 				Label {
 					Text("Device")
 				} icon: {
@@ -367,7 +366,7 @@ struct Settings: View {
 				}
 			}
 
-			NavigationLink(value: SettingsNavigationState.display) {
+			NavigationLink(destination: DisplayConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 				Label {
 					Text("Display")
 				} icon: {
@@ -375,7 +374,7 @@ struct Settings: View {
 				}
 			}
 
-			NavigationLink(value: SettingsNavigationState.network) {
+			NavigationLink(destination: NetworkConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 				Label {
 					Text("Network")
 				} icon: {
@@ -383,7 +382,7 @@ struct Settings: View {
 				}
 			}
 
-			NavigationLink(value: SettingsNavigationState.position) {
+			NavigationLink(destination: PositionConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 				Label {
 					Text("Position")
 				} icon: {
@@ -391,7 +390,7 @@ struct Settings: View {
 				}
 			}
 
-			NavigationLink(value: SettingsNavigationState.power) {
+			NavigationLink(destination: PowerConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 				Label {
 					Text("Power")
 				} icon: {
@@ -409,7 +408,7 @@ struct Settings: View {
 		let excludedModules = node?.excludedModules ?? 0
 		return Section {
 			if isModuleSupported(.ambientlightingConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.ambientLighting) {
+				NavigationLink(destination: AmbientLightingConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Ambient Lighting")
 					} icon: {
@@ -419,7 +418,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.audioConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.audio) {
+				NavigationLink(destination: AudioConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Audio")
 					} icon: {
@@ -429,7 +428,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.cannedmsgConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.cannedMessages) {
+				NavigationLink(destination: CannedMessagesConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Canned Messages")
 					} icon: {
@@ -439,7 +438,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.detectionsensorConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.detectionSensor) {
+				NavigationLink(destination: DetectionSensorConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Detection Sensor")
 					} icon: {
@@ -449,7 +448,7 @@ struct Settings: View {
 			}
 
 			if isMeshBeaconModuleSupported(node) {
-				NavigationLink(value: SettingsNavigationState.meshBeacon) {
+				NavigationLink(destination: MeshBeaconConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Mesh Beacon")
 					} icon: {
@@ -459,7 +458,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.extnotifConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.externalNotification) {
+				NavigationLink(destination: ExternalNotificationConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("External Notification")
 					} icon: {
@@ -469,7 +468,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.mqttConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.mqtt) {
+				NavigationLink(destination: MQTTConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("MQTT")
 					} icon: {
@@ -479,7 +478,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.neighborinfoConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.neighborInfo) {
+				NavigationLink(destination: NeighborInfoConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Neighbor Info")
 					} icon: {
@@ -489,7 +488,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.rangetestConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.rangeTest) {
+				NavigationLink(destination: RangeTestConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Range Test")
 					} icon: {
@@ -499,7 +498,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.paxcounterConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.paxCounter) {
+				NavigationLink(destination: PaxCounterConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("PAX Counter")
 					} icon: {
@@ -509,7 +508,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.extnotifConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.ringtone) {
+				NavigationLink(destination: RtttlConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Ringtone")
 					} icon: {
@@ -519,7 +518,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.serialConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.serial) {
+				NavigationLink(destination: SerialConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Serial")
 					} icon: {
@@ -529,7 +528,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.storeforwardConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.storeAndForward) {
+				NavigationLink(destination: StoreForwardConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Store & Forward")
 					} icon: {
@@ -544,7 +543,7 @@ struct Settings: View {
 			// the top, and the in-app TAK Server controls (Enable, channel,
 			// mTLS certificates, data package export) below it. The TAK
 			// section at the bottom of this screen links to the same view.
-			NavigationLink(value: SettingsNavigationState.tak) {
+			NavigationLink(destination: TAKServerConfig()) {
 				Label {
 					Text("TAK Server")
 				} icon: {
@@ -553,7 +552,7 @@ struct Settings: View {
 			}
 
 			if isModuleSupported(.telemetryConfig, excludedModules: excludedModules) {
-				NavigationLink(value: SettingsNavigationState.telemetry) {
+				NavigationLink(destination: TelemetryConfig(node: liveNode(for: selectedNode > 0 ? selectedNode : preferredNodeNum))) {
 					Label {
 						Text("Telemetry")
 					} icon: {
@@ -582,14 +581,14 @@ struct Settings: View {
 
 	var loggingSection: some View {
 		Section(header: Text("Logging")) {
-			NavigationLink(value: SettingsNavigationState.debugLogs) {
+			NavigationLink(destination: AppLog()) {
 				Label {
 					Text("Logs")
 				} icon: {
 					Image(systemName: "scroll")
 				}
 			}
-			NavigationLink(value: SettingsNavigationState.traceRoutes) {
+			NavigationLink(destination: AllTraceRoutesLog()) {
 				Label {
 					Text("Trace Routes")
 				} icon: {
@@ -601,28 +600,28 @@ struct Settings: View {
 
 	var developersSection: some View {
 		Section(header: Text("Developers")) {
-			NavigationLink(value: SettingsNavigationState.backupManagement) {
+			NavigationLink(destination: BackupManagement()) {
 				Label {
 					Text("Backup Management")
 				} icon: {
 					Image(systemName: "externaldrive")
 				}
 			}
-			NavigationLink(value: SettingsNavigationState.coreDataBrowser) {
+			NavigationLink(destination: CoreDataBrowser()) {
 				Label {
 					Text("Data Browser")
 				} icon: {
 					Image(systemName: "tablecells")
 				}
 			}
-			NavigationLink(value: SettingsNavigationState.deviceLinks) {
+			NavigationLink(destination: DeviceLinkDirectory()) {
 				Label {
 					Text("Device Links")
 				} icon: {
 					Image(systemName: "link")
 				}
 			}
-			NavigationLink(value: SettingsNavigationState.appFiles) {
+			NavigationLink(destination: AppData()) {
 				Label {
 					Text("App Files")
 				} icon: {
@@ -635,7 +634,7 @@ struct Settings: View {
 			#if !targetEnvironment(macCatalyst) && !os(visionOS)
 			if #available(iOS 18, *) {
 				if NFCReader.isAvailable {
-					NavigationLink(value: SettingsNavigationState.tools) {
+					NavigationLink(destination: Tools()) {
 						Label {
 							Text("Tools")
 						} icon: {
@@ -686,7 +685,7 @@ struct Settings: View {
 	}
 
 	var body: some View {
-		NavigationStack(
+		CompatNavigationStackWithPath(
 			path: $router.settingsPath
 		) {
 			let node = nodeSnapshot(for: preferredNodeNum)
@@ -705,7 +704,7 @@ struct Settings: View {
 						}
 					)
 				} else {
-				NavigationLink(value: SettingsNavigationState.about) {
+				NavigationLink(destination: AboutMeshtastic()) {
 					Label {
 						Text("About Meshtastic")
 					} icon: {
@@ -713,7 +712,7 @@ struct Settings: View {
 					}
 				}
 
-				NavigationLink(value: SettingsNavigationState.helpDocs) {
+				NavigationLink(destination: DocBrowserView(initialSearch: "")) {
 					Label {
 						Text("Help & Documentation")
 					} icon: {
@@ -721,21 +720,21 @@ struct Settings: View {
 					}
 				}
 
-				NavigationLink(value: SettingsNavigationState.appSettings) {
+				NavigationLink(destination: AppSettings()) {
 					Label {
 						Text("App Settings")
 					} icon: {
 						Image(systemName: "gearshape")
 					}
 				}
-				NavigationLink(value: SettingsNavigationState.localMeshDiscovery) {
+				NavigationLink(destination: DiscoveryScanView()) {
 					Label {
 						Text("Local Mesh Discovery")
 					} icon: {
 						Image(systemName: "antenna.radiowaves.left.and.right")
 					}
 				}
-				NavigationLink(value: SettingsNavigationState.routes) {
+				NavigationLink(destination: Routes()) {
 					Label {
 						Text("Routes")
 					} icon: {
@@ -743,7 +742,7 @@ struct Settings: View {
 					}
 				}
 
-				NavigationLink(value: SettingsNavigationState.routeRecorder) {
+				NavigationLink(destination: RouteRecorder()) {
 					Label {
 						Text("Route Recorder")
 					} icon: {
@@ -751,7 +750,7 @@ struct Settings: View {
 							.foregroundColor(.red)
 					}
 				}
-				NavigationLink(value: SettingsNavigationState.firmwareUpdates) {
+				NavigationLink(destination: Firmware(node: liveNode(for: preferredNodeNum))) {
 					Label {
 						Text("Firmware Updates")
 					} icon: {
@@ -809,13 +808,9 @@ struct Settings: View {
 								}
 								}
 								.pickerStyle(.navigationLink)
-								.onChange(of: selectedNode) { _, newValue in
-									handleSelectedNodeChange(newValue)
-								}
-								TipView(AdminChannelTip(), arrowEdge: .top)
-									.tipViewStyle(PersistentTipStyle())
-									.tipBackground(colorScheme == .dark ? Color(.systemBackground) : Color(.secondarySystemBackground))
-									.listRowSeparator(.hidden)
+					.onChange(of: selectedNode) { _, newValue in
+						handleSelectedNodeChange(newValue)
+					}
 							} else {
 								if accessoryManager.isConnected {
 									Text("Connected Node \(node.userLongName?.addingVariationSelectors ?? "Unknown".localized)")
@@ -834,12 +829,20 @@ struct Settings: View {
 				}
 				}
 			}
+			if #available(iOS 16.0, *) {
 			.searchable(
 				text: $searchText,
 				placement: .navigationBarDrawer(displayMode: .always),
 				prompt: "Search settings"
 			)
-			.navigationDestination(for: SettingsNavigationState.self) { destination in
+		} else {
+			.searchable(
+				text: $searchText,
+				placement: .toolbar,
+				prompt: "Search settings"
+			)
+		}
+			.compatNavigationDestination(for: SettingsNavigationState.self) { destination in
 				let node = liveNode(for: preferredNodeNum)
 				let configNode = liveNode(for: selectedNode)
 				Group {
@@ -995,7 +998,7 @@ struct Settings: View {
 				refreshNodes()
 				while !Task.isCancelled {
 					do {
-						try await Task.sleep(for: .seconds(2))
+						try await Task.sleep(nanoseconds: 2_000_000_000)
 					} catch {
 						break
 					}
@@ -1045,3 +1048,4 @@ struct Settings: View {
 		}
 	}
 }
+

@@ -191,7 +191,7 @@ enum FirmwareUpdateNotifier {
 					try await MeshtasticAPI.shared.refreshFirmwareAPIData()
 				}
 				group.addTask {
-					try await Task.sleep(for: .seconds(timeoutSeconds))
+					try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
 					throw MeshtasticAPI.MeshtasticAPIError.timedOut(timeoutSeconds)
 				}
 

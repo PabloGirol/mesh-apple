@@ -1,7 +1,6 @@
 import Foundation
 import Testing
 import SwiftUI
-import Charts
 
 @testable import Meshtastic
 
@@ -312,9 +311,7 @@ struct MetricsVisibilityPersistenceTests {
 			abbreviatedName: id,
 			visible: visible,
 			foregroundStyle: { _ in Color(red: 0.0, green: 0.0, blue: 1.0) }
-		) { _, _, time, value in
-			LineMark(x: .value("Time", time), y: .value("Value", Int(value ?? 0)))
-		}
+		)
 	}
 
 	// MARK: Columns

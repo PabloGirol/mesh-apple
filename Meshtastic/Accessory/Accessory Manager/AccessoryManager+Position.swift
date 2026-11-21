@@ -19,7 +19,7 @@ extension AccessoryManager {
 		self.locationTask = Task {
 			repeat {
 				let sleepSeconds = Self.locationProviderSleepSeconds(configuredInterval: UserDefaults.provideLocationInterval)
-				try? await Task.sleep(for: .seconds(sleepSeconds)) // Throws if task is cancelled
+				try? await Task.sleep(nanoseconds: UInt64(sleepSeconds * 1_000_000_000))
 
 				guard let fromNodeNum = activeConnection?.device.num else {
 					return

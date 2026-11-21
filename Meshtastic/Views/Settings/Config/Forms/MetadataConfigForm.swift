@@ -234,7 +234,7 @@ struct MetadataConfigForm<M: ConfigFormMessage, Leading: View, Trailing: View>: 
 		let hasStoredConfig = node?[keyPath: M.entityKeyPath] != nil
 		var waited = 0
 		while Self.readiness(hasStoredConfig: hasStoredConfig, loaded: loaded, waitedOut: waited >= 14) == .waitForValues {
-			do { try await Task.sleep(for: .milliseconds(150)) } catch { return }
+			do { try await Task.sleep(nanoseconds: 150_000_000) } catch { return }
 			waited += 1
 		}
 		// Untaken, so a later appearance of this screen can still honour it.
@@ -243,16 +243,16 @@ struct MetadataConfigForm<M: ConfigFormMessage, Leading: View, Trailing: View>: 
 
 		// Then let the list lay the rows out; it has not measured anything below the
 		// fold yet, and a scroll asked for now lands short of a distant row.
-		do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+		do { try await Task.sleep(nanoseconds: 300_000_000) } catch { return }
 		guard let row = overlay.focusRowID(for: target, in: config, environment) else { return }
 		do {
 			withAnimation { proxy.scrollTo(row, anchor: .center) }
 			// That scroll creates the rows it passed over; ask again now they have a
 			// measured height so the target lands where it belongs.
-			try await Task.sleep(for: .milliseconds(150))
+			try await Task.sleep(nanoseconds: 150_000_000)
 			withAnimation { proxy.scrollTo(row, anchor: .center) }
 			highlightedRow = row
-			try await Task.sleep(for: .seconds(2))
+			try await Task.sleep(nanoseconds: 2_000_000_000)
 			withAnimation { highlightedRow = nil }
 		} catch {
 			// Cancelled by leaving the screen; the mark goes with it.
