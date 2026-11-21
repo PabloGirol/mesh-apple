@@ -19,7 +19,7 @@ struct CsvDocument: FileDocument {
 		return sanitizedName.lowercased().hasSuffix(".csv") ? sanitizedName : "\(sanitizedName).csv"
 	}
 
-	@State var csvData: String
+	var csvData: String
 
 	init(emptyCsv: String = "" ) {
 

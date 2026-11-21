@@ -10,47 +10,6 @@ import DGCharts
 
 // MARK: - Public API Exports
 
-// Protocols & Base Types (from DGChartsProtocols)
-public typealias DGChartDataPoint = DGChartsProtocols.DGChartDataPoint
-public typealias DGChartPoint = DGChartsProtocols.DGChartPoint
-public typealias DGChartDatePoint = DGChartsProtocols.DGChartDatePoint
-public typealias DGChartCategoryPoint = DGChartsProtocols.DGChartCategoryPoint
-public typealias DGLineStyle = DGChartsProtocols.DGLineStyle
-public typealias DGMarkStyle = DGChartsProtocols.DGMarkStyle
-public typealias DGChartSymbol = DGChartsProtocols.DGChartSymbol
-public typealias DGChartInterpolationMethod = DGChartsProtocols.DGChartInterpolationMethod
-public typealias DGChartAxisConfig = DGChartsProtocols.DGChartAxisConfig
-public typealias DGDefaultAxisConfig = DGChartsProtocols.DGDefaultAxisConfig
-public typealias DGChartAxisPosition = DGChartsProtocols.DGChartAxisPosition
-public typealias DGChartAxisScale = DGChartsProtocols.DGChartAxisScale
-public typealias DGChartLegendConfig = DGChartsProtocols.DGChartLegendConfig
-public typealias DGDefaultLegendConfig = DGChartsProtocols.DGDefaultLegendConfig
-public typealias DGChartLegendPosition = DGChartsProtocols.DGChartLegendPosition
-public typealias DGChartSelectionConfig = DGChartsProtocols.DGChartSelectionConfig
-public typealias DGDefaultSelectionConfig = DGChartsProtocols.DGDefaultSelectionConfig
-public typealias DGChartSelectionMode = DGChartsProtocols.DGChartSelectionMode
-public typealias DGChartScrollConfig = DGChartsProtocols.DGChartScrollConfig
-public typealias DGDefaultScrollConfig = DGChartsProtocols.DGDefaultScrollConfig
-public typealias DGChartAnimationConfig = DGChartsProtocols.DGChartAnimationConfig
-public typealias DGDefaultAnimationConfig = DGChartsProtocols.DGDefaultAnimationConfig
-public typealias DGChartEasingFunction = DGChartsProtocols.DGChartEasingFunction
-public typealias DGChartColorScheme = DGChartsProtocols.DGChartColorScheme
-public typealias DGDefaultColorScheme = DGChartsProtocols.DGDefaultColorScheme
-public typealias DGCategoricalColorScheme = DGChartsProtocols.DGCategoricalColorScheme
-public typealias DGSequentialColorScheme = DGChartsProtocols.DGSequentialColorScheme
-public typealias DGDivergingColorScheme = DGChartsProtocols.DGDivergingColorScheme
-public typealias DGSemanticColorScheme = DGChartsProtocols.DGSemanticColorScheme
-public typealias DGChartDataSet = DGChartsProtocols.DGChartDataSet
-public typealias DGChartView = DGChartsProtocols.DGChartView
-public typealias ChartGesture = DGChartsProtocols.ChartGesture
-public typealias DGChartFillFormatter = DGChartsProtocols.DGChartFillFormatter
-public typealias DGDefaultFillFormatter = DGChartsProtocols.DGDefaultFillFormatter
-public typealias DGChartHighlighter = DGChartsProtocols.DGChartHighlighter
-public typealias DGChartViewBase = DGChartsProtocols.DGChartViewBase
-
-// Chart Views (from local implementations in Views/Charts - types are defined in this module)
-// These types are already accessible; no typealias needed
-
 // Chart Views (from DGChartsWrapper in Helpers/Charts - using actual DGCharts UIView types)
 public typealias DGLineChartView = DGChartsWrapper.DGLineChartView
 public typealias DGBarChartView = DGChartsWrapper.DGBarChartView
@@ -71,7 +30,6 @@ public typealias DGChartYAxisConfig = DGChartsWrapper.DGChartYAxisConfig
 public typealias DGRuleMark = DGChartsWrapper.DGRuleMark
 
 // Axis (from DGChartAxis)
-public typealias DGChartAxisMarkPosition = DGChartAxisMarkPosition
 public typealias DGChartAxisScaleType = DGChartAxisScale
 public typealias DGChartAxisValueFormatter = DGChartAxisValueFormatter
 public typealias DGChartClosureAxisValueFormatter = DGChartClosureAxisValueFormatter
@@ -85,9 +43,6 @@ public typealias DGChartCustomLegendRenderer = DGChartCustomLegendRenderer
 public typealias DGChartDefaultLegendRenderer = DGChartDefaultLegendRenderer
 
 // Selection (from DGChartSelection)
-public typealias DGChartDefaultHighlighter = DGChartDefaultHighlighter
-public typealias DGChartNearestXHighlighter = DGChartNearestXHighlighter
-public typealias DGChartNearestYHighlighter = DGChartNearestYHighlighter
 public typealias DGChartSelectionInfo = DGChartSelectionInfo
 public typealias DGChartSelectionState = DGChartSelectionState
 
@@ -101,6 +56,17 @@ public typealias DGChartForegroundStyle = DGChartForegroundStyle
 public typealias DGChartLinearGradient = DGChartLinearGradient
 public typealias DGChartRadialGradient = DGChartRadialGradient
 public typealias DGChartColorPalette = DGChartColorPalette
+
+// Protocols & Base Types (from DGChartsProtocols) are already accessible in this module.
+// No typealiases needed: DGChartDataPoint, DGChartPoint, DGChartDatePoint, DGChartCategoryPoint,
+// DGLineStyle, DGMarkStyle, DGChartSymbol, DGChartInterpolationMethod, DGChartAxisConfig,
+// DGDefaultAxisConfig, DGChartAxisPosition, DGChartAxisScale, DGChartLegendConfig,
+// DGDefaultLegendConfig, DGChartLegendPosition, DGChartSelectionConfig, DGDefaultSelectionConfig,
+// DGChartSelectionMode, DGChartScrollConfig, DGDefaultScrollConfig, DGChartAnimationConfig,
+// DGDefaultAnimationConfig, DGChartEasingFunction, DGChartColorScheme, DGDefaultColorScheme,
+// DGCategoricalColorScheme, DGSequentialColorScheme, DGDivergingColorScheme, DGSemanticColorScheme,
+// DGChartDataSet, DGChartView, ChartGesture, DGChartFillFormatter, DGDefaultFillFormatter,
+// DGChartHighlighter, DGChartViewBase
 
 // MARK: - Convenience Functions
 

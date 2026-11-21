@@ -7,6 +7,9 @@
 
 import SwiftUI
 
+/// Version tuple for availability checks (iOS, macOS)
+public typealias VersionTuple = (iOS: Int, macOS: Int)
+
 extension View {
 	func onFirstAppear(_ action: @escaping () -> Void) -> some View {
 		modifier(FirstAppear(action: action))

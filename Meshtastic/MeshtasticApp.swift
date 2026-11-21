@@ -302,8 +302,8 @@ struct MeshtasticAppleApp: App {
 				// The Core Data tree unmounts inside MainScene.
 				MainScene(coreDataStack: coreDataStack)
 			}
-			}
-			.onChange(of: lockdownCoordinator.state) { _, newState in
+		}
+		.onChange(of: lockdownCoordinator.state) { _, newState in
 				// US-3: when the coordinator resolves to .lockNowAcknowledged
 				// (either via inbound LOCKED status or a BLE disconnect race),
 				// tear down the connection so the next reconnect re-auths.

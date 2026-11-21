@@ -490,7 +490,9 @@ final class OfflineVectorTileProvider: ObservableObject {
 		)
 		guard !tiles.isEmpty else { return nil }
 		return build(source: source, bounds: bounds, tiles: tiles, minFillMeters: minFillMeters, minRoadMeters: minRoadMeters).stats
-	// MARK: - Offline decode pipeline (pure functions, kept out of the class body for clarity/lint)
+	}
+}
+// MARK: - Offline decode pipeline (pure functions, kept out of the class body for clarity/lint)
 
 extension OfflineVectorTileProvider {
 

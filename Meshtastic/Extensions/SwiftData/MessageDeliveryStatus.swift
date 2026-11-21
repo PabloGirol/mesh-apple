@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MessageDeliveryStatus {
 	let text: String

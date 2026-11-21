@@ -30,7 +30,7 @@ struct NodePositionIntent: AppIntent {
 		request.predicate = NSPredicate(format: "num == %lld", nodeNumInt64)
 		request.fetchLimit = 1
 		do {
-			let fetchedNode = try await MainActor.run { try CoreDataStackImpl.shared.container.viewContext.fetch(request) }
+			let fetchedNode = try MainActor.run { try CoreDataStackImpl.shared.container.viewContext.fetch(request) }
 			guard fetchedNode.count == 1 else {
 				throw $nodeNum.needsValueError("Could not find node")
 			}

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 // Maintains an observable list of devices that's backed by UserDefaults
 public final class ManualConnectionList: ObservableObject {

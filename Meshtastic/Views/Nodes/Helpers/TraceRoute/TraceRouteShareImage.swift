@@ -83,6 +83,7 @@ enum TraceRouteShareRenderer {
 		return model.fittingMap(height: (chains - stats - TraceRouteShareStyle.columnSpacing).rounded(.down))
 	}
 
+#if !MESHTASTIC_IOS15
 	/// Height of a part of the card laid out at `width`, with the card's environment.
 	@MainActor
 	private static func height(of view: some View, width: CGFloat) -> CGFloat? {
@@ -113,13 +114,26 @@ enum TraceRouteShareRenderer {
 		guard let image = renderer.uiImage else { return nil }
 		let title: String
 		if let origin = model.origin, let destination = model.destination {
-			title = "\(origin.longName) → \(destination.longName)"
+			title = "\(origin.longName) \u{2192} \(destination.longName)"
 		} else {
 			title = String(localized: "Trace Route")
 		}
 		let fileName = TraceRouteShareImage.fileName(origin: model.origin?.shortName, destination: model.destination?.shortName, date: model.date)
 		return TraceRouteShareImage(image: image, text: model.plainText, title: title, fileName: fileName)
 	}
+#else
+	/// iOS 15 fallback - not supported
+	@MainActor
+	private static func height(of view: some View, width: CGFloat) -> CGFloat? {
+		return nil
+	}
+
+	/// iOS 15 fallback - not supported
+	@MainActor
+	static func image(model: TraceRouteShareModel, mapImage: UIImage?) -> TraceRouteShareImage? {
+		return nil
+	}
+#endif
 
 	/// Dark, muted map tiles for an area without points of interest, drawn off the main thread.
 	/// `scale` defaults to the share image's; the widget passes its own render scale.

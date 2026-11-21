@@ -358,7 +358,7 @@ struct PowerMetricsLog: View {
 			lineWidth: 2.0
 		)
 
-		let ruleMarks: [DGRuleMark] = []
+		var ruleMarks: [DGRuleMark] = []
 		if let chartSelection = chartSelection {
 			ruleMarks.append(DGRuleMark(
 				position: chartSelection.timeIntervalSince1970,

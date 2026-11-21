@@ -272,9 +272,15 @@ private struct HostedItemPresentation<Item: Identifiable, Page: View>: ViewModif
 				) {
 					if let value = item ?? shown { page(value) }
 				})
-				.onChange(of: item?.id) {
-					if let item { shown = item }
+#if !MESHTASTIC_IOS15
+				.onChange(of: item?.id) { _, new in
+					if let item = new { shown = item }
 				}
+#else
+				.onChange(of: item?.id) { new in
+					if let item = new { shown = item }
+				}
+#endif
 		}
 	}
 }
@@ -300,19 +306,34 @@ private struct PanelPush<Page: View>: ViewModifier {
 		Group {
 			if let presenter {
 				content
+#if !MESHTASTIC_IOS15
 					.onChange(of: isPresented) { _, shown in
+						if shown { push(on: presenter) } else { presenter.pop(id: pageID) }
+					}
+					.onChange(of: contentID) { _ in
+						if isPresented { push(on: presenter) }
+					}
+#else
+					.onChange(of: isPresented) { shown in
 						if shown { push(on: presenter) } else { presenter.pop(id: pageID) }
 					}
 					.onChange(of: contentID) {
 						if isPresented { push(on: presenter) }
 					}
+#endif
 			} else {
 				if #available(iOS 16.0, *) { content.navigationDestination(isPresented: $isPresented, destination: page) } else { content }
 			}
 		}
+#if !MESHTASTIC_IOS15
 		.onChange(of: isPresented) { old, new in
 			if old, !new { onDismiss?() }
 		}
+#else
+		.onChange(of: isPresented) { new in
+			if !new { onDismiss?() }
+		}
+#endif
 	}
 
 	private func push(on presenter: PanelPresenter) {
@@ -606,6 +627,7 @@ private struct HostedAlert<Actions: View, Message: View>: ViewModifier {
 		case .panel:
 			if let presenter {
 				content
+#if !MESHTASTIC_IOS15
 					.onChange(of: isPresented) { _, shown in
 						if shown {
 							presenter.show(banner)
@@ -613,6 +635,15 @@ private struct HostedAlert<Actions: View, Message: View>: ViewModifier {
 							presenter.removeBanner(id: bannerID)
 						}
 					}
+#else
+					.onChange(of: isPresented) { shown in
+						if shown {
+							presenter.show(banner)
+						} else {
+							presenter.removeBanner(id: bannerID)
+						}
+					}
+#endif
 			} else {
 				// No panel host above: show the banner over this view instead.
 				content.overlay(alignment: .top) {

@@ -24,52 +24,52 @@ public class TelemetryEntity: NSManagedObject {
 	@NSManaged public var numTxRelayCanceled: Int32
 	@NSManaged public var time: NSDate?
 
-	// Optional scalars - use primitive optional types for @NSManaged (NSNumber not representable in ObjC)
-	@NSManaged public var airUtilTx: Float?
-	@NSManaged public var barometricPressure: Float?
-	@NSManaged public var batteryLevel: Int32?
-	@NSManaged public var channelUtilization: Float?
-	@NSManaged public var current: Float?
-	@NSManaged public var distance: Float?
-	@NSManaged public var gasResistance: Float?
-	@NSManaged public var iaq: Int32?
-	@NSManaged public var irLux: Float?
-	@NSManaged public var lux: Float?
-	@NSManaged public var noiseFloor: Float?
-	@NSManaged public var powerCh1Current: Float?
-	@NSManaged public var powerCh1Voltage: Float?
-	@NSManaged public var powerCh2Current: Float?
-	@NSManaged public var powerCh2Voltage: Float?
-	@NSManaged public var powerCh3Current: Float?
-	@NSManaged public var powerCh3Voltage: Float?
-	@NSManaged public var radiation: Float?
-	@NSManaged public var rainfall1H: Float?
-	@NSManaged public var rainfall24H: Float?
-	@NSManaged public var relativeHumidity: Float?
-	@NSManaged public var rssi: Int32?
-	@NSManaged public var snr: Float?
-	@NSManaged public var soilMoisture: Int32?
-	@NSManaged public var soilTemperature: Float?
-	@NSManaged public var temperature: Float?
-	@NSManaged public var uptimeSeconds: Int32?
-	@NSManaged public var uvLux: Float?
-	@NSManaged public var voltage: Float?
-	@NSManaged public var weight: Float?
-	@NSManaged public var whiteLux: Float?
-	@NSManaged public var windDirection: Int32?
-	@NSManaged public var windGust: Float?
-	@NSManaged public var windLull: Float?
-	@NSManaged public var windSpeed: Float?
+	// Optional scalars - use NSNumber? for @NSManaged (primitive optionals not representable in ObjC)
+	@NSManaged public var airUtilTx: NSNumber?
+	@NSManaged public var barometricPressure: NSNumber?
+	@NSManaged public var batteryLevel: NSNumber?
+	@NSManaged public var channelUtilization: NSNumber?
+	@NSManaged public var current: NSNumber?
+	@NSManaged public var distance: NSNumber?
+	@NSManaged public var gasResistance: NSNumber?
+	@NSManaged public var iaq: NSNumber?
+	@NSManaged public var irLux: NSNumber?
+	@NSManaged public var lux: NSNumber?
+	@NSManaged public var noiseFloor: NSNumber?
+	@NSManaged public var powerCh1Current: NSNumber?
+	@NSManaged public var powerCh1Voltage: NSNumber?
+	@NSManaged public var powerCh2Current: NSNumber?
+	@NSManaged public var powerCh2Voltage: NSNumber?
+	@NSManaged public var powerCh3Current: NSNumber?
+	@NSManaged public var powerCh3Voltage: NSNumber?
+	@NSManaged public var radiation: NSNumber?
+	@NSManaged public var rainfall1H: NSNumber?
+	@NSManaged public var rainfall24H: NSNumber?
+	@NSManaged public var relativeHumidity: NSNumber?
+	@NSManaged public var rssi: NSNumber?
+	@NSManaged public var snr: NSNumber?
+	@NSManaged public var soilMoisture: NSNumber?
+	@NSManaged public var soilTemperature: NSNumber?
+	@NSManaged public var temperature: NSNumber?
+	@NSManaged public var uptimeSeconds: NSNumber?
+	@NSManaged public var uvLux: NSNumber?
+	@NSManaged public var voltage: NSNumber?
+	@NSManaged public var weight: NSNumber?
+	@NSManaged public var whiteLux: NSNumber?
+	@NSManaged public var windDirection: NSNumber?
+	@NSManaged public var windGust: NSNumber?
+	@NSManaged public var windLull: NSNumber?
+	@NSManaged public var windSpeed: NSNumber?
 
 	// MARK: - Air Quality Metrics
 	// Particulate matter concentrations (µg/m³) from the firmware's AirQualityMetrics telemetry
 	// variant (metricsType 3), persisted like the other environment telemetry fields. See issue #2040.
-	@NSManaged public var pm10Standard: Float?
-	@NSManaged public var pm25Standard: Float?
-	@NSManaged public var pm100Standard: Float?
-	@NSManaged public var pm10Environmental: Float?
-	@NSManaged public var pm25Environmental: Float?
-	@NSManaged public var pm100Environmental: Float?
+	@NSManaged public var pm10Standard: NSNumber?
+	@NSManaged public var pm25Standard: NSNumber?
+	@NSManaged public var pm100Standard: NSNumber?
+	@NSManaged public var pm10Environmental: NSNumber?
+	@NSManaged public var pm25Environmental: NSNumber?
+	@NSManaged public var pm100Environmental: NSNumber?
 
 	/// The node this reading belongs to. New rows are found by this number rather than through
 	/// `nodeTelemetry`: setting the relationship makes SwiftData load every telemetry row the
@@ -141,7 +141,7 @@ public class TelemetryEntity: NSManagedObject {
 extension TelemetryEntity {
 	// Computed property
 	var dewPoint: Float? {
-		guard let temp = self.temperature, let rh = self.relativeHumidity else {
+		guard let temp = self.temperature?.floatValue, let rh = self.relativeHumidity?.floatValue else {
 			return nil
 		}
 		return Float(calculateDewPoint(temp: temp, relativeHumidity: rh, convertToLocale: false))

@@ -76,7 +76,7 @@ class MetricsColumnList: ObservableObject, RandomAccessCollection, RangeReplacea
 	typealias Element = MetricsTableColumn
 	typealias SubSequence = ArraySlice<Element>
 
-	required init() {
+	override required init() {
 		columns = []
 		persistenceKey = nil
 		store = .standard

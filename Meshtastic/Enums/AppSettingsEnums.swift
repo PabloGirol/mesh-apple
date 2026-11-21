@@ -246,7 +246,7 @@ enum MapTileServer: String, CaseIterable, Identifiable, Decodable {
 			return "Open Cycle Map"
 		case .openStreetMapHot:
 			return "Humanitarian (OSM)"
-		case.openTopoMap:
+		case .openTopoMap:
 			return "Open Topo Map"
 		case .usgsTopo:
 			return "USGS Topographic"

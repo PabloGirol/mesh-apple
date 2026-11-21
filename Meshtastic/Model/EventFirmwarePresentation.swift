@@ -136,7 +136,7 @@ private struct EventFirmwareTintScopeCore<Content: View>: View {
 			  let presentation = EventFirmwarePresentation.resolve(
 				isConnected: accessoryManager.isConnected,
 				edition: accessoryManager.firmwareEdition,
-				metadata: eventFirmwareEditions,
+				metadata: Array(eventFirmwareEditions),
 				deviceFirmwareVersion: accessoryManager.connectedVersion
 			  ),
 			  let tintHex = presentation.info.accessibleTintHex(for: colorScheme),
@@ -146,6 +146,11 @@ private struct EventFirmwareTintScopeCore<Content: View>: View {
 		return tint
 	}
 
+	@available(iOS 17.0, *)
+	private func updateTintWithInitial() {
+		updateTint()
+	}
+
 	private func updateTint() {
 		cachedTint = resolvedTint()
 	}
@@ -153,10 +158,16 @@ private struct EventFirmwareTintScopeCore<Content: View>: View {
 	var body: some View {
 		content
 			.tint(cachedTint)
-			.onAppear(perform: updateTint)
-			.onChange(of: tintInputs) {
+#if !MESHTASTIC_IOS15
+			.onChange(of: tintInputs, initial: true) { _, _ in
 				updateTint()
 			}
+#else
+			.onAppear(perform: updateTint)
+			.onChange(of: tintInputs) { _ in
+				updateTint()
+			}
+#endif
 	}
 }
 

@@ -78,10 +78,12 @@ struct MaintenanceUf2EraseSet: Sendable, Equatable {
 /// write, so a row naming `../something` would write outside the drive. An allowlist
 /// rather than a traversal blacklist: excluding separators outright makes `..` inert,
 /// and nothing legitimate falls outside it. Same rule as Android's `SAFE_UF2_FILE_NAME`.
-private let safeUf2FileName = /^[A-Za-z0-9._-]+\.uf2$/
+private let safeUf2FileNamePattern = "^[A-Za-z0-9._-]+\\.uf2$"
 
 private func isSafeUf2FileName(_ name: String) -> Bool {
-	name.wholeMatch(of: safeUf2FileName) != nil
+	let range = NSRange(location: 0, length: name.utf16.count)
+	let regex = try? NSRegularExpression(pattern: safeUf2FileNamePattern)
+	return regex?.firstMatch(in: name, options: [], range: range) != nil
 }
 
 private func isLowercaseHexDigest(_ value: String) -> Bool {
