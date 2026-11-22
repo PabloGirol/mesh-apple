@@ -39,7 +39,7 @@ final class CoreDataStackImpl {
 
     // MARK: - Initialization
 
-    private init(inMemory: Bool = false, storeName: String = "Meshtastic") {
+    init(inMemory: Bool = false, storeName: String = "Meshtastic") {
         // CoreDataStackImpl initializer
         self.storeName = storeName
         self.inMemory = inMemory
@@ -70,7 +70,7 @@ final class CoreDataStackImpl {
 
         // Clean up parked files from previous sessions
         if !inMemory {
-            Self.sweepParkedStoreFiles(near: config.url)
+            Self.sweepParkedStoreFiles(near: config.url!)
             NodeBackupManager.sweepStagedBackupDirectories()
         }
     }
@@ -119,11 +119,11 @@ final class CoreDataStackImpl {
 
         // Corrupt store - attempt recovery
         Logger.data.critical("💾 Core Data store failed to open, attempting recovery: \(error.localizedDescription, privacy: .public)")
-        parkStoreFiles(at: storeURL)
+        Self.parkStoreFiles(at: storeURL)
 
         // Retry with fresh store
         var retryError: Error?
-        container.persistentStoreDescriptions = [config]
+        container.persistentStoreDescriptions = [config!]
         container.loadPersistentStores { _, error in
             retryError = error
         }

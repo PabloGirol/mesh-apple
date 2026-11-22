@@ -336,9 +336,10 @@ final class DiscoveryScanEngine: ObservableObject {
 		transitionTo(.shifting)
 
 		// Create preset result
+		guard let context = managedObjectContext else { return }
 		let presetResult = DiscoveryPresetResultEntity(context: context)
 		presetResult.presetName = target.label
-		presetResult.dwellDurationSeconds = Int(dwellDuration)
+		presetResult.dwellDurationSeconds = Int32(dwellDuration)
 		presetResult.session = session
 		session?.presetResults.append(presetResult)
 		currentPresetResult = presetResult
@@ -828,9 +829,9 @@ final class DiscoveryScanEngine: ObservableObject {
 			let newNode = DiscoveredNodeEntity(context: context)
 			newNode.nodeNum = fromNodeNum
 			newNode.neighborType = hopsAway <= 1 ? "direct" : "mesh"
-			newNode.hopCount = hopsAway
+			newNode.hopCount = Int32(hopsAway)
 			newNode.snr = packet.rxSnr
-			newNode.rssi = Int(packet.rxRssi)
+			newNode.rssi = Int32(packet.rxRssi)
 			newNode.presetName = activeTargetLabel
 			newNode.session = session
 			newNode.presetResult = currentPresetResult
@@ -853,7 +854,7 @@ final class DiscoveryScanEngine: ObservableObject {
 		} else {
 			// Update SNR/RSSI with latest
 			discoveredNode?.snr = packet.rxSnr
-			discoveredNode?.rssi = Int(packet.rxRssi)
+			discoveredNode?.rssi = Int32(packet.rxRssi)
 			if hopsAway <= 1 {
 				discoveredNode?.neighborType = "direct"
 			}
@@ -993,10 +994,10 @@ extension DiscoveryScanEngine {
 		guard let result = currentPresetResult else { return }
 
 		let presetNodes = result.nodes
-		result.uniqueNodesFound = presetNodes.count
-		result.directNeighborCount = presetNodes.filter { $0.neighborType == "direct" }.count
-		result.meshNeighborCount = presetNodes.filter { $0.neighborType == "mesh" }.count
-		result.infrastructureNodeCount = presetNodes.filter { $0.isInfrastructure }.count
+		result.uniqueNodesFound = Int32(presetNodes.count)
+		result.directNeighborCount = Int32(presetNodes.filter { $0.neighborType == "direct" }.count)
+		result.meshNeighborCount = Int32(presetNodes.filter { $0.neighborType == "mesh" }.count)
+		result.infrastructureNodeCount = Int32(presetNodes.filter { $0.isInfrastructure }.count)
 		result.messageCount = presetNodes.reduce(0) { $0 + $1.messageCount }
 		result.sensorPacketCount = presetNodes.reduce(0) { $0 + $1.sensorPacketCount }
 
@@ -1040,7 +1041,7 @@ extension DiscoveryScanEngine {
 		// Compute session-level aggregates
 		let allNodes = session.discoveredNodes
 		let uniqueNodeNums = Set(allNodes.map(\.nodeNum))
-		session.totalUniqueNodes = uniqueNodeNums.count
+		session.totalUniqueNodes = Int32(uniqueNodeNums.count)
 		session.totalTextMessages = allNodes.reduce(0) { $0 + $1.messageCount }
 		session.totalSensorPackets = allNodes.reduce(0) { $0 + $1.sensorPacketCount }
 		session.furthestNodeDistance = allNodes.map(\.distanceFromUser).max() ?? 0.0
@@ -1137,7 +1138,7 @@ extension DiscoveryScanEngine {
 		// Prefer the samples that arrived during THIS preset's dwell — they reflect the preset's
 		// frequency. Fall back to the single most recent sample if none landed in the window.
 		let windowStart = presetDwellStart ?? .distantPast
-		let windowed = allLocalStats.filter { ($0.time ?? .distantPast) >= windowStart }
+		let windowed = allLocalStats.filter { ($0.time as Date? ?? .distantPast) >= windowStart }
 		let samples = windowed.isEmpty ? Array(allLocalStats.suffix(1)) : windowed
 
 		guard let latest = samples.last else {
@@ -1160,20 +1161,20 @@ extension DiscoveryScanEngine {
 		let noiseFloors = samples.compactMap { $0.noiseFloor.map(Double.init) }
 		if !noiseFloors.isEmpty {
 			result.averageNoiseFloor = noiseFloors.reduce(0, +) / Double(noiseFloors.count)
-			result.noiseFloorSampleCount = noiseFloors.count
+			result.noiseFloorSampleCount = Int32(noiseFloors.count)
 		}
 
 		// Raw local stats — counters are cumulative, so use the latest sample.
-		result.numPacketsTx = Int(latest.numPacketsTx)
-		result.numPacketsRx = Int(latest.numPacketsRx)
-		result.numPacketsRxBad = Int(latest.numPacketsRxBad)
-		result.numRxDupe = Int(latest.numRxDupe)
-		result.numTxRelay = Int(latest.numTxRelay)
-		result.numTxRelayCanceled = Int(latest.numTxRelayCanceled)
-		result.numOnlineNodes = Int(latest.numOnlineNodes)
-		result.numTotalNodes = Int(latest.numTotalNodes)
+		result.numPacketsTx = Int32(latest.numPacketsTx)
+		result.numPacketsRx = Int32(latest.numPacketsRx)
+		result.numPacketsRxBad = Int32(latest.numPacketsRxBad)
+		result.numRxDupe = Int32(latest.numRxDupe)
+		result.numTxRelay = Int32(latest.numTxRelay)
+		result.numTxRelayCanceled = Int32(latest.numTxRelayCanceled)
+		result.numOnlineNodes = Int32(latest.numOnlineNodes)
+		result.numTotalNodes = Int32(latest.numTotalNodes)
 		if let uptime = latest.uptimeSeconds {
-			result.uptimeSeconds = Int(uptime)
+			result.uptimeSeconds = Int32(uptime)
 		}
 
 		// Packet success/failure rates
@@ -1334,10 +1335,10 @@ extension DiscoveryScanEngine {
 				dn.nodeNum = snapshot.nodeNum
 				dn.shortName = snapshot.shortName
 				dn.longName = snapshot.longName
-				dn.hopCount = snapshot.hopCount
+				dn.hopCount = Int32(snapshot.hopCount)
 				dn.neighborType = snapshot.hopCount <= 1 ? "direct" : "mesh"
 				dn.snr = snapshot.snr
-				dn.rssi = snapshot.rssi
+				dn.rssi = Int32(snapshot.rssi)
 				dn.isInfrastructure = snapshot.isInfrastructure
 				dn.latitude = snapshot.latitude
 				dn.longitude = snapshot.longitude

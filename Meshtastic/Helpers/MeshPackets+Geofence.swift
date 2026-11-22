@@ -36,6 +36,7 @@ extension MeshPackets {
 
 	/// Evaluate a newly received node position against every notifying waypoint geofence.
 	/// Call from `upsertPositionPacket` once a valid position has been stored.
+	@MainActor
 	func evaluateGeofences(nodeNum: Int64, latitudeI: Int32, longitudeI: Int32, nodeName: String) {
 		guard latitudeI != 0 || longitudeI != 0 else { return }
 		let location = CLLocation(latitude: Double(latitudeI) / 1e7, longitude: Double(longitudeI) / 1e7)
@@ -76,6 +77,7 @@ extension MeshPackets {
 	}
 
 	/// Whether `nodeNum` is marked as a favorite on this device (resolved locally per receiver).
+	@MainActor
 	private func isFavoriteNode(_ nodeNum: Int64) -> Bool {
 		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
 		request.predicate = NSPredicate(format: "num == %lld", nodeNum)

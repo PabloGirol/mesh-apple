@@ -15,7 +15,7 @@ import Foundation
 import CoreData
 
 @objc(DiscoveredBeaconEntity)
-public class DiscoveredBeaconEntity: NSManagedObject {
+public class DiscoveredBeaconEntity: NSManagedObject, CoreDataEntity {
 
 	@NSManaged public var nodeNum: Int64
 	@NSManaged public var shortName: String

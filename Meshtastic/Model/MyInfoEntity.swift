@@ -9,7 +9,7 @@ import Foundation
 import CoreData
 
 @objc(MyInfoEntity)
-public class MyInfoEntity: NSManagedObject {
+public class MyInfoEntity: NSManagedObject, CoreDataEntity {
 
 	@NSManaged public var bleName: String?
 	@NSManaged public var deviceId: Data?

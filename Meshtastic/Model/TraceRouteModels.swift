@@ -10,7 +10,7 @@ import Foundation
 import CoreData
 
 @objc(TraceRouteEntity)
-public class TraceRouteEntity: NSManagedObject {
+public class TraceRouteEntity: NSManagedObject, CoreDataEntity {
 
 	@NSManaged public var hasPositions: Bool
 	@NSManaged public var hopsBack: Int32
@@ -70,7 +70,7 @@ extension TraceRouteEntity {
 }
 
 @objc(TraceRouteHopEntity)
-public class TraceRouteHopEntity: NSManagedObject {
+public class TraceRouteHopEntity: NSManagedObject, CoreDataEntity {
 
 	@NSManaged public var back: Bool
 	/// Position of this hop within its direction's ordered path (the `hops` relationship is
@@ -100,7 +100,7 @@ public class TraceRouteHopEntity: NSManagedObject {
 /// Mirrors the meaningful fields of `PositionEntity` so the route can be mapped using the
 /// positions nodes had *when the trace route ran*, independent of their later movement.
 @objc(TraceRouteNodePositionEntity)
-public class TraceRouteNodePositionEntity: NSManagedObject {
+public class TraceRouteNodePositionEntity: NSManagedObject, CoreDataEntity {
 
 	@NSManaged public var num: Int64
 	@NSManaged public var altitude: Int32

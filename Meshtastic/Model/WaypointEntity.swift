@@ -10,7 +10,7 @@ import Foundation
 import CoreData
 
 @objc(WaypointEntity)
-public class WaypointEntity: NSManagedObject {
+public class WaypointEntity: NSManagedObject, CoreDataEntity {
 
 	@NSManaged public var created: Date?
 	@NSManaged public var createdBy: Int64

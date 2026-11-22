@@ -10,7 +10,7 @@ import Foundation
 import CoreData
 
 @objc(DiscoveredNodeEntity)
-public class DiscoveredNodeEntity: NSManagedObject {
+public class DiscoveredNodeEntity: NSManagedObject, CoreDataEntity {
 
 	@NSManaged public var nodeNum: Int64
 	@NSManaged public var shortName: String

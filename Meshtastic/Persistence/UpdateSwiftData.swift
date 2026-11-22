@@ -200,9 +200,9 @@ extension MeshPackets {
 				device.images.removeAll()
 			}
 			try commit()
-			try modelContext.delete(model: DeviceHardwareTagEntity.self)
+			try modelContext.delete(DeviceHardwareTagEntity.self)
 			try commit()
-			try modelContext.delete(model: DeviceHardwareImageEntity.self)
+			try modelContext.delete(DeviceHardwareImageEntity.self)
 			try commit()
 			// The image/link network pass is throttled (staleDeviceImageLinkInterval); clearing the
 			// rows it populates must also clear that throttle so the next connect's Step 3b restores
@@ -221,7 +221,59 @@ extension MeshPackets {
 				favoriteNodeNums = Set((try? modelContext.fetch(favRequest))?.map(\.num) ?? [])
 			}
 
-			for modelType in MeshtasticSchema.allModels {
+			let allModelTypes: [any NSManagedObject.Type] = [
+					NodeInfoEntity.self,
+					UserEntity.self,
+					MyInfoEntity.self,
+					ChannelEntity.self,
+					MessageEntity.self,
+					PositionEntity.self,
+					NeighborLinkEntity.self,
+					TelemetryEntity.self,
+					RouteEntity.self,
+					LocationEntity.self,
+					WaypointEntity.self,
+					TraceRouteEntity.self,
+					TraceRouteHopEntity.self,
+					TraceRouteNodePositionEntity.self,
+					PaxCounterEntity.self,
+					EventFirmwareEntity.self,
+					FirmwareReleaseEntity.self,
+					DeviceLinkEntity.self,
+					DeviceHardwareEntity.self,
+					DeviceHardwareTagEntity.self,
+					DeviceHardwareImageEntity.self,
+					DeviceMetadataEntity.self,
+					DiscoverySessionEntity.self,
+					DiscoveryPresetResultEntity.self,
+					DiscoveredNodeEntity.self,
+					DiscoveredBeaconEntity.self,
+					AmbientLightingConfigEntity.self,
+					AudioConfigEntity.self,
+					BluetoothConfigEntity.self,
+					CannedMessageConfigEntity.self,
+					DeviceConfigEntity.self,
+					DisplayConfigEntity.self,
+					ExternalNotificationConfigEntity.self,
+					LoRaConfigEntity.self,
+					MeshBeaconConfigEntity.self,
+					BroadcastTargetEntity.self,
+					MQTTConfigEntity.self,
+					NeighborInfoConfigEntity.self,
+					NetworkConfigEntity.self,
+					PaxCounterConfigEntity.self,
+					PositionConfigEntity.self,
+					PowerConfigEntity.self,
+					RangeTestConfigEntity.self,
+					RTTTLConfigEntity.self,
+					SecurityConfigEntity.self,
+					SerialConfigEntity.self,
+					StatusMessageConfigEntity.self,
+					StoreForwardConfigEntity.self,
+					TAKConfigEntity.self,
+					TelemetryConfigEntity.self,
+				]
+				for modelType in allModelTypes {
 				if !includeRoutes && (modelType == RouteEntity.self || modelType == LocationEntity.self) {
 					continue
 				}
@@ -318,7 +370,7 @@ extension MeshPackets {
 				// RSSI, which every real reception has (0 dBm included); those were heard earlier, maybe
 				// on other settings.
 				if reportsHeardOnCurrentLora && !isImplicitAck && !packet.viaMqtt && packet.hasRxRssi {
-					node.heardOnCurrentLora = true
+					node.heardOnCurrentLora = 1
 				}
 
 				// MQTT packets still count: their hops are to the gateway, as on the radio.
@@ -544,10 +596,10 @@ extension MeshPackets {
 					if nodeInfoMessage.hasDeviceMetrics {
 						let telemetry = TelemetryEntity(context: modelContext)
 						modelContext.insert(telemetry)
-						telemetry.batteryLevel = Int32(truncatingIfNeeded: nodeInfoMessage.deviceMetrics.batteryLevel)
-						telemetry.voltage = nodeInfoMessage.deviceMetrics.voltage
-						telemetry.channelUtilization = nodeInfoMessage.deviceMetrics.channelUtilization
-						telemetry.airUtilTx = nodeInfoMessage.deviceMetrics.airUtilTx
+						telemetry.batteryLevel = NSNumber(value: Int32(truncatingIfNeeded: nodeInfoMessage.deviceMetrics.batteryLevel))
+						telemetry.voltage = NSNumber(value: nodeInfoMessage.deviceMetrics.voltage)
+						telemetry.channelUtilization = NSNumber(value: nodeInfoMessage.deviceMetrics.channelUtilization)
+						telemetry.airUtilTx = NSNumber(value: nodeInfoMessage.deviceMetrics.airUtilTx)
 						telemetry.nodeNum = fetchedNode[0].num
 					}
 					if nodeInfoMessage.hasUser {
@@ -1429,19 +1481,20 @@ extension MeshPackets {
 				entity.broadcastIntervalSecs = values.intervalSecs
 
 				// Rebuild the multi-target list from the incoming config (cascade replaces the old rows).
-				for old in entity.broadcastTargets {
+				for old in entity.broadcastTargets ?? [] {
 					modelContext.delete(old)
 				}
-				entity.broadcastTargets = values.targets.map { target in
-					let newTarget = BroadcastTargetEntity(
-						preset: target.preset,
-						region: target.region,
-						channelIndex: target.channelIndex,
-						frequencySlot: target.frequencySlot
-					)
-					modelContext.insert(newTarget)
-					return newTarget
-				}
+				let newTargets = values.targets.map { target in
+                        let newTarget = BroadcastTargetEntity(
+                            context: modelContext,
+                            preset: target.preset,
+                            region: target.region,
+                            channelIndex: target.channelIndex,
+                            frequencySlot: target.frequencySlot
+                        )
+                        return newTarget
+                    }
+                    entity.broadcastTargets = NSSet(array: newTargets)
 
 				if let sessionPasskey, !sessionPasskey.isEmpty {
 					fetchedNode[0].sessionPasskey = sessionPasskey
@@ -1981,3 +2034,4 @@ extension MeshPackets {
 		}
 	}
 }
+
