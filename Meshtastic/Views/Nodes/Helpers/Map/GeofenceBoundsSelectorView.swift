@@ -20,11 +20,7 @@ struct GeofenceBoundsSelectorView: View {
 	var onComplete: (GeoBounds) -> Void
 
 	@Environment(\.dismiss) private var dismiss
-	#if available(iOS 17.0, *)
-	@State private var camera: MapCameraPosition
-	#else
-	@State private var camera: MKCoordinateRegion
-	#endif
+	@State private var camera: MapCameraPosition = MapCameraPosition.automatic
 	@State private var bounds: GeoBounds?
 
 	/// The selection rectangle in the view's local coordinate space (drag/resize target).
@@ -54,11 +50,7 @@ struct GeofenceBoundsSelectorView: View {
 			region = MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05))
 		}
 		self.initialRegion = region
-		#if available(iOS 17.0, *)
 		_camera = State(initialValue: MapCameraPosition.region(region))
-		#else
-		_camera = State(initialValue: region)
-		#endif
 	}
 
 	var body: some View {

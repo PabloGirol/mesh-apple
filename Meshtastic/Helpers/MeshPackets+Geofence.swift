@@ -36,7 +36,6 @@ extension MeshPackets {
 
 	/// Evaluate a newly received node position against every notifying waypoint geofence.
 	/// Call from `upsertPositionPacket` once a valid position has been stored.
-	@MainActor
 	func evaluateGeofences(nodeNum: Int64, latitudeI: Int32, longitudeI: Int32, nodeName: String) {
 		guard latitudeI != 0 || longitudeI != 0 else { return }
 		let location = CLLocation(latitude: Double(latitudeI) / 1e7, longitude: Double(longitudeI) / 1e7)
@@ -44,7 +43,7 @@ extension MeshPackets {
 		// Only consider waypoints that actually want enter/exit notifications.
 		let request = NSFetchRequest<WaypointEntity>(entityName: "WaypointEntity")
 		request.predicate = NSPredicate(format: "notifyOnEnter == YES OR notifyOnExit == YES")
-		guard let waypoints = try? CoreDataStackImpl.shared.context.fetch(request) else { return }
+		guard let waypoints = try? modelContext.fetch(request) else { return }
 
 		// Resolved lazily once per call: whether this node is a favorite on THIS receiver, used by
 		// waypoints set to notify for favorites only.
@@ -77,12 +76,11 @@ extension MeshPackets {
 	}
 
 	/// Whether `nodeNum` is marked as a favorite on this device (resolved locally per receiver).
-	@MainActor
 	private func isFavoriteNode(_ nodeNum: Int64) -> Bool {
 		let request = NSFetchRequest<NodeInfoEntity>(entityName: "NodeInfoEntity")
 		request.predicate = NSPredicate(format: "num == %lld", nodeNum)
 		request.fetchLimit = 1
-		return ((try? CoreDataStackImpl.shared.context.fetch(request))?.first?.favorite) ?? false
+		return ((try? modelContext.fetch(request))?.first?.favorite) ?? false
 	}
 
 	private func scheduleGeofenceNotification(waypointId: Int64, waypointName: String, nodeNum: Int64, nodeName: String, entered: Bool) {

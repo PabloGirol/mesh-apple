@@ -52,6 +52,7 @@ final class WidgetInventory: ObservableObject {
 
 	/// The sizes of each kind that are on a screen; nil until iOS has answered,
 	/// so nothing reads as "not added" before the app knows.
+	@available(iOS 16.0, *)
 	@Published private(set) var families: [String: Set<WidgetFamily>]?
 	/// How many Meshtastic widgets are on a screen, counting each one — two
 	/// small Node Trackers are two; nil until iOS has answered.
@@ -103,6 +104,7 @@ final class WidgetInventory: ObservableObject {
 		case unknown
 	}
 
+	@available(iOS 16.0, *)
 	func widgetStatus(for kind: String) -> AddedStatus {
 		guard let families else { return .unknown }
 		guard let description = addedDescription(for: kind, in: families) else { return .notAdded }
@@ -115,6 +117,7 @@ final class WidgetInventory: ObservableObject {
 	}
 
 	/// "Small, Medium, Lock Screen", or nil when the kind isn't on any screen.
+	@available(iOS 16.0, *)
 	private func addedDescription(for kind: String, in families: [String: Set<WidgetFamily>]) -> String? {
 		guard let added = families[kind], !added.isEmpty else { return nil }
 		let homeOrder: [(WidgetFamily, String)] = [

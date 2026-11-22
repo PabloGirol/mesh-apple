@@ -50,9 +50,6 @@ enum OfflineLandCover: UInt8, CaseIterable, Sendable {
 		default: return nil
 		}
 	}
-}
-}
-}
 
 /// One area of land cover: an outer ring and its holes.
 struct OfflineLandArea: @unchecked Sendable {
@@ -104,8 +101,6 @@ enum OfflineRoadStructure: Int, CaseIterable, Comparable {
 
 	static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 }
-}
-}
 
 /// Which feature a decoded polygon belongs to and which tile it was read from. A feature near a
 /// tile edge is in both tiles (the neighbor carries it in its buffer), so this is what finds the
@@ -152,8 +147,6 @@ struct OfflineMapLabel: Sendable, Equatable {
 		labels.sorted { ($0.minZoom, -$0.rank, $0.kind, $0.name) < ($1.minZoom, -$1.rank, $1.kind, $1.name) }
 	}
 }
-}
-}
 
 /// Region identity required to bind an archive consistently before and after the manager loads.
 struct OfflineVectorSourceBinding: Equatable {
@@ -169,8 +162,6 @@ struct OfflineVectorSourceBinding: Equatable {
 		self.url = url
 		self.regionID = regionID
 	}
-}
-}
 }
 
 /// Render-ready offline content plus measurement stats (returned by `OfflineVectorTileProvider.build`).
@@ -200,8 +191,6 @@ struct OfflineDecodeStats: CustomStringConvertible {
 		let segReduction = rawSegments > 0 ? Int(100.0 * (1 - Double(stitchedRoads) / Double(rawSegments))) : 0
 		return "z\(zoom) \(tiles) tiles | \(polygons) fills + \(rawSegments) segs → \(stitchedRoads) roads (-\(segReduction)%) | overlays=\(overlayCount) | verts \(rawVertices)→\(stitchedVertices) | decode \(decode)s stitch \(stitch)s"
 	}
-}
-}
 }
 
 /// Decodes the vector tiles inside a `.pmtiles` archive into native MapKit shapes for the visible
@@ -1214,8 +1203,6 @@ final class OfflineVectorTileProvider: ObservableObject {
 		return CLLocationCoordinate2D(latitude: lat, longitude: start.longitude + t * (end.longitude - start.longitude))
 	}
 }
-}
-}
 
 // MARK: - Offline basemap palette
 
@@ -1317,6 +1304,4 @@ enum OfflineMapPalette {
 		default: return nil
 		}
 	}
-}
-}
 }

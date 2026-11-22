@@ -24,7 +24,6 @@ struct NodeList: View {
 	@State private var isPresentingDeleteNodeAlert = false
 	/// Whether a node is on a Node Tracker widget, for the delete confirmation.
 	@ObservedObject private var trackedWidgets = TrackedWidgetNodes.shared
-#endif
 	@State private var deleteNodeId: Int64 = 0
 	@State private var shareContactNode: NodeInfoEntity?
 	@State private var nodeForDisplayNameEdit: NodeInfoEntity?

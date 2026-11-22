@@ -49,15 +49,9 @@ struct NodeMapSwiftUI: View {
 	@AppStorage("mapLayer") private var selectedMapLayer: MapLayer = .hybrid
 	// Map Configuration
 	@Namespace var mapScope
-	#if available(iOS 17.0, *)
-	@State var mapStyle: MapStyle = MapStyle.hybrid(elevation: .flat, pointsOfInterest: .all, showsTraffic: true)
-	@State var position = MapCameraPosition.automatic
-	@State var scene: MKLookAroundScene?
-	#else
-	@State var mapStyle: Any = ""
-	@State var position: Any = MKCoordinateRegion()
+	@State var mapStyle: Any = MapStyle.hybrid(elevation: .flat, pointsOfInterest: .all, showsTraffic: true)
+	@State var position: Any = MapCameraPosition.automatic
 	@State var scene: Any?
-	#endif
 	@State var distance = 10000.0
 	@State var isLookingAround = false
 	@State var isShowingAltitude = false
@@ -383,11 +377,7 @@ struct NodeMapMKView: UIViewRepresentable {
 	let showTraffic: Bool
 	let showPointsOfInterest: Bool
 	let displayScale: CGFloat
-	#if available(iOS 17.0, *)
-	@Binding var position: MapCameraPosition
-	#else
-	@Binding var position: MKCoordinateRegion
-	#endif
+	@Binding var position: Any
 	@Binding var distance: Double
 
 	func makeUIView(context: Context) -> MKMapView {

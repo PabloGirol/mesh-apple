@@ -16,11 +16,7 @@ struct DiscoveryMapView: View {
 	var isScanning: Bool = false
 
 	@Namespace private var mapScope
-	#if available(iOS 17.0, *)
 	@State private var mapPosition: MapCameraPosition = .automatic
-	#else
-	@State private var mapPosition: MKCoordinateRegion = MKCoordinateRegion()
-	#endif
 
 	private var userCoordinate: CLLocationCoordinate2D? {
 		guard userLatitude != 0.0 || userLongitude != 0.0 else { return nil }
@@ -158,11 +154,7 @@ struct DiscoveryMapMKView: UIViewRepresentable {
 	let nodesWithPosition: [DiscoveredNodeEntity]
 	let isScanning: Bool
 	let fittedRegion: MKCoordinateRegion?
-	#if available(iOS 17.0, *)
 	@Binding var mapPosition: MapCameraPosition
-	#else
-	@Binding var mapPosition: MKCoordinateRegion
-	#endif
 
 	func makeUIView(context: Context) -> MKMapView {
 		let mapView = MKMapView()

@@ -71,11 +71,7 @@ struct RegionSelectorView: View {
 
 	@Environment(\.dismiss) private var dismiss
 	@ObservedObject private var manager = OfflineMapManager.shared
-	#if available(iOS 17.0, *)
-	@State private var camera: MapCameraPosition
-	#else
-	@State private var camera: MKCoordinateRegion
-	#endif
+	@State private var camera: Any = MKCoordinateRegion()
 	@State private var bounds: GeoBounds?
 	@State private var detail: OfflineMapDetailLevel = .preferred
 	/// What the download includes (basemap, terrain, or both).
@@ -108,11 +104,11 @@ struct RegionSelectorView: View {
 	init(target: OfflineRegionTarget, replacing: OfflineMapRegion? = nil) {
 		self.target = target
 		self.replacing = replacing
-		#if available(iOS 17.0, *)
-		_camera = State(initialValue: MapCameraPosition.region(target.region))
-		#else
-		_camera = State(initialValue: target.region)
-		#endif
+		if #available(iOS 17.0, *) {
+			_camera = State(initialValue: MapCameraPosition.region(target.region) as Any)
+		} else {
+			_camera = State(initialValue: target.region as Any)
+		}
 		_name = State(initialValue: target.name)
 		// Resizing keeps what the region already has.
 		if let replacing {
@@ -376,13 +372,23 @@ struct RegionSelectorView: View {
 		let centerY = (top + bottom) / 2 + (size.height / 2 - aim.midY) * worldPerPoint
 		let visibleTopLat = Self.mercatorLat(centerY - size.height / 2 * worldPerPoint)
 		let visibleBottomLat = Self.mercatorLat(centerY + size.height / 2 * worldPerPoint)
-		camera = .region(MKCoordinateRegion(
-			center: CLLocationCoordinate2D(latitude: Self.mercatorLat(centerY), longitude: centerX * 360 - 180),
-			span: MKCoordinateSpan(
-				latitudeDelta: visibleTopLat - visibleBottomLat,
-				longitudeDelta: size.width * worldPerPoint * 360
-			)
-		))
+		if #available(iOS 17.0, *) {
+				camera = MapCameraPosition.region(MKCoordinateRegion(
+					center: CLLocationCoordinate2D(latitude: Self.mercatorLat(centerY), longitude: centerX * 360 - 180),
+					span: MKCoordinateSpan(
+						latitudeDelta: visibleTopLat - visibleBottomLat,
+						longitudeDelta: size.width * worldPerPoint * 360
+					)
+				))
+			} else {
+				camera = MKCoordinateRegion(
+					center: CLLocationCoordinate2D(latitude: Self.mercatorLat(centerY), longitude: centerX * 360 - 180),
+					span: MKCoordinateSpan(
+						latitudeDelta: visibleTopLat - visibleBottomLat,
+						longitudeDelta: size.width * worldPerPoint * 360
+					)
+				)
+			}
 	}
 
 	/// Phase two: place the selection exactly on the saved bounds' projected corners.

@@ -42,17 +42,29 @@ enum SpatialTextureRenderer {
 			UITraitCollection(displayScale: displayScale)
 		])
 		// Flat: a realistic elevation snapshot is a perspective render, no longer Mercator.
-		switch layer {
-		case .hybrid:
-			let configuration = MKHybridMapConfiguration(elevationStyle: .flat)
-			configuration.pointOfInterestFilter = .excludingAll
-			options.preferredConfiguration = configuration
-		case .satellite:
-			options.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .flat)
-		case .standard, .offline:
-			let configuration = MKStandardMapConfiguration(elevationStyle: .flat)
-			configuration.pointOfInterestFilter = .excludingAll
-			options.preferredConfiguration = configuration
+		if #available(iOS 16.0, *) {
+			switch layer {
+			case .hybrid:
+				let configuration = MKHybridMapConfiguration(elevationStyle: .flat)
+				configuration.pointOfInterestFilter = .excludingAll
+				options.preferredConfiguration = configuration
+			case .satellite:
+				options.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .flat)
+			case .standard, .offline:
+				let configuration = MKStandardMapConfiguration(elevationStyle: .flat)
+				configuration.pointOfInterestFilter = .excludingAll
+				options.preferredConfiguration = configuration
+			}
+		} else {
+			// iOS 15 fallback: use legacy mapType property
+			switch layer {
+			case .hybrid:
+				options.mapType = .hybrid
+			case .satellite:
+				options.mapType = .satellite
+			case .standard, .offline:
+				options.mapType = .standard
+			}
 		}
 
 		let snapshotter = MKMapSnapshotter(options: options)

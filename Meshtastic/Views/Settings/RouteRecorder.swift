@@ -17,13 +17,8 @@ struct RouteRecorder: View {
 	@ObservedObject var locationsHandler: LocationsHandler = LocationsHandler.shared
 	@Environment(\.managedObjectContext) private var context
 	@Environment(\.dismiss) private var dismiss
-	#if available(iOS 17.0, *)
-	@State private var position: MapCameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
-	@State var mapStyle: MapStyle = MapStyle.standard(elevation: .realistic)
-	#else
-	@State private var position: MKCoordinateRegion = MKCoordinateRegion()
-	@State var mapStyle: Any = ""
-	#endif
+	@State private var position: MapCameraPosition = MapCameraPosition.automatic
+	@State var mapStyle: MapStyle = MapStyle.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false)
 	@State var isShowingDetails = false
 	@Namespace var namespace
 	@Namespace var routerecorderscope
@@ -59,25 +54,14 @@ struct RouteRecorder: View {
 					RouteRecorderMapView(
 						locations: locationsHandler.locationsArray,
 						color: color,
-						position: $position
+						position: .constant(MKCoordinateRegion())
 					)
 				}
 			}
-			if #available(iOS 17.0, *) {
-				.mapControls {
-					MapScaleView(scope: routerecorderscope)
-						.mapControlVisibility(.automatic)
-					MapPitchToggle(scope: routerecorderscope)
-						.mapControlVisibility(.automatic)
-					MapCompass(scope: routerecorderscope)
-						.mapControlVisibility(.automatic)
-				}
-			}
+			.modifier(MapControlsModifier(scope: routerecorderscope))
 			.controlSize(.regular)
 			.offset(y: 100)
-			if #available(iOS 17.0, *) {
-				.mapScope(routerecorderscope)
-			}
+			.modifier(MapScopeModifier(scope: routerecorderscope))
 			.safeAreaInset(edge: .bottom) {
 				ZStack {
 					VStack {
@@ -334,16 +318,47 @@ struct RouteRecorder: View {
 	}
 }
 
+// MARK: - Runtime availability modifiers
+
+struct MapControlsModifier: ViewModifier {
+	let scope: Namespace.ID
+
+	func body(content: Content) -> some View {
+		if #available(iOS 17.0, *) {
+			content
+				.mapControls {
+					MapScaleView(scope: scope)
+						.mapControlVisibility(.automatic)
+					MapPitchToggle(scope: scope)
+						.mapControlVisibility(.automatic)
+					MapCompass(scope: scope)
+						.mapControlVisibility(.automatic)
+				}
+		} else {
+			content
+		}
+	}
+}
+
+struct MapScopeModifier: ViewModifier {
+	let scope: Namespace.ID
+
+	func body(content: Content) -> some View {
+		if #available(iOS 17.0, *) {
+			content
+				.mapScope(scope)
+		} else {
+			content
+		}
+	}
+}
+
 #if !os(iOS) || !os(visionOS) || os(macCatalyst)
 /// Fallback for iOS 15/16 - uses MKMapView via UIViewRepresentable
 struct RouteRecorderMapView: UIViewRepresentable {
 	let locations: [CLLocation]
 	let color: Color
-	#if available(iOS 17.0, *)
-	@Binding var position: MapCameraPosition
-	#else
 	@Binding var position: MKCoordinateRegion
-	#endif
 
 	func makeUIView(context: Context) -> MKMapView {
 		let mapView = MKMapView()

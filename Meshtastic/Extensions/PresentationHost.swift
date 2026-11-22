@@ -272,9 +272,9 @@ private struct HostedItemPresentation<Item: Identifiable, Page: View>: ViewModif
 				) {
 					if let value = item ?? shown { page(value) }
 				})
-					.onChange(of: item?.id) { _, new in
-						if let item = new { shown = item }
-					}
+				.onChange(of: item?.id) { _, new in
+					if let item = new { shown = item }
+				}
 		}
 	}
 }
@@ -313,7 +313,6 @@ private struct PanelPush<Page: View>: ViewModifier {
 			.onChange(of: isPresented) { old, new in
 				if old, !new { onDismiss?() }
 			}
-		}
 	}
 }
 
@@ -598,14 +597,15 @@ private struct HostedAlert<Actions: View, Message: View>: ViewModifier {
 		case .window:
 			content.alert(title, isPresented: $isPresented, actions: actions, message: message)
 		case .panel:
-				.onChange(of: isPresented) { _, shown in
-					if shown {
-						presenter.show(banner)
-					} else {
-						presenter.removeBanner(id: bannerID)
+			if let presenter {
+				content
+					.onChange(of: isPresented) { _, shown in
+						if shown {
+							presenter.show(banner)
+						} else {
+							presenter.removeBanner(id: bannerID)
+						}
 					}
-				}
-#endif
 			} else {
 				// No panel host above: show the banner over this view instead.
 				content.overlay(alignment: .top) {
