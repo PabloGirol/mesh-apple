@@ -50,6 +50,7 @@ enum OfflineLandCover: UInt8, CaseIterable, Sendable {
 		default: return nil
 		}
 	}
+}
 
 /// One area of land cover: an outer ring and its holes.
 struct OfflineLandArea: @unchecked Sendable {
