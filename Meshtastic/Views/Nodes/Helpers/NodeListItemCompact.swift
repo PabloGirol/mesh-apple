@@ -392,8 +392,8 @@ struct DefaultIconCompact: View {
 			user.role = 11
 			nodeInfo.user = user
 			
-			telemetryEntity.batteryLevel = 100
-			telemetryEntity.distance = 100
+			telemetryEntity.batteryLevel = NSNumber(value: 100)
+			telemetryEntity.distance = NSNumber(value: 100)
 			nodeInfo.telemetries = [telemetryEntity]
 			
 			positionEntity.latitudeI = 30
@@ -423,8 +423,8 @@ struct DefaultIconCompact: View {
 			storeForwardConfig.enabled = true
 			nodeInfo.storeForwardConfig = storeForwardConfig
 			
-			telemetryEntity.batteryLevel = 99
-			telemetryEntity.distance = 100.0
+			telemetryEntity.batteryLevel = NSNumber(value: 99)
+			telemetryEntity.distance = NSNumber(value: 100.0)
 			nodeInfo.telemetries = [telemetryEntity]
 
 			nodeInfo.hopsAway = 7
@@ -459,8 +459,8 @@ struct DefaultIconCompact: View {
 			user.shortName = "SLN"
 			user.unmessagable = false
 			
-			telemetryEntity.batteryLevel = 99
-			telemetryEntity.distance = 100.0
+			telemetryEntity.batteryLevel = NSNumber(value: 99)
+			telemetryEntity.distance = NSNumber(value: 100.0)
 			nodeInfo.telemetries = [telemetryEntity]
 
 			nodeInfo.hopsAway = 1

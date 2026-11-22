@@ -111,12 +111,12 @@ struct NodeBackupRestoreFieldTests {
 
 		let telemetry = TelemetryEntity()
 		telemetry.metricsType = 3
-		telemetry.pm10Standard = 1
-		telemetry.pm25Standard = 2
-		telemetry.pm100Standard = 3
-		telemetry.pm10Environmental = 4
-		telemetry.pm25Environmental = 5
-		telemetry.pm100Environmental = 6
+		telemetry.pm10Standard = NSNumber(value: 1)
+		telemetry.pm25Standard = NSNumber(value: 2)
+		telemetry.pm100Standard = NSNumber(value: 3)
+		telemetry.pm10Environmental = NSNumber(value: 4)
+		telemetry.pm25Environmental = NSNumber(value: 5)
+		telemetry.pm100Environmental = NSNumber(value: 6)
 		telemetry.nodeNum = node.num
 		backup.insert(telemetry)
 		try backup.save()

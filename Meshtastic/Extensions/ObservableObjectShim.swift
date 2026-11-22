@@ -3,22 +3,22 @@
 //  Meshtastic
 //
 //  @Observable macro replacement for iOS 15 compatibility.
-//  Provides ObservableObject base class with @Published properties and
+//  Provides ObservableBase base class with @Published properties and
 //  @MainActor isolation matching the @Observable macro behavior.
-//  Usage: Change `@Observable final class Foo` to `final class Foo: ObservableObject`
+//  Usage: Change `@Observable final class Foo` to `final class Foo: ObservableBase`
 
 import Foundation
 import Combine
 import OSLog
 
-// MARK: - ObservableObject Base Class
+// MARK: - ObservableBase Class
 
 /// Base class that mimics `@Observable` macro behavior on iOS 15+.
 /// - Automatically synthesizes `objectWillChange` publisher
 /// - Provides `@MainActor` isolation by default
 /// - Supports `@Published` properties with automatic change tracking
 @MainActor
-open class ObservableObject: Foundation.ObservableObject {
+open class ObservableBase: Foundation.ObservableObject {
     public init() {}
 }
 
@@ -135,8 +135,8 @@ extension ObservableProtocol where Self: ObservableObject {
 
 // MARK: - Migration Helpers
 
-/// Type alias for easy migration: `@Observable` → `ObservableObject`
-public typealias Observable = ObservableObject
+/// Type alias for easy migration: `@Observable` → `ObservableBase`
+public typealias Observable = ObservableBase
 
 /// Macro-like helper to declare observable properties.
 /// Usage inside an ObservableObject subclass:

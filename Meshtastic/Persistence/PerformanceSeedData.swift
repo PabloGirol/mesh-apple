@@ -298,23 +298,23 @@ enum PerformanceSeedData {
 			deviceMetrics.metricsType = 0
 			deviceMetrics.time = timestamp
 			deviceMetrics.batteryLevel = configuration.style == .marketing
-				? Int32(MarketingSeed.battery(for: index, sample: sample))
-				: Int32((index + sample) % 130)
-			deviceMetrics.voltage = 3.3 + Float((index + sample) % 90) / 100
-			deviceMetrics.channelUtilization = Float((index + sample) % 100)
-			deviceMetrics.airUtilTx = Float((index + sample * 3) % 100) / 10
+				? NSNumber(value: Int32(MarketingSeed.battery(for: index, sample: sample)))
+				: NSNumber(value: Int32((index + sample) % 130))
+			deviceMetrics.voltage = NSNumber(value: 3.3 + Float((index + sample) % 90) / 100)
+			deviceMetrics.channelUtilization = NSNumber(value: Float((index + sample) % 100))
+			deviceMetrics.airUtilTx = NSNumber(value: Float((index + sample * 3) % 100) / 10)
 			deviceMetrics.uptimeSeconds = configuration.style == .marketing
-				? Int32(86_400 * (3 + index % 40) + sample * 300)   // 3–43 days, like a real long-lived node
-				: Int32(index * 60 + sample)
+				? NSNumber(value: Int32(86_400 * (3 + index % 40) + sample * 300))   // 3–43 days, like a real long-lived node
+				: NSNumber(value: Int32(index * 60 + sample))
 			deviceMetrics.nodeNum = node.num
 
 			let environmentMetrics = TelemetryEntity(context: context)
 			environmentMetrics.metricsType = 1
 			environmentMetrics.time = timestamp
-			environmentMetrics.temperature = 15 + Float((index + sample) % 240) / 10
-			environmentMetrics.relativeHumidity = 25 + Float((index + sample * 2) % 70)
-			environmentMetrics.barometricPressure = 980 + Float((index + sample) % 70)
-			environmentMetrics.gasResistance = Float((index + sample) % 500)
+			environmentMetrics.temperature = NSNumber(value: 15 + Float((index + sample) % 240) / 10)
+			environmentMetrics.relativeHumidity = NSNumber(value: 25 + Float((index + sample * 2) % 70))
+			environmentMetrics.barometricPressure = NSNumber(value: 980 + Float((index + sample) % 70))
+			environmentMetrics.gasResistance = NSNumber(value: Float((index + sample) % 500))
 			environmentMetrics.nodeNum = node.num
 
 		for sample in 0..<configuration.localStatsHistoryPerNode {

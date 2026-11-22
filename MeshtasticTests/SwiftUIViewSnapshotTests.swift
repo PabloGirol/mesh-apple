@@ -732,8 +732,8 @@ struct NodeListItemCompactSnapshotTests {
 		node.lastHeard = lastHeard
 		if let battery = batteryLevel {
 			let telemetry = TelemetryEntity()
-			telemetry.batteryLevel = battery
-			telemetry.distance = 100
+			telemetry.batteryLevel = NSNumber(value: battery)
+			telemetry.distance = NSNumber(value: 100)
 			telemetry.time = Date()
 			telemetry.nodeNum = num
 			sharedModelContainer.mainContext.insert(telemetry)
@@ -1039,8 +1039,8 @@ struct NodeListItemSnapshotTests {
 		node.lastHeard = lastHeard
 		if let battery = batteryLevel {
 			let telemetry = TelemetryEntity()
-			telemetry.batteryLevel = battery
-			telemetry.distance = 100
+			telemetry.batteryLevel = NSNumber(value: battery)
+			telemetry.distance = NSNumber(value: 100)
 			telemetry.time = Date()
 			telemetry.nodeNum = num
 			sharedModelContainer.mainContext.insert(telemetry)
@@ -1574,18 +1574,18 @@ struct NodeDetailSnapshotTests {
 		// Device metrics telemetry (metricsType 0)
 		let deviceTelemetry = TelemetryEntity()
 		deviceTelemetry.metricsType = 0
-		deviceTelemetry.batteryLevel = 85
-		deviceTelemetry.voltage = 4.05
-		deviceTelemetry.uptimeSeconds = 172800 // 2 days
-		deviceTelemetry.channelUtilization = 12.5
-		deviceTelemetry.airUtilTx = 3.2
+		deviceTelemetry.batteryLevel = NSNumber(value: 85)
+		deviceTelemetry.voltage = NSNumber(value: 4.05)
+		deviceTelemetry.uptimeSeconds = NSNumber(value: 172800) // 2 days
+		deviceTelemetry.channelUtilization = NSNumber(value: 12.5)
+		deviceTelemetry.airUtilTx = NSNumber(value: 3.2)
 
 		// Environment telemetry (metricsType 1)
 		let envTelemetry = TelemetryEntity()
 		envTelemetry.metricsType = 1
-		envTelemetry.temperature = 22.5
-		envTelemetry.relativeHumidity = 55.0
-		envTelemetry.barometricPressure = 1013.25
+		envTelemetry.temperature = NSNumber(value: 22.5)
+		envTelemetry.relativeHumidity = NSNumber(value: 55.0)
+		envTelemetry.barometricPressure = NSNumber(value: 1013.25)
 
 		deviceTelemetry.nodeNum = node.num
 		envTelemetry.nodeNum = node.num
