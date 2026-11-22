@@ -236,7 +236,6 @@ struct MeshtasticAppleApp: App {
 			}
 		}
 	#endif
-	}
 
 	/// Runs the work the app owes at backgrounding — the main-context save, then the
 	/// entity-cap eviction — under one background task assertion.
@@ -433,5 +432,4 @@ struct MeshtasticAppleApp: App {
 		.immersionStyle(selection: $cinemaImmersion, in: .progressive(0.4...1.0, initialAmount: 1.0), .full)
 		#endif
 	}
-}
 }

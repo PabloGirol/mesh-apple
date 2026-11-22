@@ -159,7 +159,7 @@ private struct EventFirmwareTintScopeCore<Content: View>: View {
 		content
 			.tint(cachedTint)
 			.onAppear(perform: updateTint)
-			.onChange(of: tintInputs) { _, _ in
+			.onChange(of: tintInputs) { _ in
 				updateTint()
 			}
 	}
