@@ -354,7 +354,6 @@ final class OfflineVectorTileProvider: ObservableObject {
 				self.revision += 1
 			}
 		}
-	}
 
 	/// Rail and waterways whose `min_zoom` is above this are drawn only from this zoom on, so a
 	/// zoomed-out map isn't covered in sidings and small streams. Roads already thin by zoom
