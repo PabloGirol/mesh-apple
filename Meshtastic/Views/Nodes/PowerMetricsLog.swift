@@ -447,19 +447,4 @@ struct PowerMetricsLog: View {
 		let custom = index < channelLabels.count ? channelLabels[index].trimmingCharacters(in: .whitespaces) : ""
 		return custom.isEmpty ? String(format: "Channel %d".localized, index + 1) : custom
 	}
-}
 
-// TODO: Fix preview for SwiftData
-/*
-#Preview {
-	let node = NodeInfoEntity()
-	node.num = 123456789
-	let user = UserEntity()
-	user.longName = "Test Node"
-	user.shortName = "TN"
-	node.user = user
-	PowerMetricsLog(node: node)
-		.environmentObject(AccessoryManager.shared)
-		.modelContainer(PersistenceController.preview.container)
-}
-*/

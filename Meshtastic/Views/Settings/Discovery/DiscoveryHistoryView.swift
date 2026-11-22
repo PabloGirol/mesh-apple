@@ -153,4 +153,3 @@ struct DiscoveryHistoryView: View {
 			.foregroundStyle(color)
 			.font(.caption)
 	}
-}
