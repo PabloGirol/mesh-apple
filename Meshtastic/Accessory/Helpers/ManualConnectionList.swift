@@ -14,7 +14,7 @@ public final class ManualConnectionList: ObservableObject {
 	
 	@Published private var _list: [Device]
 
-	private override init() {
+	private init() {
 		_list = UserDefaults.manualConnections
 	}
 	

@@ -463,7 +463,7 @@ final class LocationsHandlerObservable: ObservableObject {
 		return handler.addLocation(location, smartPostion: smartPostion)
 	}
 
-	private override init() {}
+	private init() {}
 }
 
 extension CLAuthorizationStatus {

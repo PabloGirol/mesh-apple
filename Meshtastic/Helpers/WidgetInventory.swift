@@ -60,7 +60,7 @@ final class WidgetInventory: ObservableObject {
 	/// read, or when the read fails.
 	@Published private(set) var controlKinds: Set<String>?
 
-	private override init() {}
+	private init() {}
 
 	/// Reads the current configurations again; cheap, and iOS has no change
 	/// notification, so call it when the sheet or the app comes forward.

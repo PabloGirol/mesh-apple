@@ -132,7 +132,7 @@ final class TAKServerManager: ObservableObject {
 	private let offlineQueueTTL: TimeInterval = 5 * 60  // 5 minutes
 	private let offlineQueueMaxSize = 50
 
-	private override init() {}
+	private init() {}
 
 	// MARK: - Initialization
 

@@ -26,7 +26,7 @@ final class OfflineMapConnectivityMonitor: ObservableObject {
 	private let monitor = NWPathMonitor()
 	private let queue = DispatchQueue(label: "org.meshtastic.offline-map-connectivity")
 
-	private override init() {
+	private init() {
 		monitor.pathUpdateHandler = { [weak self] path in
 			Task { @MainActor in
 				self?.isNetworkAvailable = path.status == .satisfied

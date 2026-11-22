@@ -1306,3 +1306,4 @@ public enum OfflineMapPalette {
 		}
 	}
 }
+}

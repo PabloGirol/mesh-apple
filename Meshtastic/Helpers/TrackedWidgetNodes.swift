@@ -29,7 +29,7 @@ final class TrackedWidgetNodes: ObservableObject {
     private var readAt: Date?
     private var reading: Task<Void, Never>?
 
-    private override init() {}
+    private init() {}
 
     func contains(_ num: Int64) -> Bool {
         nums?.contains(num) ?? false
@@ -64,7 +64,7 @@ final class TrackedWidgetNodes: ObservableObject {
 #else
                         return nil
 #endif
-                    }.compactMap { $0 })
+                    }.compactMap { $0 }.compactMap { $0 })
                     readAt = .now
                 case .failure(let error):
                     Logger.services.debug("🧩 Widget configurations unavailable: \(error.localizedDescription, privacy: .public)")
