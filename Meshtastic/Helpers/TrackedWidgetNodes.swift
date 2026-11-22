@@ -16,6 +16,10 @@ import OSLog
 import WidgetKit
 #endif
 
+#if canImport(AppIntents)
+import AppIntents
+#endif
+
 @MainActor
 final class TrackedWidgetNodes: ObservableObject {
     static let shared = TrackedWidgetNodes()
@@ -25,7 +29,7 @@ final class TrackedWidgetNodes: ObservableObject {
     private var readAt: Date?
     private var reading: Task<Void, Never>?
 
-    private init() {}
+    private override init() {}
 
     func contains(_ num: Int64) -> Bool {
         nums?.contains(num) ?? false
@@ -55,8 +59,12 @@ final class TrackedWidgetNodes: ObservableObject {
                 case .success(let infos):
                     nums = Set(infos.compactMap { info in
                         guard info.kind == "MeshNodeTracker" else { return nil }
+#if canImport(AppIntents)
                         return info.widgetConfigurationIntent(of: TrackNodeIntent.self)?.node?.nodeNum
-                    })
+#else
+                        return nil
+#endif
+                    }.compactMap { $0 })
                     readAt = .now
                 case .failure(let error):
                     Logger.services.debug("🧩 Widget configurations unavailable: \(error.localizedDescription, privacy: .public)")

@@ -133,7 +133,7 @@ final class DFUViewModelObservable: ObservableObject {
 		viewModel.abort()
 	}
 
-	private init() {}
+	private override init() {}
 }
 
 // MARK: - DFU Service Delegate (State Changes)

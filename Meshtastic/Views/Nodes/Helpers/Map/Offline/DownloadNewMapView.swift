@@ -177,5 +177,5 @@ final class MapSearchCompleterObservable: ObservableObject {
 		completer.update(text)
 	}
 
-	private init() {}
+	private override init() {}
 }

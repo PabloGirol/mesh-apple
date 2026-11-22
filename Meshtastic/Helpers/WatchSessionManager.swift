@@ -152,7 +152,9 @@ final class WatchSessionManagerObservable: ObservableObject {
 		manager.sendNodesToWatch()
 	}
 
-	private init() {}
+	private override init() {
+		super.init()
+	}
 }
 
 // MARK: - WCSessionDelegate

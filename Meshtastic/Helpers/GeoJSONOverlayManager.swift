@@ -19,6 +19,7 @@ struct GeoJSONLayerContent: @unchecked Sendable {
 }
 
 /// Manager for loading and managing raw GeoJSON feature collections with embedded styling
+@MainActor
 class GeoJSONOverlayManager {
 	static let shared = GeoJSONOverlayManager()
 	private init() {}

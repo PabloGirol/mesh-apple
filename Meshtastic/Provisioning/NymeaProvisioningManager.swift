@@ -514,7 +514,7 @@ final class NymeaProvisioningManagerObservable: ObservableObject {
 		manager.reset()
 	}
 
-	private init() {}
+	private override init() {}
 }
 
 // MARK: - CBCentralManager Delegate Bridge

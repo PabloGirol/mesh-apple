@@ -200,9 +200,11 @@ extension MeshPackets {
 				device.images.removeAll()
 			}
 			try commit()
-			try modelContext.delete(DeviceHardwareTagEntity.self)
+			let tags = try modelContext.fetch(makeFetchRequest(for: DeviceHardwareTagEntity.self))
+			for tag in tags { modelContext.delete(tag) }
 			try commit()
-			try modelContext.delete(DeviceHardwareImageEntity.self)
+			let images = try modelContext.fetch(makeFetchRequest(for: DeviceHardwareImageEntity.self))
+			for image in images { modelContext.delete(image) }
 			try commit()
 			// The image/link network pass is throttled (staleDeviceImageLinkInterval); clearing the
 			// rows it populates must also clear that throttle so the next connect's Step 3b restores
@@ -306,7 +308,8 @@ extension MeshPackets {
 					try commit()
 					continue
 				}
-				try modelContext.delete(model: modelType)
+				let objects = try modelContext.fetch(makeFetchRequest(for: modelType))
+				for object in objects { modelContext.delete(object) }
 				try commit()
 			}
 			return true
@@ -1482,7 +1485,9 @@ extension MeshPackets {
 
 				// Rebuild the multi-target list from the incoming config (cascade replaces the old rows).
 				for old in entity.broadcastTargets ?? [] {
-					modelContext.delete(old)
+					if let managedOld = old as? NSManagedObject {
+						modelContext.delete(managedOld)
+					}
 				}
 				let newTargets = values.targets.map { target in
                         let newTarget = BroadcastTargetEntity(

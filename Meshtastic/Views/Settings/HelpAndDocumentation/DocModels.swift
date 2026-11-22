@@ -155,7 +155,7 @@ final class DocBundle: ObservableObject {
 	/// Translated keywords + titles keyed by language code, loaded from community or generated on-device.
 	private(set) var translatedSearchIndices: [String: [TranslatedSearchEntry]] = [:]
 
-	private init() {
+	private override init() {
 		// Lazily populated by load()
 	}
 
