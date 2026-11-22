@@ -99,7 +99,7 @@ final class WatchSessionManager: NSObject {
 	private func performSendNodesToWatch() async {
 		lastWatchSendTime = Date()
 
-		guard let userLocation = LocationsHandler.shared.locationsArray.last else {
+		guard let userLocation = LocationsHandlerObservable.shared.locationsArray.last else {
 			logger.info("No user location available, skipping Watch update")
 			return
 		}
@@ -152,7 +152,7 @@ final class WatchSessionManagerObservable: ObservableObject {
 		manager.sendNodesToWatch()
 	}
 
-	private override init() {}
+	private init() {}
 }
 
 // MARK: - WCSessionDelegate

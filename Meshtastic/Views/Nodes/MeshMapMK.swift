@@ -67,10 +67,9 @@ struct MeshMapMK: View {
 	@AppStorage("meshMapRegionCenterLongitude") private var savedRegionCenterLongitude: Double = 0
 	@AppStorage("meshMapRegionSpanLatitude") private var savedRegionSpanLatitude: Double = 0
 	@AppStorage("meshMapRegionSpanLongitude") private var savedRegionSpanLongitude: Double = 0
-	@State var mapStyle: MapStyle = MapStyle.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false)
-	@State var position = MapCameraPosition.automatic
-	@State private var distance = 10000.0
+	// MapStyle and MapCameraPosition are iOS 17+; use MKCoordinateRegion for camera on iOS 15
 	@State private var visibleRegion: MKCoordinateRegion?
+	@State private var distance = 10000.0
 	@AppStorage("enableMapConvexHull") private var showConvexHull = false
 	/// Vector overlays (accuracy circles + convex hull) — rebuilt on data change, stable between
 	/// renders so ClusterMapView's overlay diff is a no-op when nothing changed.
@@ -599,25 +598,7 @@ struct MeshMapMK: View {
 					// TODO: handle deep link for waypoints
 				}
 				.onChange(of: selectedMapLayer) { _, newMapLayer in
-					switch selectedMapLayer {
-					case .standard:
-						UserDefaults.mapLayer = newMapLayer
-						if #available(iOS 17.0, *) {
-							mapStyle = MapStyle.standard(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
-						}
-					case .hybrid:
-						UserDefaults.mapLayer = newMapLayer
-						if #available(iOS 17.0, *) {
-							mapStyle = MapStyle.hybrid(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
-						}
-					case .satellite:
-						UserDefaults.mapLayer = newMapLayer
-						if #available(iOS 17.0, *) {
-							mapStyle = MapStyle.imagery(elevation: .realistic)
-						}
-					case .offline:
-						return
-					}
+					UserDefaults.mapLayer = newMapLayer
 				}
 				.hostedSheet(isPresented: $editingFilters) {
 					NodeListFilter(
@@ -754,25 +735,6 @@ struct MeshMapMK: View {
 			reloadOfflineSource()
 			refreshTerrainSources()
 			rebuildOfflineVectorOverlays()
-
-			switch selectedMapLayer {
-			case .standard:
-				if #available(iOS 17.0, *) {
-					mapStyle = MapStyle.standard(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
-				}
-			case .hybrid:
-				if #available(iOS 17.0, *) {
-					mapStyle = MapStyle.hybrid(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
-				}
-			case .satellite:
-				if #available(iOS 17.0, *) {
-					mapStyle = MapStyle.imagery(elevation: .realistic)
-				}
-			case .offline:
-				if #available(iOS 17.0, *) {
-					mapStyle = MapStyle.hybrid(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
-				}
-			}
 			refreshPositionState(force: true)
 		}
 		.onDisappear(perform: {
@@ -2211,16 +2173,11 @@ struct MeshMapMK: View {
 
 	// moves the map to a new coordinate
 	private func centerMapAt(coordinate: CLLocationCoordinate2D) {
-		withAnimation(.easeInOut(duration: 0.2), {
-			position = .camera(
-				MapCamera(
-					centerCoordinate: coordinate, // Set new center
-					distance: distance,          // Preserve current zoom distance
-					heading: 0,                  // align north
-					pitch: 0                     // set view to top down
-				)
-			)
-		})
+		let region = MKCoordinateRegion(
+			center: coordinate,
+			span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+		)
+		cameraCommand = ClusterMapCameraCommand(id: UUID(), region: region, animated: true)
 	}
 }
 

@@ -1,15 +1,15 @@
 //
- //  ChannelTips.swift
- //  Meshtastic
- //
- //  Copyright(c) Garth Vander Houwen 8/31/23.
- //
- import SwiftUI
+//  ChannelTips.swift
+//  Meshtastic
+//
+//  Copyright(c) Garth Vander Houwen 8/31/23.
+//
+import SwiftUI
 
-@available(iOS 16.0, macOS 13.0, *)
+#if canImport(TipKit)
 import TipKit
 
-@available(iOS 16.0, macOS 13.0, *)
+@available(iOS 17.0, macOS 14.0, *)
 struct ShareChannelsTip: Tip {
 
 	var id: String {
@@ -30,7 +30,7 @@ struct ShareChannelsTip: Tip {
 	}
 }
 
-@available(iOS 16.0, macOS 13.0, *)
+@available(iOS 17.0, macOS 14.0, *)
 struct CreateChannelsTip: Tip {
 
 	var id: String {
@@ -51,7 +51,7 @@ struct CreateChannelsTip: Tip {
 	}
 }
 
-@available(iOS 16.0, macOS 13.0, *)
+@available(iOS 17.0, macOS 14.0, *)
 struct AdminChannelTip: Tip {
 
 	var id: String {
@@ -71,3 +71,4 @@ struct AdminChannelTip: Tip {
 		Tips.MaxDisplayCount(3)
 	}
 }
+#endif

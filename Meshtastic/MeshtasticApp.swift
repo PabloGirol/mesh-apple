@@ -434,5 +434,3 @@ struct MeshtasticAppleApp: App {
 		#endif
 	}
 }
-}
-}

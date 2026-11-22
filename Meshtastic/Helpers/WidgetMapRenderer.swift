@@ -162,64 +162,61 @@ final class WidgetMapRenderer {
 		return true
 	}
 
-	@available(iOS 16.0, *)
-private static func drawMap(tiles: UIImage, rect: MKMapRect, size: CGSize, pins: [MapPin], radioNum: Int64?) -> UIImage? {
-	let renderer = ImageRenderer(content: WidgetMapPinsView(tiles: tiles, rect: rect, size: size, pins: pins, radioNum: radioNum)
-		.environment(\.colorScheme, .dark))
-	renderer.scale = scale
-	renderer.proposedSize = ProposedViewSize(size)
-	return renderer.uiImage
-}
+	private static func drawMap(tiles: UIImage, rect: MKMapRect, size: CGSize, pins: [MapPin], radioNum: Int64?) -> UIImage? {
+	if #available(iOS 16.0, *) {
+		let renderer = ImageRenderer(content: WidgetMapPinsView(tiles: tiles, rect: rect, size: size, pins: pins, radioNum: radioNum)
+			.environment(\.colorScheme, .dark))
+		renderer.scale = scale
+		renderer.proposedSize = ProposedViewSize(size)
+		return renderer.uiImage
+	} else {
+		// iOS 15 fallback: render using UIGraphicsImageRenderer
+		let format = UIGraphicsImageRendererFormat()
+		format.scale = scale
+		let renderer = UIGraphicsImageRenderer(size: size, format: format)
+		return renderer.image { context in
+			// Draw tiles
+			tiles.draw(in: CGRect(origin: .zero, size: size))
 
-@available(iOS, deprecated: 16.0, message: "Use ImageRenderer on iOS 16+")
-private static func drawMap(tiles: UIImage, rect: MKMapRect, size: CGSize, pins: [MapPin], radioNum: Int64?) -> UIImage? {
-	// iOS 15 fallback: render using UIGraphicsImageRenderer
-	let format = UIGraphicsImageRendererFormat()
-	format.scale = scale
-	let renderer = UIGraphicsImageRenderer(size: size, format: format)
-	return renderer.image { context in
-		// Draw tiles
-		tiles.draw(in: CGRect(origin: .zero, size: size))
+			// Draw pins
+			for pin in pins {
+				let point = CGPoint(
+					x: (MKMapPoint(pin.coordinate).x - rect.minX) / rect.width * size.width,
+					y: (MKMapPoint(pin.coordinate).y - rect.minY) / rect.height * size.height
+				)
+				let circleSize: CGFloat = 22
+				let color = UIColor(
+					red: CGFloat((pin.node.colorSeed >> 16) & 0xFF) / 255,
+					green: CGFloat((pin.node.colorSeed >> 8) & 0xFF) / 255,
+					blue: CGFloat(pin.node.colorSeed & 0xFF) / 255,
+					alpha: 1
+				)
+				let isRadio = pin.node.num == radioNum
+				let circleRect = CGRect(x: point.x - circleSize/2, y: point.y - circleSize/2, width: circleSize, height: circleSize)
+				let circlePath = UIBezierPath(ovalIn: circleRect)
+				color.setFill()
+				circlePath.fill()
+				(isRadio ? UIColor(Color(red: 0x67 / 255, green: 0xEA / 255, blue: 0x94 / 255)) : .white).setStroke()
+				circlePath.lineWidth = isRadio ? 2.5 : 1.5
+				circlePath.stroke()
 
-		// Draw pins
-		for pin in pins {
-			let point = CGPoint(
-				x: (MKMapPoint(pin.coordinate).x - rect.minX) / rect.width * size.width,
-				y: (MKMapPoint(pin.coordinate).y - rect.minY) / rect.height * size.height
-			)
-			let circleSize: CGFloat = 22
-			let color = UIColor(
-				red: CGFloat((pin.node.colorSeed >> 16) & 0xFF) / 255,
-				green: CGFloat((pin.node.colorSeed >> 8) & 0xFF) / 255,
-				blue: CGFloat(pin.node.colorSeed & 0xFF) / 255,
-				alpha: 1
-			)
-			let isRadio = pin.node.num == radioNum
-			let circleRect = CGRect(x: point.x - circleSize/2, y: point.y - circleSize/2, width: circleSize, height: circleSize)
-			let circlePath = UIBezierPath(ovalIn: circleRect)
-			color.setFill()
-			circlePath.fill()
-			(isRadio ? UIColor(Color(red: 0x67 / 255, green: 0xEA / 255, blue: 0x94 / 255)) : .white).setStroke()
-			circlePath.lineWidth = isRadio ? 2.5 : 1.5
-			circlePath.stroke()
-
-			// Draw short name
-			let attrs: [NSAttributedString.Key: Any] = [
-				.font: UIFont.systemFont(ofSize: circleSize * 0.34, weight: .bold),
-				.foregroundColor: color.isLight() ? UIColor.black : UIColor.white
-			]
-			let text = pin.node.shortName as NSString
-			let textSize = text.size(withAttributes: attrs)
-			let textRect = CGRect(
-				x: point.x - textSize.width/2,
-				y: point.y - textSize.height/2,
-				width: textSize.width,
-				height: textSize.height
-			)
-			text.draw(in: textRect, withAttributes: attrs)
+				// Draw short name
+				let attrs: [NSAttributedString.Key: Any] = [
+					.font: UIFont.systemFont(ofSize: circleSize * 0.34, weight: .bold),
+					.foregroundColor: color.isLight() ? UIColor.black : UIColor.white
+				]
+				let text = pin.node.shortName as NSString
+				let textSize = text.size(withAttributes: attrs)
+				let textRect = CGRect(
+					x: point.x - textSize.width/2,
+					y: point.y - textSize.height/2,
+					width: textSize.width,
+					height: textSize.height
+				)
+				text.draw(in: textRect, withAttributes: attrs)
+			}
 		}
 	}
-}
 }
 
 /// The tiles with a circle for each node, styled like the share image's map:

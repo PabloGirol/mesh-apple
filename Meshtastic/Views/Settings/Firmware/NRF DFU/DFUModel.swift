@@ -27,7 +27,7 @@ enum DFUUpdateState: Equatable {
 }
 
 @MainActor
-class DFUViewModel: NSObject, ObservableObject {
+class DFUViewModel: NSObject {
     // MARK: - Published Properties (UI Binding)
     @Published var progress: Double = 0.0
     @Published var state: DFUUpdateState = .idle
@@ -133,7 +133,7 @@ final class DFUViewModelObservable: ObservableObject {
 		viewModel.abort()
 	}
 
-	private override init() {}
+	private init() {}
 }
 
 // MARK: - DFU Service Delegate (State Changes)

@@ -18,8 +18,6 @@ struct MapWindow: View {
 	@StateObject private var router = Router()
 	@StateObject private var nodeFilters = NodeFilterParameters()
 	@State private var routerToken: UUID?
-
-	@available(iOS 17.0, macOS 14.0, *)
 	@Environment(\.dismissWindow) private var dismissWindow
 
 	var body: some View {

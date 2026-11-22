@@ -52,7 +52,6 @@ final class WidgetInventory: ObservableObject {
 
 	/// The sizes of each kind that are on a screen; nil until iOS has answered,
 	/// so nothing reads as "not added" before the app knows.
-	@available(iOS 16.0, *)
 	@Published private(set) var families: [String: Set<WidgetFamily>]?
 	/// How many Meshtastic widgets are on a screen, counting each one — two
 	/// small Node Trackers are two; nil until iOS has answered.
@@ -61,7 +60,7 @@ final class WidgetInventory: ObservableObject {
 	/// read, or when the read fails.
 	@Published private(set) var controlKinds: Set<String>?
 
-	private override init() {}
+	private init() {}
 
 	/// Reads the current configurations again; cheap, and iOS has no change
 	/// notification, so call it when the sheet or the app comes forward.

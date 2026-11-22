@@ -84,7 +84,7 @@ class AppState: ObservableObject {
 	}
 	private var cancellables: Set<AnyCancellable> = []
 
-	override init() {
+	init() {
 		self.unreadChannelMessages = 0
 		self.unreadDirectMessages = 0
 

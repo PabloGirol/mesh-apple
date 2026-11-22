@@ -6,10 +6,9 @@
 //
 import SwiftUI
 
-@available(iOS 16.0, macOS 13.0, *)
+#if canImport(TipKit)
 import TipKit
 
-@available(iOS 16.0, macOS 13.0, *)
 struct ConnectionTip: Tip {
 
 	var id: String {
@@ -28,3 +27,4 @@ struct ConnectionTip: Tip {
 		Tips.IgnoresDisplayFrequency(true)
 	}
 }
+#endif

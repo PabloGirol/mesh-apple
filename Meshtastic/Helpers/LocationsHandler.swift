@@ -12,33 +12,29 @@ import OSLog
 // The @MainActor annotation ensures that all state changes and UI updates happen on the main thread,
 // preventing potential race conditions and crashes related to UI updates from background threads.
 @MainActor
-final class LocationsHandler: NSObject, ObservableObject {
-
-	static let shared = LocationsHandler()
+final class LocationsHandler: NSObject {
 	public var manager = CLLocationManager()
 	private var background: AnyObject? // CLBackgroundActivitySession on iOS 17+
 	private var locationDeliveryStarted = false
 	var enableSmartPosition: Bool = UserDefaults.enableSmartPosition
 
-	@Published var locationsArray: [CLLocation] = [CLLocation]()
-	@Published var isStationary = false
-	@Published var count = 0
-	@Published var isRecording = false {
+	var locationsArray: [CLLocation] = [CLLocation]()
+	var isStationary = false
+	var count = 0
+	var isRecording = false {
 		didSet { updateAccuracyForRecordingState() }
 	}
-	@Published var isRecordingPaused = false
-	@Published var recordingStarted: Date?
-	@Published var distanceTraveled = 0.0
-	@Published var elevationGain = 0.0
-	@Published var heading: Double = 0.0 // Current heading in degrees
-	@Published var headingUpdatesStarted: Bool = false // Track heading updates state
+	var isRecordingPaused = false
+	var recordingStarted: Date?
+	var distanceTraveled = 0.0
+	var elevationGain = 0.0
+	var heading: Double = 0.0 // Current heading in degrees
+	var headingUpdatesStarted: Bool = false // Track heading updates state
 
-	@Published
 	var updatesStarted: Bool = UserDefaults.standard.bool(forKey: "liveUpdatesStarted") {
 		didSet { UserDefaults.standard.set(updatesStarted, forKey: "liveUpdatesStarted") }
 	}
 
-	@Published
 	var backgroundActivity: Bool = UserDefaults.standard.bool(forKey: "BGActivitySessionStarted") {
 		didSet {
 			// Invalidate or create the background activity session based on the new value.
@@ -135,7 +131,7 @@ final class LocationsHandler: NSObject, ObservableObject {
 
 	/// Delegate method called when the location authorization status changes.
 	/// - Parameter manager: The CLLocationManager instance.
-	func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+	nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
 		// Ensure the continuation exists before attempting to resume it.
 		// If it's nil, it means either no request was pending or it was already resumed (e.g., by the timeout).
 		guard let continuation = permissionContinuation else {
@@ -227,7 +223,7 @@ final class LocationsHandler: NSObject, ObservableObject {
 
 	#if !os(visionOS)
 	// Implement the CLLocationManagerDelegate method for heading updates
-	func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+	nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
 		// Update heading on the main thread
 		Task { @MainActor in
 			self.heading = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
@@ -235,7 +231,7 @@ final class LocationsHandler: NSObject, ObservableObject {
 	}
 	#endif
 
-	func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+	nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
 		Task { @MainActor in
 			guard self.updatesStarted else { return }
 			for location in locations {

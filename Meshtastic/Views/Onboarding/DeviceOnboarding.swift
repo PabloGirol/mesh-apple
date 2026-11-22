@@ -29,9 +29,9 @@ struct DeviceOnboarding: View {
 	}
 
 	@EnvironmentObject var accessoryManager: AccessoryManager
-	@ObservedObject private var locationsHandler: LocationsHandler = .shared
+	@ObservedObject private var locationsHandler: LocationsHandlerObservable = .shared
 	@State private var currentStep: SetupGuide? = nil
-	@State var locationStatus = LocationsHandler.shared.manager.authorizationStatus
+	@State var locationStatus = LocationsHandlerObservable.shared.manager.authorizationStatus
 	@AppStorage("provideLocation") private var provideLocation: Bool = false
 	@AppStorage("provideLocationInterval") private var provideLocationInterval: Int = 30
 	@AppStorage("channelMessageNotifications") private var channelMessageNotifications: Bool = true

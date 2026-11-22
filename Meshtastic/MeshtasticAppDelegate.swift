@@ -35,7 +35,7 @@ class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificat
 		// ingest and mark-read.
 		WidgetDataBroker.shared.start()
 		MeshLiveActivityManager.shared.start()
-		let locationsHandler = LocationsHandler.shared
+		let locationsHandler = LocationsHandlerObservable.shared
 		locationsHandler.startLocationUpdates()
 		// If a background activity session was previously active, reinstantiate it after the background launch.
 		if locationsHandler.backgroundActivity {

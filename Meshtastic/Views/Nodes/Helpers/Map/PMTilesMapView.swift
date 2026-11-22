@@ -1209,7 +1209,7 @@ final class OfflineVectorTileProvider: ObservableObject {
 
 /// Colors and stroke widths for the decoded offline features, approximating Apple Maps
 /// Standard in light and dark. Shared so the iOS map and the tvOS map render identically.
-enum OfflineMapPalette {
+public enum OfflineMapPalette {
 
 	static func earth(dark: Bool) -> UIColor {
 		dark ? UIColor(red: 0.137, green: 0.137, blue: 0.145, alpha: 1)

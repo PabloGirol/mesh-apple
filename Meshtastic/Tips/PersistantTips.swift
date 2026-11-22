@@ -6,10 +6,9 @@
 //
 import SwiftUI
 
-@available(iOS 16.0, macOS 13.0, *)
+#if canImport(TipKit)
 import TipKit
 
-@available(iOS 16.0, macOS 13.0, *)
 struct PersistentTip: TipViewStyle {
 	func makeBody(configuration: Configuration) -> some View {
 		HStack(alignment: .top, spacing: 14) {
@@ -58,3 +57,4 @@ struct PersistentTip: TipViewStyle {
 		)
 	}
 }
+#endif

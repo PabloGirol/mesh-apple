@@ -16,7 +16,7 @@ import CoreNFC
 #if !targetEnvironment(macCatalyst) && !os(visionOS)
 @available(iOS 18, *)
 @MainActor
-final class NFCReader: NSObject, NFCNDEFReaderSessionDelegate, ObservableObject {
+final class NFCReader: NSObject, @preconcurrency NFCNDEFReaderSessionDelegate {
 
 	/// The two session modes are mutually exclusive so a read session can
 	/// never write a stale payload and a write session ignores tag contents.
@@ -67,11 +67,11 @@ final class NFCReader: NSObject, NFCNDEFReaderSessionDelegate, ObservableObject 
 		session?.begin()
 	}
 
-	func readerSessionDidBecomeActive(_ session: NFCNDEFReaderSession) {
+	nonisolated func readerSessionDidBecomeActive(_ session: NFCNDEFReaderSession) {
 		Logger.services.debug("NFC session became active")
 	}
 
-	func readerSession(_ session: NFCNDEFReaderSession,
+	nonisolated func readerSession(_ session: NFCNDEFReaderSession,
 	                   didInvalidateWithError error: Error) {
 		Logger.services.error("NFC session invalidated: \(error.localizedDescription)")
 		// Drop the finished session and its mode so a read callback stops
@@ -86,13 +86,13 @@ final class NFCReader: NSObject, NFCNDEFReaderSessionDelegate, ObservableObject 
 		}
 	}
 
-	func readerSession(_ session: NFCNDEFReaderSession,
+	nonisolated func readerSession(_ session: NFCNDEFReaderSession,
 	                   didDetectNDEFs messages: [NFCNDEFMessage]) {
 		guard case .read(let onURL) = mode else { return }
 		deliverFirstURL(from: messages, session: session, onURL: onURL)
 	}
 
-	func readerSession(_ session: NFCNDEFReaderSession,
+	nonisolated func readerSession(_ session: NFCNDEFReaderSession,
 	                   didDetect tags: [NFCNDEFTag]) {
 
 		guard tags.count == 1, let tag = tags.first else {

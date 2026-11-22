@@ -16,7 +16,7 @@ struct DiscoveryMapView: View {
 	var isScanning: Bool = false
 
 	@Namespace private var mapScope
-	@State private var mapPosition: MapCameraPosition = .automatic
+	@State private var mapPosition: MKCoordinateRegion?
 
 	private var userCoordinate: CLLocationCoordinate2D? {
 		guard userLatitude != 0.0 || userLongitude != 0.0 else { return nil }
@@ -146,7 +146,7 @@ struct DiscoveryMapView: View {
 	}
 }
 
-#if !os(iOS) || !os(visionOS) || os(macCatalyst)
+#if os(iOS) && !os(visionOS) && !targetEnvironment(macCatalyst)
 /// Fallback for iOS 15/16 - uses MKMapView via UIViewRepresentable
 struct DiscoveryMapMKView: UIViewRepresentable {
 	let discoveredNodes: [DiscoveredNodeEntity]
@@ -154,7 +154,7 @@ struct DiscoveryMapMKView: UIViewRepresentable {
 	let nodesWithPosition: [DiscoveredNodeEntity]
 	let isScanning: Bool
 	let fittedRegion: MKCoordinateRegion?
-	@Binding var mapPosition: MapCameraPosition
+	@Binding var mapPosition: MKCoordinateRegion?
 
 	func makeUIView(context: Context) -> MKMapView {
 		let mapView = MKMapView()

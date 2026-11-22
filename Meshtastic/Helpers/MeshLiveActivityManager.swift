@@ -71,7 +71,7 @@ final class MeshLiveActivityManager: ObservableObject {
     private var packetSubscription: AnyCancellable?
     #endif
 
-    override init() {}
+    init() {}
 
     // MARK: - Lifecycle
 

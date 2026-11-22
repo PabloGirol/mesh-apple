@@ -14,11 +14,10 @@ import OSLog
 
 struct RouteRecorder: View {
 
-	@ObservedObject var locationsHandler: LocationsHandler = LocationsHandler.shared
+	@ObservedObject var locationsHandler: LocationsHandlerObservable = LocationsHandlerObservable.shared
 	@Environment(\.managedObjectContext) private var context
 	@Environment(\.dismiss) private var dismiss
-	@State private var position: MapCameraPosition = MapCameraPosition.automatic
-	@State var mapStyle: MapStyle = MapStyle.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false)
+	@State private var visibleRegion: MKCoordinateRegion?
 	@State var isShowingDetails = false
 	@Namespace var namespace
 	@Namespace var routerecorderscope
@@ -30,7 +29,7 @@ struct RouteRecorder: View {
 		VStack {
 			ZStack {
 				if #available(iOS 17.0, *) {
-					Map(position: $position, scope: routerecorderscope) {
+					Map(scope: routerecorderscope) {
 						UserAnnotation()
 						/// Route Lines
 						let lineCoords = locationsHandler.locationsArray.compactMap({(position) -> CLLocationCoordinate2D in
@@ -49,12 +48,11 @@ struct RouteRecorder: View {
 							.stroke(gradient, style: dashed)
 
 					}
-					.mapStyle(mapStyle)
 				} else {
 					RouteRecorderMapView(
 						locations: locationsHandler.locationsArray,
 						color: color,
-						position: .constant(MKCoordinateRegion())
+						position: $visibleRegion
 					)
 				}
 			}
@@ -353,12 +351,12 @@ struct MapScopeModifier: ViewModifier {
 	}
 }
 
-#if !os(iOS) || !os(visionOS) || os(macCatalyst)
+#if os(iOS) && !os(visionOS) && !targetEnvironment(macCatalyst)
 /// Fallback for iOS 15/16 - uses MKMapView via UIViewRepresentable
 struct RouteRecorderMapView: UIViewRepresentable {
 	let locations: [CLLocation]
 	let color: Color
-	@Binding var position: MKCoordinateRegion
+	@Binding var position: MKCoordinateRegion?
 
 	func makeUIView(context: Context) -> MKMapView {
 		let mapView = MKMapView()
@@ -384,6 +382,10 @@ struct RouteRecorderMapView: UIViewRepresentable {
 			let coordinates = locations.map { $0.coordinate }
 			let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
 			uiView.addOverlay(polyline)
+		}
+		// Follow user location
+		if let region = position {
+			uiView.setRegion(region, animated: true)
 		}
 	}
 

@@ -81,7 +81,7 @@ enum ProvisioningState: Equatable {
 // MARK: - NymeaProvisioningManager
 
 @MainActor
-final class NymeaProvisioningManager: NSObject, ObservableObject {
+final class NymeaProvisioningManager: NSObject {
 
 	static let shared = NymeaProvisioningManager()
 

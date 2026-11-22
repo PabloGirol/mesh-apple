@@ -15,7 +15,7 @@ import OSLog
 /// radio; nothing heard here reaches the radio. Main-actor so the published state, the deadline tasks
 /// and the delegate callbacks (`delegateQueue` is main) share one isolation.
 @MainActor
-final class MqttTopicSampler: NSObject, ObservableObject {
+final class MqttTopicSampler: NSObject {
 	enum Phase: Equatable {
 		case idle, connecting, subscribing, sampling, finished, failed(String)
 	}
@@ -333,7 +333,7 @@ final class MqttTopicSamplerObservable: ObservableObject {
 		sampler.stop()
 	}
 
-	private override init() {}
+	private init() {}
 }
 
 /// The wrappers are `nonisolated` to satisfy the `@objc` protocol and hop back onto the main actor

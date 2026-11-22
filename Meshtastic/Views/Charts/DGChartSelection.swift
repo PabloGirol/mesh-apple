@@ -121,7 +121,7 @@ public final class DGChartSelectionState: ObservableObject {
     @Published public var selectedEntries: [ChartDataEntry] = []
     @Published public var isSelecting: Bool = false
 
-    public override init() {}
+    public init() {}
 
     public func select(highlight: Highlight?, entries: [ChartDataEntry]) {
         selectedHighlight = highlight

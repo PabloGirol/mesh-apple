@@ -694,7 +694,7 @@ struct RegionSelectorView: View {
 	}
 }
 
-#if !os(iOS) || !os(visionOS) || os(macCatalyst)
+#if os(iOS) && !os(visionOS) && !targetEnvironment(macCatalyst)
 /// Fallback for iOS 15/16 - uses MKMapView via UIViewRepresentable
 struct RegionSelectorMKView: UIViewRepresentable {
 	let target: OfflineRegionTarget

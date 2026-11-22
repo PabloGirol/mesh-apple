@@ -86,10 +86,10 @@ final class WeatherRadarAvailability: ObservableObject {
 	/// How far the phone moves before the country is looked up again.
 	private static let recheckDistance: CLLocationDistance = 10_000
 
-	private override init() {}
+	private init() {}
 
 	func refresh() async {
-		guard let location = LocationsHandler.shared.manager.location else {
+		guard let location = LocationsHandlerObservable.shared.manager.location else {
 			checkedLocation = nil
 			offer(WeatherRadar.isOffered(location: nil, countryCode: nil, phoneRegionCode: Locale.current.regionCode))
 			return

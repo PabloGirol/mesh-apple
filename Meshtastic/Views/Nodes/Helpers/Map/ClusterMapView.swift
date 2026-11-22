@@ -533,22 +533,36 @@ struct ClusterMapView<Item: Identifiable, Pin: View, Cluster: View>: UIViewRepre
 
 			if firstApply || typeChanged {
 				let poi: MKPointOfInterestFilter = config.showsPointsOfInterest ? .includingAll : .excludingAll
-				switch config.layer {
-				case .standard, .offline:
-					// Offline tiles are now an independent overlay (drawn on top of whatever base is
-					// selected), so a stray `.offline` base value just maps to the clean Standard base.
-					let standard = MKStandardMapConfiguration(elevationStyle: .flat)
-					standard.pointOfInterestFilter = poi
-					standard.showsTraffic = config.showsTraffic
-					mapView.preferredConfiguration = standard
-				case .hybrid:
-					// Realistic elevation, like the Maps app: imagery only tilts with it.
-					let hybrid = MKHybridMapConfiguration(elevationStyle: .realistic)
-					hybrid.pointOfInterestFilter = poi
-					hybrid.showsTraffic = config.showsTraffic
-					mapView.preferredConfiguration = hybrid
-				case .satellite:
-					mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
+				if #available(iOS 16.0, *) {
+					switch config.layer {
+					case .standard, .offline:
+						// Offline tiles are now an independent overlay (drawn on top of whatever base is
+						// selected), so a stray `.offline` base value just maps to the clean Standard base.
+						let standard = MKStandardMapConfiguration(elevationStyle: .flat)
+						standard.pointOfInterestFilter = poi
+						standard.showsTraffic = config.showsTraffic
+						mapView.preferredConfiguration = standard
+					case .hybrid:
+						// Realistic elevation, like the Maps app: imagery only tilts with it.
+						let hybrid = MKHybridMapConfiguration(elevationStyle: .realistic)
+						hybrid.pointOfInterestFilter = poi
+						hybrid.showsTraffic = config.showsTraffic
+						mapView.preferredConfiguration = hybrid
+					case .satellite:
+						mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
+					}
+				} else {
+					// iOS 15 fallback: use legacy mapType API
+					switch config.layer {
+					case .standard, .offline:
+						mapView.mapType = .standard
+					case .hybrid:
+						mapView.mapType = .hybrid
+					case .satellite:
+						mapView.mapType = .satellite
+					}
+					// Note: POI filter and traffic not available on iOS 15 via legacy API
+					mapView.showsTraffic = config.showsTraffic
 				}
 			}
 

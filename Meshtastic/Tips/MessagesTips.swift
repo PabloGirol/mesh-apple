@@ -6,10 +6,9 @@
 //
 import SwiftUI
 
-@available(iOS 16.0, macOS 13.0, *)
+#if canImport(TipKit)
 import TipKit
 
-@available(iOS 16.0, macOS 13.0, *)
 struct MessagesTip: Tip {
 
    var id: String {
@@ -29,3 +28,4 @@ struct MessagesTip: Tip {
 	   Tips.MaxDisplayCount(3)
    }
 }
+#endif
