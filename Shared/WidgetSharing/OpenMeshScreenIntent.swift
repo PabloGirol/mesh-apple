@@ -12,11 +12,12 @@
 //  links, not the app's meshtastic:// scheme.
 //
 
-#if !MESHTASTIC_IOS15
+@available(iOS 16.0, macOS 13.0, *)
 import AppIntents
 import Foundation
 
 /// A screen a control can open.
+@available(iOS 16.0, macOS 13.0, *)
 enum MeshScreen: String, AppEnum {
 	case messages
 	case connect
@@ -39,6 +40,7 @@ enum MeshScreen: String, AppEnum {
 	}
 }
 
+@available(iOS 16.0, macOS 13.0, *)
 struct OpenMeshScreenIntent: AppIntent {
 	static let title: LocalizedStringResource = "Open Meshtastic Screen"
 	static let description = IntentDescription("Opens Meshtastic on a screen.")
@@ -65,6 +67,7 @@ struct OpenMeshScreenIntent: AppIntent {
 /// Hands a screen's deep link to the app. The app sets `handler` at launch;
 /// a link that arrives before that is held and delivered when it's set.
 @MainActor
+@available(iOS 16.0, macOS 13.0, *)
 enum MeshScreenOpener {
 	static var handler: ((URL) -> Void)? {
 		didSet {
@@ -85,4 +88,3 @@ enum MeshScreenOpener {
 		}
 	}
 }
-#endif

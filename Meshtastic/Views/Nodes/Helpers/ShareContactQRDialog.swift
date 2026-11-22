@@ -90,18 +90,18 @@ struct ShareContactQRDialog: View {
 				.font(.subheadline)
 				.multilineTextAlignment(.center)
 				.foregroundColor(.secondary)
-#if !MESHTASTIC_IOS15
-			ShareLink("Share QR Code & Link",
-					  item: Image(uiImage: qrImage),
-					  subject: Text("Add Meshtastic Node \(node.user.shortName) as a contact"),
-					  message: Text(qrString),
-					  preview: SharePreview(
-						"Add Meshtastic Node \(node.user.shortName) as a contact",
-						image: Image(uiImage: qrImage)
-					  )
-				)
-				.hostedWindowOnly()
-#endif
+if #available(iOS 16.0, *) {
+				ShareLink("Share QR Code & Link",
+						  item: Image(uiImage: qrImage),
+						  subject: Text("Add Meshtastic Node \(node.user.shortName) as a contact"),
+						  message: Text(qrString),
+						  preview: SharePreview(
+							"Add Meshtastic Node \(node.user.shortName) as a contact",
+							image: Image(uiImage: qrImage)
+						  )
+					)
+					.hostedWindowOnly()
+			}
 			#if !targetEnvironment(macCatalyst) && !os(visionOS)
 			if #available(iOS 18, *) {
 				NFCWriteButton(

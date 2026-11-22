@@ -84,7 +84,7 @@ struct RadioSetupFlow: View {
 /// The pages on a navigation stack driven by the model's `path`. Apart from the flow so
 /// snapshots can render it from plain values.
 struct RadioSetupPages: View {
-	@Bindable var model: RadioSetupModel
+	@ObservedObject var model: RadioSetupModel
 	let onFinished: () -> Void
 
 	/// iOS 15: Current step for explicit navigation (since NavigationPath doesn't exist)

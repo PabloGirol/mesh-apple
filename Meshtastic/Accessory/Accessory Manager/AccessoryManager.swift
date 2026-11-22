@@ -12,6 +12,16 @@ import OSLog
 import CocoaMQTT
 import Combine
 
+/// Holds the state for one automatic config refresh cycle.
+/// The radio protocol reserves a single config nonce, so this ownership stays local.
+private struct AutomaticConfigRefresh {
+	let owner: AutomaticChannelRefreshOwner
+	let sessionID: UUID
+	let channelRefreshBaselineByNode: [Int64: [ChannelRefreshSnapshot]]
+	var nodeNum: Int64?
+	var waiters: [UUID: CheckedContinuation<Void, Error>] = [:]
+}
+
 enum AccessoryError: Error, LocalizedError {
 	case discoveryFailed(String)
 	case connectionFailed(String)

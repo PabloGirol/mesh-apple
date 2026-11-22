@@ -146,4 +146,10 @@ extension TelemetryEntity {
 		}
 		return Float(calculateDewPoint(temp: temp, relativeHumidity: rh, convertToLocale: false))
 	}
+
+	/// A comparable date for sorting. NSDate doesn't conform to Comparable in iOS 15,
+	/// so we convert to Date which does.
+	var comparableTime: Date {
+		time as Date? ?? .distantPast
+	}
 }

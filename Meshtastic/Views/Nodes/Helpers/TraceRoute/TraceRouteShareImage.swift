@@ -11,6 +11,8 @@ import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
+#if os(iOS) && !targetEnvironment(macCatalyst)
+@available(iOS 16.0, *)
 /// A rendered trace route share image.
 ///
 /// Shared as a real PNG file rather than as data plus text: actions such as Make PDF and Save to
@@ -53,6 +55,7 @@ struct TraceRouteShareImage: Transferable {
 	}
 }
 
+@available(iOS 16.0, *)
 enum TraceRouteShareRenderer {
 
 	/// Scale the image renders at: 720 points wide becomes 1800 pixels.
@@ -83,7 +86,6 @@ enum TraceRouteShareRenderer {
 		return model.fittingMap(height: (chains - stats - TraceRouteShareStyle.columnSpacing).rounded(.down))
 	}
 
-#if !MESHTASTIC_IOS15
 	/// Height of a part of the card laid out at `width`, with the card's environment.
 	@MainActor
 	private static func height(of view: some View, width: CGFloat) -> CGFloat? {
@@ -121,19 +123,6 @@ enum TraceRouteShareRenderer {
 		let fileName = TraceRouteShareImage.fileName(origin: model.origin?.shortName, destination: model.destination?.shortName, date: model.date)
 		return TraceRouteShareImage(image: image, text: model.plainText, title: title, fileName: fileName)
 	}
-#else
-	/// iOS 15 fallback - not supported
-	@MainActor
-	private static func height(of view: some View, width: CGFloat) -> CGFloat? {
-		return nil
-	}
-
-	/// iOS 15 fallback - not supported
-	@MainActor
-	static func image(model: TraceRouteShareModel, mapImage: UIImage?) -> TraceRouteShareImage? {
-		return nil
-	}
-#endif
 
 	/// Dark, muted map tiles for an area without points of interest, drawn off the main thread.
 	/// `scale` defaults to the share image's; the widget passes its own render scale.
@@ -157,3 +146,27 @@ enum TraceRouteShareRenderer {
 		}
 	}
 }
+#else
+/// Stub types for iOS 15 / non-iOS platforms where Transferable/ShareLink are unavailable.
+struct TraceRouteShareImage {
+	let image: UIImage
+	let text: String
+	let title: String
+	let fileName: String
+}
+
+enum TraceRouteShareRenderer {
+	static let scale: CGFloat = 2.5
+
+	@MainActor
+	static func render(model: TraceRouteShareModel) async -> TraceRouteShareImage? { nil }
+
+	@MainActor
+	static func fittingMap(_ model: TraceRouteShareModel) -> TraceRouteShareModel { model }
+
+	@MainActor
+	static func image(model: TraceRouteShareModel, mapImage: UIImage?) -> TraceRouteShareImage? { nil }
+
+	static func snapshot(rect: MKMapRect, size: CGSize, scale: CGFloat = TraceRouteShareRenderer.scale) async -> UIImage? { nil }
+}
+#endif

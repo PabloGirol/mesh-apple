@@ -8,6 +8,9 @@
 import SwiftUI
 import DGCharts
 
+// Disambiguate ChartGesture from DGCharts framework
+typealias ChartGesture = DGChartsProtocols.ChartGesture
+
 // MARK: - Bar Chart Data Set
 
 /// Data set for bar charts
@@ -418,11 +421,11 @@ public struct DGBarChart<Point: DGChartDataPoint>: UIViewRepresentable {
         }
 
         public func chartScaled(_ chartView: ChartViewBase, scaleX: CGFloat, scaleY: CGFloat) {
-            parent.onChartGesture?(.scale(scaleX: scaleX, scaleY: scaleY))
+            parent.onChartGesture?(ChartGesture.scale(scaleX: scaleX, scaleY: scaleY))
         }
 
         public func chartTranslated(_ chartView: ChartViewBase, dX: CGFloat, dY: CGFloat) {
-            parent.onChartGesture?(.pan(dX: dX, dY: dY))
+            parent.onChartGesture?(ChartGesture.pan(dX: dX, dY: dY))
         }
     }
 }

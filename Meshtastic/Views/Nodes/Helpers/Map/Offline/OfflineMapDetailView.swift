@@ -93,11 +93,13 @@ struct OfflineMapDetailView: View {
 			}
 
 			if let fileURL = manager.fileURL(for: current), FileManager.default.fileExists(atPath: fileURL.path) {
-				Section {
-					ShareLink(item: fileURL) {
-						Label("Share Offline Map", systemImage: "square.and.arrow.up")
+				if #available(iOS 16.0, *) {
+					Section {
+						ShareLink(item: fileURL) {
+							Label("Share Offline Map", systemImage: "square.and.arrow.up")
+						}
+						.hostedWindowOnly()
 					}
-					.hostedWindowOnly()
 				}
 			}
 

@@ -15,7 +15,8 @@ import CoreNFC
 
 #if !targetEnvironment(macCatalyst) && !os(visionOS)
 @available(iOS 18, *)
-final class NFCReader: NSObject, NFCNDEFReaderSessionDelegate {
+@MainActor
+final class NFCReader: NSObject, NFCNDEFReaderSessionDelegate, ObservableObject {
 
 	/// The two session modes are mutually exclusive so a read session can
 	/// never write a stale payload and a write session ignores tag contents.

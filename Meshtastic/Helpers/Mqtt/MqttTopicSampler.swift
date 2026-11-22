@@ -15,7 +15,7 @@ import OSLog
 /// radio; nothing heard here reaches the radio. Main-actor so the published state, the deadline tasks
 /// and the delegate callbacks (`delegateQueue` is main) share one isolation.
 @MainActor
-final class MqttTopicSampler: NSObject {
+final class MqttTopicSampler: NSObject, ObservableObject {
 	enum Phase: Equatable {
 		case idle, connecting, subscribing, sampling, finished, failed(String)
 	}
@@ -75,15 +75,15 @@ final class MqttTopicSampler: NSObject {
 		super.init()
 	}
 
-	private(set) var phase: Phase = .idle
+	@Published private(set) var phase: Phase = .idle
 	/// Snapshot of the tally, republished once a second while sampling and once on finish, so a burst
 	/// does not re-render the sheet per packet.
-	private(set) var activity: [String: MqttTopicDiscovery.Activity] = [:]
-	private(set) var secondsRemaining = 0
-	private(set) var messageCount = 0
-	private(set) var settings: Settings?
-	private(set) var filters: [String] = []
-	private(set) var regionTopic = ""
+	@Published private(set) var activity: [String: MqttTopicDiscovery.Activity] = [:]
+	@Published private(set) var secondsRemaining = 0
+	@Published private(set) var messageCount = 0
+	@Published private(set) var settings: Settings?
+	@Published private(set) var filters: [String] = []
+	@Published private(set) var regionTopic = ""
 	private var tally = MqttTopicDiscovery.Tally()
 	private var regionPackets = 0
 	private var client: CocoaMQTT?
@@ -333,7 +333,7 @@ final class MqttTopicSamplerObservable: ObservableObject {
 		sampler.stop()
 	}
 
-	private init() {}
+	private override init() {}
 }
 
 /// The wrappers are `nonisolated` to satisfy the `@objc` protocol and hop back onto the main actor

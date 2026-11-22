@@ -15,7 +15,7 @@ import OSLog
 
 struct Connect: View {
 	
-	@Environment(.managedObjectContext) private var context
+	@Environment(\.managedObjectContext) private var context: NSManagedObjectContext
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@EnvironmentObject var lockdown: LockdownCoordinator
 	@Environment(\.colorScheme) private var colorScheme
@@ -32,7 +32,7 @@ struct Connect: View {
 	@ObservedObject private var widgetInventory = WidgetInventory.shared
 #endif
 	@ObservedObject var manualConnections = ManualConnectionList.shared
-	@ObservedObject private var nymeaProvisioning = NymeaProvisioningManager.shared
+	@StateObject private var nymeaProvisioning = NymeaProvisioningManagerObservable.shared
 	@Environment(\.scenePhase) private var scenePhase
 	@Environment(\.eventFirmwarePresentation) private var eventPresentation
 	@Environment(\.openEventFirmwareInfo) private var openEventFirmwareInfo
@@ -592,14 +592,16 @@ struct Connect: View {
 		.hostedSheet(isPresented: $showSecurityVersionNag) {
 			SecurityVersionNag(minimumSecureVersion: accessoryManager.securityVersion, version: accessoryManager.activeConnection?.device.firmwareVersion ?? "?.?.?")
 				.trackScreen(.firmwareSecurityWarning)
-				.modifier(SheetPresentationModifiers(
-					detents: [.large],
-					selection: .constant(.large),
-					contentInteraction: .scrolls,
-					dragIndicatorVisible: true,
-					backgroundInteractionEnabled: false,
-					interactiveDismissDisabled: false
-				))
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view.modifier(SheetPresentationModifiers(
+						detents: [.large],
+						selection: .constant(.large),
+						contentInteraction: .scrolls,
+						dragIndicatorVisible: true,
+						backgroundInteractionEnabled: false,
+						interactiveDismissDisabled: false
+					))
+				}
 		}
 		.onChange(of: self.accessoryManager.state) { _, state in
 			if state != .subscribed {
@@ -1268,6 +1270,8 @@ struct NymeaDeviceConnectRow: View {
 	}
 }
 
+#if os(iOS) && !targetEnvironment(macCatalyst)
+@available(iOS 16.0, *)
 private struct SheetPresentationModifiers: ViewModifier {
 	let detents: [PresentationDetent]
 	@Binding var selection: PresentationDetent
@@ -1277,15 +1281,25 @@ private struct SheetPresentationModifiers: ViewModifier {
 	let interactiveDismissDisabled: Bool
 
 	func body(content: Content) -> some View {
-		if #available(iOS 16.0, *) {
-			content
-				.presentationDetents(detents, selection: $selection)
-				.presentationContentInteraction(contentInteraction)
-				.presentationDragIndicator(dragIndicatorVisible ? .visible : .hidden)
-				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
-				.interactiveDismissDisabled(interactiveDismissDisabled)
-		} else {
-			content
-		}
+		content
+			.presentationDetents(detents, selection: $selection)
+			.presentationContentInteraction(contentInteraction)
+			.presentationDragIndicator(dragIndicatorVisible ? .visible : .hidden)
+			.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+			.interactiveDismissDisabled(interactiveDismissDisabled)
 	}
 }
+#else
+private struct SheetPresentationModifiers: ViewModifier {
+	let detents: [Any]
+	@Binding var selection: Any
+	let contentInteraction: Any
+	let dragIndicatorVisible: Bool
+	let backgroundInteractionEnabled: Bool
+	let interactiveDismissDisabled: Bool
+
+	func body(content: Content) -> some View {
+		content
+	}
+}
+#endif

@@ -79,9 +79,9 @@ struct BatteryRow: View {
 		if let level {
 			HStack(spacing: 3) {
 				BatteryIcon(batteryLevel: level, font: font, color: color)
-#if !MESHTASTIC_IOS15
-				.widgetAccentable()
-#endif
+				if #available(iOS 16.0, *) {
+					.widgetAccentable()
+				}
 				Text(level > 100 ? "Powered" : "\(level)%")
 					.font(font)
 			}
@@ -96,16 +96,16 @@ struct SignalBars: View {
 
 	var body: some View {
 		if let rating {
-#if !MESHTASTIC_IOS15
-			Image(systemName: "cellularbars", variableValue: Double(rating) / 3)
-				.font(font)
-				.widgetAccentable()
-				.accessibilityLabel("Signal \(rating) of 3")
-#else
-			Image(systemName: "cellularbars")
-				.font(font)
-				.accessibilityLabel("Signal \(rating) of 3")
-#endif
+			if #available(iOS 16.0, *) {
+				Image(systemName: "cellularbars", variableValue: Double(rating) / 3)
+					.font(font)
+					.widgetAccentable()
+					.accessibilityLabel("Signal \(rating) of 3")
+			} else {
+				Image(systemName: "cellularbars")
+					.font(font)
+					.accessibilityLabel("Signal \(rating) of 3")
+			}
 		}
 	}
 }

@@ -51,13 +51,13 @@ class FirmwareViewModel: ObservableObject {
 		forHardware: DeviceHardwareEntity,
 		platformioTarget: String? = nil,
 		preferredRegion: RegionCodes = .unset,
-		localFirmwareStorageURL: URL = FirmwareFile.localFirmwareStorageURL,
+		localFirmwareStorageURL: URL? = nil,
 		automaticallyRefresh: Bool = true
 	) {
 		self.hardware = forHardware
 		self.platformioTarget = platformioTarget ?? forHardware.platformioTarget
 		self.preferredRegion = preferredRegion
-		self.localFirmwareStorageURL = localFirmwareStorageURL
+		self.localFirmwareStorageURL = localFirmwareStorageURL ?? FirmwareFile.localFirmwareStorageURL
 		if automaticallyRefresh {
 			Task {
 				refresh()

@@ -11,7 +11,13 @@ import OSLog
 import UniformTypeIdentifiers
 
 struct MapSettingsForm: View {
-	@State private var currentDetent = PresentationDetent.medium
+	@State private var currentDetent: Any = {
+		if #available(iOS 16.0, *) {
+			return PresentationDetent.medium
+		} else {
+			return "medium" as Any
+		}
+	}()
 	@State private var isShowingFilePicker = false
 	@State private var isProcessingUpload = false
 	@State private var showUploadError = false

@@ -9,7 +9,7 @@
 //  snapshot.
 //
 
-#if !MESHTASTIC_IOS15
+@available(iOS 16.0, macOS 13.0, *)
 import AppIntents
 import Foundation
 
@@ -20,6 +20,7 @@ import Foundation
 /// name fields do not persist on their own — `entities(for:)` must answer
 /// every identifier it is asked for, or the stored configuration dissolves
 /// and the widget silently retargets.
+@available(iOS 16.0, macOS 13.0, *)
 struct TrackedNodeEntity: AppEntity {
 	static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Node")
 	static let defaultQuery = TrackedNodeQuery()
@@ -62,6 +63,7 @@ struct TrackedNodeEntity: AppEntity {
 	}
 }
 
+@available(iOS 16.0, macOS 13.0, *)
 struct TrackedNodeQuery: EntityQuery {
 	func entities(for identifiers: [String]) async throws -> [TrackedNodeEntity] {
 		let snapshot = WidgetSnapshotStore.load()
@@ -90,6 +92,7 @@ struct TrackedNodeQuery: EntityQuery {
 	}
 }
 
+@available(iOS 16.0, macOS 13.0, *)
 struct TrackNodeIntent: WidgetConfigurationIntent {
 	static let title: LocalizedStringResource = "Track Node"
 	static let description = IntentDescription("Pick a node to keep an eye on.")
@@ -97,4 +100,3 @@ struct TrackNodeIntent: WidgetConfigurationIntent {
 	@Parameter(title: "Node")
 	var node: TrackedNodeEntity?
 }
-#endif

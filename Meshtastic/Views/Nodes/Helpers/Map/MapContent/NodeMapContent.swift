@@ -8,6 +8,8 @@ import SwiftUI
 import MapKit
 import CoreData
 
+#if os(iOS) && !targetEnvironment(macCatalyst)
+@available(iOS 17.0, *)
 struct NodeMapContent: MapContent {
 
 	var node: NodeInfoEntity
@@ -210,3 +212,15 @@ struct NodeMapContent: MapContent {
 		return image
 	}
 }
+#else
+/// Stub types for iOS 15 / non-iOS platforms where MapContent is unavailable.
+struct NodeMapContent {
+	var node: NodeInfoEntity
+	let positions: [PositionEntity]
+	let displayScale: CGFloat
+
+	@AppStorage("meshMapShowNodeHistory") private var showNodeHistory = false
+	@AppStorage("meshMapShowRouteLines") private var showRouteLines = false
+	@AppStorage("enableMapConvexHull") private var showConvexHull = false
+}
+#endif

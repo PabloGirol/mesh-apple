@@ -272,15 +272,9 @@ private struct HostedItemPresentation<Item: Identifiable, Page: View>: ViewModif
 				) {
 					if let value = item ?? shown { page(value) }
 				})
-#if !MESHTASTIC_IOS15
-				.onChange(of: item?.id) { _, new in
-					if let item = new { shown = item }
-				}
-#else
-				.onChange(of: item?.id) { new in
-					if let item = new { shown = item }
-				}
-#endif
+					.onChange(of: item?.id) { _, new in
+						if let item = new { shown = item }
+					}
 		}
 	}
 }
@@ -306,40 +300,19 @@ private struct PanelPush<Page: View>: ViewModifier {
 		Group {
 			if let presenter {
 				content
-#if !MESHTASTIC_IOS15
-					.onChange(of: isPresented) { _, shown in
-						if shown { push(on: presenter) } else { presenter.pop(id: pageID) }
-					}
-					.onChange(of: contentID) { _ in
-						if isPresented { push(on: presenter) }
-					}
-#else
-					.onChange(of: isPresented) { shown in
-						if shown { push(on: presenter) } else { presenter.pop(id: pageID) }
-					}
-					.onChange(of: contentID) {
-						if isPresented { push(on: presenter) }
-					}
-#endif
+						.onChange(of: isPresented) { _, shown in
+							if shown { push(on: presenter) } else { presenter.pop(id: pageID) }
+						}
+						.onChange(of: contentID) { _ in
+							if isPresented { push(on: presenter) }
+						}
 			} else {
 				if #available(iOS 16.0, *) { content.navigationDestination(isPresented: $isPresented, destination: page) } else { content }
 			}
 		}
-#if !MESHTASTIC_IOS15
-		.onChange(of: isPresented) { old, new in
-			if old, !new { onDismiss?() }
-		}
-#else
-		.onChange(of: isPresented) { new in
-			if !new { onDismiss?() }
-		}
-#endif
-	}
-
-	private func push(on presenter: PanelPresenter) {
-		let binding = $isPresented
-		presenter.push(id: pageID, content: AnyView(page())) {
-			binding.wrappedValue = false
+			.onChange(of: isPresented) { old, new in
+				if old, !new { onDismiss?() }
+			}
 		}
 	}
 }
@@ -625,24 +598,13 @@ private struct HostedAlert<Actions: View, Message: View>: ViewModifier {
 		case .window:
 			content.alert(title, isPresented: $isPresented, actions: actions, message: message)
 		case .panel:
-			if let presenter {
-				content
-#if !MESHTASTIC_IOS15
-					.onChange(of: isPresented) { _, shown in
-						if shown {
-							presenter.show(banner)
-						} else {
-							presenter.removeBanner(id: bannerID)
-						}
+				.onChange(of: isPresented) { _, shown in
+					if shown {
+						presenter.show(banner)
+					} else {
+						presenter.removeBanner(id: bannerID)
 					}
-#else
-					.onChange(of: isPresented) { shown in
-						if shown {
-							presenter.show(banner)
-						} else {
-							presenter.removeBanner(id: bannerID)
-						}
-					}
+				}
 #endif
 			} else {
 				// No panel host above: show the banner over this view instead.

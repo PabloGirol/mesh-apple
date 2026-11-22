@@ -26,7 +26,7 @@ import UIKit
 struct CaptureStep {
 	let name: String
 	let navigate: () -> Void
-	let settle: Duration
+	let settle: TimeInterval
 	let cleanup: (() -> Void)?
 }
 
@@ -106,16 +106,16 @@ enum MarketingCapture {
 				router.popToRoot(tab: .nodes)
 				router.selectedNodeNum = nil
 				router.selectedTab = .nodes
-			}, settle: .milliseconds(2200), cleanup: nil),
+			}, settle: 2.2, cleanup: nil),
 
 			CaptureStep(name: "02-map", navigate: {
 				router.mapState = nil
 				router.selectedTab = .map
-			}, settle: .milliseconds(4500), cleanup: nil), // MapKit needs time to frame + load tiles
+			}, settle: 4.5, cleanup: nil), // MapKit needs time to frame + load tiles
 
 			CaptureStep(name: "03-node-detail", navigate: {
 				router.navigateToNodeDetail(nodeNum: nodeDetailNum)
-			}, settle: .milliseconds(2800), cleanup: {
+			}, settle: 2.8, cleanup: {
 				router.selectedNodeNum = nil
 			}),
 
@@ -123,7 +123,7 @@ enum MarketingCapture {
 				router.selectedTab = .messages
 				router.messagesSection = .channels()
 				router.messagesState = .channels(channelId: 0)
-			}, settle: .milliseconds(2800), cleanup: {
+			}, settle: 2.8, cleanup: {
 				router.popToRoot(tab: .messages)
 			}),
 
@@ -131,19 +131,19 @@ enum MarketingCapture {
 				router.selectedTab = .messages
 				router.messagesSection = .directMessages()
 				router.messagesState = .directMessages(userNum: dmPartnerNum)
-			}, settle: .milliseconds(2800), cleanup: {
+			}, settle: 2.8, cleanup: {
 				router.popToRoot(tab: .messages)
 			}),
 
 			CaptureStep(name: "06-settings", navigate: {
 				router.settingsPath = []
 				router.selectedTab = .settings
-			}, settle: .milliseconds(2000), cleanup: nil),
+			}, settle: 2.0, cleanup: nil),
 
 			CaptureStep(name: "07-discovery", navigate: {
 				router.selectedTab = .settings
 				router.settingsPath = [.localMeshDiscovery]
-			}, settle: .milliseconds(2800), cleanup: {
+			}, settle: 2.8, cleanup: {
 				router.settingsPath = []
 			})
 		]

@@ -13,7 +13,7 @@ import SwiftDraw
 
 /// Opens the existential `NSManagedObject.Type` to call a generic fetch.
 private func fetchAll(of modelType: NSManagedObject.Type, context: NSManagedObjectContext, limit: Int = 100) -> [NSManagedObject] {
-    func _fetch<T: NSManagedObject>(_ type: T.Type) -> [any NSManagedObject] {
+    func _fetch<T: NSManagedObject>(_ type: T.Type) -> [NSManagedObject] {
         let request = NSFetchRequest<T>(entityName: String(describing: type))
         request.fetchLimit = limit
         return (try? context.fetch(request)) ?? []
@@ -65,10 +65,10 @@ struct CoreDataBrowser: View {
 // MARK: - 2. Dynamic List View
 
 struct DynamicEntityListView: View {
-    let modelType: any NSManagedObject.Type
+    let modelType: NSManagedObject.Type
     let entityName: String
     @Environment(\.managedObjectContext) private var managedObjectContext
-    @State private var objects: [any NSManagedObject] = []
+    @State private var objects: [NSManagedObject] = []
 
     var body: some View {
         List(objects.indices, id: \.self) { index in
@@ -109,7 +109,7 @@ struct DynamicEntityListView: View {
 // MARK: - 3. Detail View
 
 struct EntityDetailView: View {
-    let object: any NSManagedObject
+    let object: NSManagedObject
 
     var body: some View {
         let properties = readSchemaProperties(of: object)
@@ -180,7 +180,7 @@ struct PropertyRow: View {
         } else if let doubleVal = unwrapped as? Double {
             Text(String(format: "%.6f", doubleVal))
                 .font(.system(.body, design: .monospaced))
-        } else if let array = unwrapped as? [any NSManagedObject] {
+        } else if let array = unwrapped as? [NSManagedObject] {
             NavigationLink {
                 RelationshipListView(title: key, objects: array)
                     .trackScreen(.dataBrowserRelationships)
@@ -193,7 +193,7 @@ struct PropertyRow: View {
                 }
             }
             .disabled(array.isEmpty)
-        } else if let related = unwrapped as? any NSManagedObject {
+        } else if let related = unwrapped as? NSManagedObject {
             NavigationLink {
                 EntityDetailView(object: related)
                     .trackScreen(.dataBrowserEntity)
@@ -213,7 +213,7 @@ struct PropertyRow: View {
 
 struct RelationshipListView: View {
     let title: String
-    let objects: [any NSManagedObject]
+    let objects: [NSManagedObject]
 
     var body: some View {
         List(objects.indices, id: \.self) { index in
@@ -238,7 +238,7 @@ struct RelationshipListView: View {
 /// Read properties from a Core Data model using schema metadata and keypaths.
 /// Mirror doesn't work for @Model classes (shows _SwiftDataNoType() sentinels).
 /// PropertyMetadata.keypath is internal, so we use Mirror on the metadata struct to extract it.
-private func readSchemaProperties(of object: any NSManagedObject) -> [(label: String, value: Any)] {
+private func readSchemaProperties(of object: NSManagedObject) -> [(label: String, value: Any)] {
     func _read<T: NSManagedObject>(_ obj: T) -> [(label: String, value: Any)] {
         // Core Data entities don't have schemaMetadata like SwiftData
         // Use entity description and key-value coding instead
@@ -262,7 +262,7 @@ private func unwrapOptional(_ value: Any) -> Any? {
 }
 
 /// Find a displayable name from a model instance using heuristic key search.
-private func displayName(for object: any NSManagedObject) -> String {
+private func displayName(for object: NSManagedObject) -> String {
     let properties = readSchemaProperties(of: object)
     let preferredKeys = ["longName", "name", "title", "shortName", "userId", "messagePayload"]
 

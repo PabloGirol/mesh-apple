@@ -21,7 +21,7 @@ struct PowerMetricsLog: View {
 	private var showsWideTable: Bool {
 		horizontalSizeClass == .regular && UIDevice.current.userInterfaceIdiom != .phone
 	}
-	@State private var sortOrder = [KeyPathComparator(\TelemetryEntity.time, order: .reverse)]
+	@State private var sortOrder = [KeyPathComparator(\TelemetryEntity.comparableTime, order: .reverse)]
 	@State private var selection: NSManagedObjectID?
 	@State private var chartSelection: Date?
 
@@ -140,7 +140,7 @@ struct PowerMetricsLog: View {
 						}
 					}
 					.onChange(of: selection) { _, newSelection in
-						guard let metrics = powerMetrics.first(where: { $0.id == newSelection }) else {
+						guard let metrics = powerMetrics.first(where: { $0.objectID == newSelection }) else {
 							return
 						}
 						chartSelection = metrics.time
@@ -178,7 +178,7 @@ struct PowerMetricsLog: View {
 
 					}
 					.onChange(of: selection) { _, newSelection in
-						guard let metrics = powerMetrics.first(where: { $0.id == newSelection }) else {
+						guard let metrics = powerMetrics.first(where: { $0.objectID == newSelection }) else {
 							return
 						}
 						chartSelection = metrics.time
@@ -236,7 +236,7 @@ struct PowerMetricsLog: View {
 					.padding(.trailing)
 				}
 				.onChange(of: selection) { _, newSelection in
-					guard let metrics = powerMetrics.first(where: { $0.id == newSelection }) else {
+					guard let metrics = powerMetrics.first(where: { $0.objectID == newSelection }) else {
 						return
 					}
 					chartSelection = metrics.time

@@ -71,7 +71,7 @@ enum DeviceProfileImporter {
 	/// same burst inside a transaction at roughly this spacing landed 8 of 8 across repeated runs,
 	/// because deferring the flash write makes each message cheap enough for the radio to keep up.
 	/// 150ms keeps a 25-item profile under ~4s while staying well clear of the drop threshold.
-	static let defaultSendInterval: Duration = .milliseconds(150)
+	static let defaultSendInterval: TimeInterval = 0.15
 
 	/// Applies the selected sections of a plan inside a firmware edit transaction, aborting on the first
 	/// failure.
@@ -97,9 +97,9 @@ enum DeviceProfileImporter {
 		plan: DeviceProfileImportPlan,
 		selection: Set<ImportSection>,
 		gateway: ProfileApplyGateway,
-		sendInterval: Duration = defaultSendInterval,
-		sleep: @escaping (Duration) async throws -> Void = { duration in
-			try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+		sendInterval: TimeInterval = defaultSendInterval,
+		sleep: @escaping (TimeInterval) async throws -> Void = { interval in
+			try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
 		},
 		progress: ((ImportItem, Int, Int) -> Void)? = nil
 	) async -> DeviceProfileImportResult {
@@ -221,8 +221,8 @@ enum DeviceProfileImporter {
 	@MainActor
 	private struct RunContext {
 		let gateway: ProfileApplyGateway
-		let sendInterval: Duration
-		let sleep: (Duration) async throws -> Void
+		let sendInterval: TimeInterval
+		let sleep: (TimeInterval) async throws -> Void
 		let progress: ((ImportItem, Int, Int) -> Void)?
 		let total: Int
 	}

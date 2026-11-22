@@ -74,7 +74,7 @@ public struct DGSequentialColorScheme: DGChartColorScheme {
     }
 
     public init(
-        baseColor: Color,
+        baseColor: Color = Color(UIColor.systemBlue),
         steps: Int = 12,
         lightnessRange: ClosedRange<CGFloat> = 0.3...0.9
     ) {
@@ -124,9 +124,9 @@ public struct DGDivergingColorScheme: DGChartColorScheme {
     }
 
     public init(
-        negative: Color = .red,
-        neutral: Color = .gray,
-        positive: Color = .green,
+        negative: Color = Color(UIColor.systemRed),
+        neutral: Color = Color(UIColor.systemGray),
+        positive: Color = Color(UIColor.systemGreen),
         steps: Int = 11
     ) {
         self.negativeColor = UIColor(negative)
@@ -443,7 +443,10 @@ public struct DGChartColorPalette {
 // MARK: - SwiftUI Color Extensions
 
 public extension Color {
-    func toCGColor() -> CGColor { UIColor(self).cgColor }
+    func toCGColor() -> CGColor {
+        let uiColor = UIColor(self)
+        return uiColor.cgColor
+    }
 }
 
 public extension UIColor {

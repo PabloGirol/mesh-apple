@@ -121,7 +121,7 @@ public final class DGChartSelectionState: ObservableObject {
     @Published public var selectedEntries: [ChartDataEntry] = []
     @Published public var isSelecting: Bool = false
 
-    public init() {}
+    public override init() {}
 
     public func select(highlight: Highlight?, entries: [ChartDataEntry]) {
         selectedHighlight = highlight
@@ -140,14 +140,24 @@ public final class DGChartSelectionState: ObservableObject {
 
 // MARK: - Selection Environment
 
-private struct DGChartSelectionStateKey: EnvironmentKey {
+fileprivate struct DGChartSelectionStateKey: EnvironmentKey {
     static let defaultValue: DGChartSelectionState = DGChartSelectionState()
     typealias Value = DGChartSelectionState
+}
+
+fileprivate struct DGChartSelectionConfigKey: EnvironmentKey {
+    static let defaultValue: DGChartSelectionConfig = DGDefaultSelectionConfig()
+    typealias Value = DGChartSelectionConfig
 }
 
 public extension EnvironmentValues {
     var chartSelectionState: DGChartSelectionState {
         get { self[DGChartSelectionStateKey.self] }
         set { self[DGChartSelectionStateKey.self] = newValue }
+    }
+
+    var chartSelectionConfig: DGChartSelectionConfig {
+        get { self[DGChartSelectionConfigKey.self] }
+        set { self[DGChartSelectionConfigKey.self] = newValue }
     }
 }

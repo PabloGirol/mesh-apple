@@ -36,8 +36,8 @@ enum WeatherRadar {
 	/// Offered only in the lower 48: a location in the box whose country is the US, or, with no
 	/// location to go on, a phone set to the US. The radio's LoRa region doesn't decide it; the US
 	/// region is used across the Americas.
-	static func isOffered(location: CLLocationCoordinate2D?, countryCode: String?, phoneRegion: Locale.Region?) -> Bool {
-		guard let location else { return phoneRegion == .unitedStates }
+	static func isOffered(location: CLLocationCoordinate2D?, countryCode: String?, phoneRegionCode: String?) -> Bool {
+		guard let location else { return phoneRegionCode == "US" }
 		return covers(location) && countryCode == "US"
 	}
 
@@ -86,12 +86,12 @@ final class WeatherRadarAvailability: ObservableObject {
 	/// How far the phone moves before the country is looked up again.
 	private static let recheckDistance: CLLocationDistance = 10_000
 
-	private init() {}
+	private override init() {}
 
 	func refresh() async {
 		guard let location = LocationsHandler.shared.manager.location else {
 			checkedLocation = nil
-			offer(WeatherRadar.isOffered(location: nil, countryCode: nil, phoneRegion: Locale.current.region))
+			offer(WeatherRadar.isOffered(location: nil, countryCode: nil, phoneRegionCode: Locale.current.regionCode))
 			return
 		}
 		if let checkedLocation, checkedLocation.distance(from: location) < Self.recheckDistance { return }
@@ -104,7 +104,7 @@ final class WeatherRadarAvailability: ObservableObject {
 		// on the next refresh.
 		guard let countryCode = try? await CLGeocoder().reverseGeocodeLocation(location).first?.isoCountryCode else { return }
 		checkedLocation = location
-		offer(WeatherRadar.isOffered(location: location.coordinate, countryCode: countryCode, phoneRegion: Locale.current.region))
+		offer(WeatherRadar.isOffered(location: location.coordinate, countryCode: countryCode, phoneRegionCode: Locale.current.regionCode))
 	}
 
 	/// Published only when it changes, so a check that finds the same answer redraws nothing.

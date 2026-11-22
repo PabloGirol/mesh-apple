@@ -145,7 +145,7 @@ private struct CredentialRow: View {
 
 struct WifiProvisioningView: View {
 
-	@ObservedObject private var provisioning = NymeaProvisioningManager.shared
+	@StateObject private var provisioning = NymeaProvisioningManagerObservable.shared
 	@Environment(\.dismiss) private var dismiss
 
 	@State private var toastMessage: String?

@@ -8,6 +8,9 @@
 import SwiftUI
 import DGCharts
 
+// Disambiguate ChartGesture from DGCharts framework
+typealias ChartGesture = DGChartsProtocols.ChartGesture
+
 // MARK: - Combined Chart Data Types
 
 /// Chart type for each data series in combined chart
@@ -724,11 +727,11 @@ public struct DGCombinedChart<Point: DGChartDataPoint>: UIViewRepresentable {
         }
 
         public func chartScaled(_ chartView: ChartViewBase, scaleX: CGFloat, scaleY: CGFloat) {
-            parent.onChartGesture?(.scale(scaleX: scaleX, scaleY: scaleY))
+            parent.onChartGesture?(ChartGesture.scale(scaleX: scaleX, scaleY: scaleY))
         }
 
         public func chartTranslated(_ chartView: ChartViewBase, dX: CGFloat, dY: CGFloat) {
-            parent.onChartGesture?(.pan(dX: dX, dY: dY))
+            parent.onChartGesture?(ChartGesture.pan(dX: dX, dY: dY))
         }
     }
 }
@@ -742,7 +745,7 @@ private class CustomScatterShapeRenderer: NSObject, ShapeRenderer {
         self.renderer = renderer
     }
 
-    func renderShape(context: CGContext, dataSet: ScatterChartDataSet, viewPortHandler: ViewPortHandler, point: CGPoint, color: NSUIColor) {
+    func renderShape(context: CGContext, dataSet: ScatterChartDataSetProtocol, viewPortHandler: ViewPortHandler, point: CGPoint, color: NSUIColor) {
         let size = dataSet.scatterShapeSize
         let rect = CGRect(x: point.x - size/2, y: point.y - size/2, width: size, height: size)
         renderer(context, rect, CGSize(width: size, height: size))
@@ -891,11 +894,11 @@ private class IndexAxisValueFormatter: NSObject, AxisValueFormatter {
 }
 
 private class DefaultFillFormatter: NSObject, FillFormatter {
-    let block: (ChartDataSetBase, ChartDataProvider) -> CGFloat
-    init(block: @escaping (ChartDataSetBase, ChartDataProvider) -> CGFloat) {
+    let block: (DGCharts.ChartDataSetBase, ChartDataProvider) -> CGFloat
+    init(block: @escaping (DGCharts.ChartDataSetBase, ChartDataProvider) -> CGFloat) {
         self.block = block
     }
-    func getFillLinePosition(dataSet: ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
+    func getFillLinePosition(dataSet: DGCharts.ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
         block(dataSet, dataProvider)
     }
 }

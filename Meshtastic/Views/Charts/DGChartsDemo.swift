@@ -271,7 +271,7 @@ struct AdvancedDGChartsDemo: View {
     let colorSchemes: [DGChartColorScheme] = [
         DGDefaultColorScheme(),
         DGCategoricalColorScheme(colors: [.systemBlue, .systemGreen, .systemOrange]),
-        DGSequentialColorScheme(startColor: .systemBlue, endColor: .systemBlue),
+        DGSequentialColorScheme(baseColor: .systemBlue, steps: 12, lightnessRange: 0.3...0.9),
         DGDivergingColorScheme(negative: .systemRed, neutral: .systemGray, positive: .systemGreen)
     ]
 

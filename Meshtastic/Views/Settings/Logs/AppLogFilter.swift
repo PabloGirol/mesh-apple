@@ -121,7 +121,13 @@ enum LogLevels: Int, CaseIterable, Identifiable {
 
 struct AppLogFilter: View {
 
-	@State private var currentDetent = PresentationDetent.medium
+	@State private var currentDetent: Any = {
+		if #available(iOS 16.0, *) {
+			return PresentationDetent.medium
+		} else {
+			return "medium" as Any
+		}
+	}()
 	/// Filters
 	var filterTitle = "App Log Filters"
 	@Binding var categories: Set<Int>

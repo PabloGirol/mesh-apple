@@ -249,7 +249,7 @@ public struct DGRuleMark {
 
 // MARK: - Legend Configuration
 
-public struct DGChartLegendConfig {
+public struct DGWrapperChartLegendConfig {
     public let isEnabled: Bool
     public let position: LegendPosition
     public let alignment: LegendAlignment
@@ -308,8 +308,8 @@ public protocol DGChartViewRepresentable: UIViewRepresentable {
 
 // MARK: - Base Chart View
 
-/// Base class for all DGCharts SwiftUI wrappers
-open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
+/// Base struct for all DGCharts SwiftUI wrappers
+public struct DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
     public typealias UIViewType = ChartViewType
 
     // Data
@@ -319,7 +319,7 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
     // Configuration
     public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
     public var yAxisConfig: DGChartYAxisConfig = DGChartYAxisConfig()
-    public var legendConfig: DGChartLegendConfig = DGChartLegendConfig()
+    public var legendConfig: DGWrapperChartLegendConfig = DGWrapperChartLegendConfig()
     public var ruleMarks: [DGRuleMark] = []
 
     // Interaction
@@ -348,11 +348,11 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
 
     public init() {}
 
-    open func makeChartView(context: Context) -> ChartViewType {
+    public func makeChartView(context: Context) -> ChartViewType {
         fatalError("Subclasses must implement makeChartView")
     }
 
-    open func updateChartView(_ chartView: ChartViewType, context: Context) {
+    public func updateChartView(_ chartView: ChartViewType, context: Context) {
         // Update data
         updateData(chartView)
 
@@ -381,7 +381,7 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
         }
     }
 
-    open func makeUIView(context: Context) -> ChartViewType {
+    public func makeUIView(context: Context) -> ChartViewType {
         let chartView = makeChartView(context: context)
 
         // Set delegate for interaction
@@ -399,25 +399,25 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
         return chartView
     }
 
-    open func updateUIView(_ uiView: ChartViewType, context: Context) {
+    public func updateUIView(_ uiView: ChartViewType, context: Context) {
         updateChartView(uiView, context: context)
     }
 
-    open func makeCoordinator() -> Coordinator {
+    public func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
-    public class Coordinator {
+    public final class Coordinator {
         var delegate: DGChartInteractionDelegate?
     }
 
     // MARK: - Update Methods (to be overridden by subclasses)
 
-    open func updateData(_ chartView: ChartViewType) {
+    public func updateData(_ chartView: ChartViewType) {
         // Override in subclasses
     }
 
-    open func updateXAxis(_ chartView: ChartViewType) {
+    public func updateXAxis(_ chartView: ChartViewType) {
         let xAxis = chartView.xAxis
         xAxis.labelPosition = axisPositionToDGCharts(xAxisConfig.position)
         xAxis.setLabelCount(xAxisConfig.labelCount, force: false)
@@ -437,7 +437,7 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
         }
     }
 
-    open func updateYAxis(_ chartView: ChartViewType) {
+    public func updateYAxis(_ chartView: ChartViewType) {
         let yAxis = chartView.leftAxis
         let rightAxis = chartView.rightAxis
 
@@ -479,7 +479,7 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
         }
     }
 
-    open func updateLegend(_ chartView: ChartViewType) {
+    public func updateLegend(_ chartView: ChartViewType) {
         let legend = chartView.legend
         legend.enabled = legendConfig.isEnabled
 
@@ -540,7 +540,7 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
         legend.textColor = legendConfig.textColor
     }
 
-    open func updateRuleMarks(_ chartView: ChartViewType) {
+    public func updateRuleMarks(_ chartView: ChartViewType) {
         // Clear existing limit lines
         chartView.leftAxis.removeAllLimitLines()
         chartView.rightAxis.removeAllLimitLines()
@@ -566,7 +566,7 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
         }
     }
 
-    open func updateInteraction(_ chartView: ChartViewType) {
+    public func updateInteraction(_ chartView: ChartViewType) {
         chartView.pinchZoomEnabled = pinchZoomEnabled
         chartView.doubleTapToZoomEnabled = doubleTapToZoomEnabled
         chartView.dragEnabled = dragEnabled
@@ -576,7 +576,7 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
         chartView.highlightPerDragEnabled = true
     }
 
-    open func updateScrolling(_ chartView: ChartViewType) {
+    public func updateScrolling(_ chartView: ChartViewType) {
         if isScrollableHorizontal, let visibleRange = visibleXRange {
             chartView.setVisibleXRangeMaximum(visibleRange)
             chartView.setVisibleXRangeMinimum(visibleRange)
@@ -585,7 +585,7 @@ open class DGBaseChartView<ChartViewType: ChartViewBase>: UIViewRepresentable {
         }
     }
 
-    open func updateAppearance(_ chartView: ChartViewType) {
+    public func updateAppearance(_ chartView: ChartViewType) {
         chartView.backgroundColor = backgroundColor
         chartView.drawGridBackgroundEnabled = drawGridBackground
         chartView.gridBackgroundColor = backgroundColor
@@ -635,8 +635,42 @@ private class DateAxisValueFormatter: NSObject, AxisValueFormatter {
 // MARK: - Line Chart View
 
 /// SwiftUI wrapper for DGCharts LineChartView
-public final class DGLineChartView: DGBaseChartView<LineChartView>, DGChartViewRepresentable {
-    public typealias ChartType = LineChartView
+public struct DGLineChartView: UIViewRepresentable {
+    public typealias UIViewType = LineChartView
+
+    // Data
+    public var series: [DGChartSeries] = []
+    public var seriesData: [String: [Any]] = [:]
+
+    // Configuration
+    public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
+    public var yAxisConfig: DGChartYAxisConfig = DGChartYAxisConfig()
+    public var legendConfig: DGWrapperChartLegendConfig = DGWrapperChartLegendConfig()
+    public var ruleMarks: [DGRuleMark] = []
+
+    // Interaction
+    public var selection: Binding<DGChartSelection?>?
+    public var onSelectionChanged: ((DGChartSelection?) -> Void)?
+    public var pinchZoomEnabled: Bool = true
+    public var doubleTapToZoomEnabled: Bool = true
+    public var dragEnabled: Bool = true
+    public var scaleXEnabled: Bool = true
+    public var scaleYEnabled: Bool = true
+
+    // Scrolling
+    public var isScrollableHorizontal: Bool = false
+    public var visibleXRange: Double?
+
+    // Appearance
+    public var backgroundColor: UIColor = .systemBackground
+    public var gridColor: UIColor = .systemGray4
+    public var gridLineWidth: CGFloat = 0.5
+    public var drawGridBackground: Bool = false
+
+    // Animation
+    public var animateOnAppear: Bool = true
+    public var animationDuration: TimeInterval = 1.0
+    public var easingOption: ChartEasingOption = .easeInOutQuad
 
     // Line specific
     public var drawCircles: Bool = false
@@ -648,17 +682,27 @@ public final class DGLineChartView: DGBaseChartView<LineChartView>, DGChartViewR
     public var fillAlpha: CGFloat = 0.3
     public var gradientPositions: [CGFloat]? = nil
 
-    public override init() {
-        super.init()
-    }
+    public init() {}
 
-    public override func makeChartView(context: Context) -> LineChartView {
+    public func makeUIView(context: Context) -> LineChartView {
         let chartView = LineChartView()
-        chartView.delegate = context.coordinator.delegate
+
+        // Set delegate for interaction
+        let delegate = DGChartInteractionDelegate()
+        delegate.onSelectionChanged = { [weak selection = selection, weak onSelectionChanged = onSelectionChanged] sel in
+            selection?.wrappedValue = sel
+            onSelectionChanged?(sel)
+        }
+        delegate.onNothingSelected = { [weak selection = selection] in
+            selection?.wrappedValue = nil
+        }
+        chartView.delegate = delegate
+        context.coordinator.delegate = delegate
+
         return chartView
     }
 
-    public override func updateChartView(_ chartView: LineChartView, context: Context) {
+    public func updateUIView(_ chartView: LineChartView, context: Context) {
         // Update data
         var dataSets: [LineChartDataSet] = []
 
@@ -707,33 +751,290 @@ public final class DGLineChartView: DGBaseChartView<LineChartView>, DGChartViewR
         data.setDrawValues(false)
         chartView.data = data
 
-        // Call base class update methods for common configuration
-        super.updateChartView(chartView, context: context)
+        // Update axes
+        updateXAxis(chartView)
+        updateYAxis(chartView)
+
+        // Update legend
+        updateLegend(chartView)
+
+        // Update rule marks (limit lines)
+        updateRuleMarks(chartView)
+
+        // Update interaction
+        updateInteraction(chartView)
+
+        // Update scrolling
+        updateScrolling(chartView)
+
+        // Update appearance
+        updateAppearance(chartView)
+
+        // Animate if needed
+        if animateOnAppear && context.transaction.animation != nil {
+            chartView.animate(xAxisDuration: animationDuration, yAxisDuration: animationDuration, easingOption: easingOption)
+        }
+    }
+
+    public func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    public final class Coordinator {
+        var delegate: DGChartInteractionDelegate?
+    }
+
+    // MARK: - Update Methods
+
+    func updateXAxis(_ chartView: LineChartView) {
+        let xAxis = chartView.xAxis
+        xAxis.labelPosition = axisPositionToDGCharts(xAxisConfig.position)
+        xAxis.setLabelCount(xAxisConfig.labelCount, force: false)
+        xAxis.labelRotationAngle = xAxisConfig.labelRotation
+        xAxis.granularity = xAxisConfig.granularity
+        xAxis.granularityEnabled = xAxisConfig.granularityEnabled
+        xAxis.drawGridLinesEnabled = true
+        xAxis.gridColor = gridColor
+        xAxis.gridLineWidth = gridLineWidth
+
+        if let dateFormat = xAxisConfig.dateFormat {
+            let formatter = DateFormatter()
+            formatter.dateFormat = dateFormat
+            xAxis.valueFormatter = DateAxisValueFormatter(formatter: formatter)
+        } else if let customFormatter = xAxisConfig.customFormatter {
+            xAxis.valueFormatter = CustomAxisValueFormatter(block: customFormatter)
+        }
+    }
+
+    func updateYAxis(_ chartView: LineChartView) {
+        let yAxis = chartView.leftAxis
+        let rightAxis = chartView.rightAxis
+
+        let targetAxis: YAxis
+        switch yAxisConfig.position {
+        case .left:
+            targetAxis = yAxis
+            rightAxis.enabled = false
+        case .right:
+            targetAxis = rightAxis
+            yAxis.enabled = false
+        case .bothSided:
+            targetAxis = yAxis
+            rightAxis.enabled = true
+            updateYAxisSettings(rightAxis)
+        }
+
+        updateYAxisSettings(targetAxis)
+    }
+
+    private func updateYAxisSettings(_ axis: YAxis) {
+        axis.setLabelCount(yAxisConfig.labelCount, force: false)
+        axis.granularity = yAxisConfig.granularity
+        axis.granularityEnabled = yAxisConfig.granularityEnabled
+        axis.drawGridLinesEnabled = true
+        axis.gridColor = gridColor
+        axis.gridLineWidth = gridLineWidth
+
+        if yAxisConfig.axisMinCustom {
+            axis.axisMinimum = yAxisConfig.axisMinimum ?? 0
+        }
+        if yAxisConfig.axisMaxCustom {
+            axis.axisMaximum = yAxisConfig.axisMaximum ?? 0
+        }
+
+        if let customFormatter = yAxisConfig.customFormatter {
+            axis.valueFormatter = CustomAxisValueFormatter(block: customFormatter)
+        }
+    }
+
+    func updateLegend(_ chartView: LineChartView) {
+        let legend = chartView.legend
+        legend.enabled = legendConfig.isEnabled
+
+        switch legendConfig.position {
+        case .belowChartLeft:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .belowChartCenter:
+            legend.horizontalAlignment = .center
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .belowChartRight:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartLeft:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartCenter:
+            legend.horizontalAlignment = .center
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartRight:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .rightOfChartCenter:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .center
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .rightOfChartTop:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .top
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .leftOfChartCenter:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .center
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .leftOfChartTop:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .top
+            legend.orientation = .vertical
+            legend.drawInside = false
+        }
+
+        legend.font = legendConfig.font
+        legend.textColor = legendConfig.textColor
+    }
+
+    func updateRuleMarks(_ chartView: LineChartView) {
+        chartView.leftAxis.removeAllLimitLines()
+        chartView.rightAxis.removeAllLimitLines()
+        chartView.xAxis.removeAllLimitLines()
+
+        for ruleMark in ruleMarks {
+            let limitLine = ChartLimitLine(limit: ruleMark.position)
+            limitLine.lineColor = UIColor(ruleMark.color)
+            limitLine.lineWidth = ruleMark.lineWidth
+            if let dashPattern = ruleMark.dashPattern {
+                limitLine.lineDashLengths = dashPattern
+            }
+            if let label = ruleMark.label {
+                limitLine.label = label
+            }
+
+            switch ruleMark.axis {
+            case .x:
+                chartView.xAxis.addLimitLine(limitLine)
+            case .y:
+                chartView.leftAxis.addLimitLine(limitLine)
+            }
+        }
+    }
+
+    func updateInteraction(_ chartView: LineChartView) {
+        chartView.pinchZoomEnabled = pinchZoomEnabled
+        chartView.doubleTapToZoomEnabled = doubleTapToZoomEnabled
+        chartView.dragEnabled = dragEnabled
+        chartView.scaleXEnabled = scaleXEnabled
+        chartView.scaleYEnabled = scaleYEnabled
+        chartView.highlightPerTapEnabled = true
+        chartView.highlightPerDragEnabled = true
+    }
+
+    func updateScrolling(_ chartView: LineChartView) {
+        if isScrollableHorizontal, let visibleRange = visibleXRange {
+            chartView.setVisibleXRangeMaximum(visibleRange)
+            chartView.setVisibleXRangeMinimum(visibleRange)
+        } else {
+            chartView.setVisibleXRangeMaximum(chartView.xAxis.axisMaximum - chartView.xAxis.axisMinimum)
+        }
+    }
+
+    func updateAppearance(_ chartView: LineChartView) {
+        chartView.backgroundColor = backgroundColor
+        chartView.drawGridBackgroundEnabled = drawGridBackground
+        chartView.gridBackgroundColor = backgroundColor
+        chartView.noDataText = "No Data"
+        chartView.noDataFont = UIFont.systemFont(ofSize: 14)
+        chartView.noDataTextColor = .secondaryLabel
+    }
+
+    private func axisPositionToDGCharts(_ position: DGChartXAxisConfig.AxisPosition) -> XAxis.LabelPosition {
+        switch position {
+        case .top: return .top
+        case .bottom: return .bottom
+        case .bothSided: return .bottom
+        }
     }
 }
 
 // MARK: - Bar Chart View
 
 /// SwiftUI wrapper for DGCharts BarChartView
-public final class DGBarChartView: DGBaseChartView<BarChartView>, DGChartViewRepresentable {
-    public typealias ChartType = BarChartView
+public struct DGBarChartView: UIViewRepresentable {
+    public typealias UIViewType = BarChartView
+
+    // Data
+    public var series: [DGChartSeries] = []
+    public var seriesData: [String: [Any]] = [:]
+
+    // Configuration
+    public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
+    public var yAxisConfig: DGChartYAxisConfig = DGChartYAxisConfig()
+    public var legendConfig: DGWrapperChartLegendConfig = DGWrapperChartLegendConfig()
+    public var ruleMarks: [DGRuleMark] = []
+
+    // Interaction
+    public var selection: Binding<DGChartSelection?>?
+    public var onSelectionChanged: ((DGChartSelection?) -> Void)?
+    public var pinchZoomEnabled: Bool = true
+    public var doubleTapToZoomEnabled: Bool = true
+    public var dragEnabled: Bool = true
+    public var scaleXEnabled: Bool = true
+    public var scaleYEnabled: Bool = true
+
+    // Scrolling
+    public var isScrollableHorizontal: Bool = false
+    public var visibleXRange: Double?
+
+    // Appearance
+    public var backgroundColor: UIColor = .systemBackground
+    public var gridColor: UIColor = .systemGray4
+    public var gridLineWidth: CGFloat = 0.5
+    public var drawGridBackground: Bool = false
+
+    // Animation
+    public var animateOnAppear: Bool = true
+    public var animationDuration: TimeInterval = 1.0
+    public var easingOption: ChartEasingOption = .easeInOutQuad
 
     // Bar specific
     public var barWidth: CGFloat = 0.8
     public var groupSpace: CGFloat = 0.1
     public var drawValueAboveBar: Bool = false
 
-    public override init() {
-        super.init()
-    }
+    public init() {}
 
-    public override func makeChartView(context: Context) -> BarChartView {
+    public func makeUIView(context: Context) -> BarChartView {
         let chartView = BarChartView()
-        chartView.delegate = context.coordinator.delegate
+
+        let delegate = DGChartInteractionDelegate()
+        delegate.onSelectionChanged = { [weak selection = selection, weak onSelectionChanged = onSelectionChanged] sel in
+            selection?.wrappedValue = sel
+            onSelectionChanged?(sel)
+        }
+        delegate.onNothingSelected = { [weak selection = selection] in
+            selection?.wrappedValue = nil
+        }
+        chartView.delegate = delegate
+        context.coordinator.delegate = delegate
+
         return chartView
     }
 
-    public override func updateChartView(_ chartView: BarChartView, context: Context) {
+    public func updateUIView(_ chartView: BarChartView, context: Context) {
         var dataSets: [BarChartDataSet] = []
 
         for seriesItem in series where seriesItem.isVisible {
@@ -763,16 +1064,261 @@ public final class DGBarChartView: DGBaseChartView<BarChartView>, DGChartViewRep
 
         chartView.data = data
 
-        // Call base class update methods for common configuration
-        super.updateChartView(chartView, context: context)
+        // Update axes
+        updateXAxis(chartView)
+        updateYAxis(chartView)
+
+        // Update legend
+        updateLegend(chartView)
+
+        // Update rule marks (limit lines)
+        updateRuleMarks(chartView)
+
+        // Update interaction
+        updateInteraction(chartView)
+
+        // Update scrolling
+        updateScrolling(chartView)
+
+        // Update appearance
+        updateAppearance(chartView)
+
+        if animateOnAppear && context.transaction.animation != nil {
+            chartView.animate(xAxisDuration: animationDuration, yAxisDuration: animationDuration, easingOption: easingOption)
+        }
+    }
+
+    public func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    public final class Coordinator {
+        var delegate: DGChartInteractionDelegate?
+    }
+
+    func updateXAxis(_ chartView: BarChartView) {
+        let xAxis = chartView.xAxis
+        xAxis.labelPosition = axisPositionToDGCharts(xAxisConfig.position)
+        xAxis.setLabelCount(xAxisConfig.labelCount, force: false)
+        xAxis.labelRotationAngle = xAxisConfig.labelRotation
+        xAxis.granularity = xAxisConfig.granularity
+        xAxis.granularityEnabled = xAxisConfig.granularityEnabled
+        xAxis.drawGridLinesEnabled = true
+        xAxis.gridColor = gridColor
+        xAxis.gridLineWidth = gridLineWidth
+
+        if let dateFormat = xAxisConfig.dateFormat {
+            let formatter = DateFormatter()
+            formatter.dateFormat = dateFormat
+            xAxis.valueFormatter = DateAxisValueFormatter(formatter: formatter)
+        } else if let customFormatter = xAxisConfig.customFormatter {
+            xAxis.valueFormatter = CustomAxisValueFormatter(block: customFormatter)
+        }
+    }
+
+    func updateYAxis(_ chartView: BarChartView) {
+        let yAxis = chartView.leftAxis
+        let rightAxis = chartView.rightAxis
+
+        let targetAxis: YAxis
+        switch yAxisConfig.position {
+        case .left:
+            targetAxis = yAxis
+            rightAxis.enabled = false
+        case .right:
+            targetAxis = rightAxis
+            yAxis.enabled = false
+        case .bothSided:
+            targetAxis = yAxis
+            rightAxis.enabled = true
+            updateYAxisSettings(rightAxis)
+        }
+
+        updateYAxisSettings(targetAxis)
+    }
+
+    private func updateYAxisSettings(_ axis: YAxis) {
+        axis.setLabelCount(yAxisConfig.labelCount, force: false)
+        axis.granularity = yAxisConfig.granularity
+        axis.granularityEnabled = yAxisConfig.granularityEnabled
+        axis.drawGridLinesEnabled = true
+        axis.gridColor = gridColor
+        axis.gridLineWidth = gridLineWidth
+
+        if yAxisConfig.axisMinCustom {
+            axis.axisMinimum = yAxisConfig.axisMinimum ?? 0
+        }
+        if yAxisConfig.axisMaxCustom {
+            axis.axisMaximum = yAxisConfig.axisMaximum ?? 0
+        }
+
+        if let customFormatter = yAxisConfig.customFormatter {
+            axis.valueFormatter = CustomAxisValueFormatter(block: customFormatter)
+        }
+    }
+
+    func updateLegend(_ chartView: BarChartView) {
+        let legend = chartView.legend
+        legend.enabled = legendConfig.isEnabled
+
+        switch legendConfig.position {
+        case .belowChartLeft:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .belowChartCenter:
+            legend.horizontalAlignment = .center
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .belowChartRight:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartLeft:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartCenter:
+            legend.horizontalAlignment = .center
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartRight:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .rightOfChartCenter:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .center
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .rightOfChartTop:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .top
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .leftOfChartCenter:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .center
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .leftOfChartTop:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .top
+            legend.orientation = .vertical
+            legend.drawInside = false
+        }
+
+        legend.font = legendConfig.font
+        legend.textColor = legendConfig.textColor
+    }
+
+    func updateRuleMarks(_ chartView: BarChartView) {
+        chartView.leftAxis.removeAllLimitLines()
+        chartView.rightAxis.removeAllLimitLines()
+        chartView.xAxis.removeAllLimitLines()
+
+        for ruleMark in ruleMarks {
+            let limitLine = ChartLimitLine(limit: ruleMark.position)
+            limitLine.lineColor = UIColor(ruleMark.color)
+            limitLine.lineWidth = ruleMark.lineWidth
+            if let dashPattern = ruleMark.dashPattern {
+                limitLine.lineDashLengths = dashPattern
+            }
+            if let label = ruleMark.label {
+                limitLine.label = label
+            }
+
+            switch ruleMark.axis {
+            case .x:
+                chartView.xAxis.addLimitLine(limitLine)
+            case .y:
+                chartView.leftAxis.addLimitLine(limitLine)
+            }
+        }
+    }
+
+    func updateInteraction(_ chartView: BarChartView) {
+        chartView.pinchZoomEnabled = pinchZoomEnabled
+        chartView.doubleTapToZoomEnabled = doubleTapToZoomEnabled
+        chartView.dragEnabled = dragEnabled
+        chartView.scaleXEnabled = scaleXEnabled
+        chartView.scaleYEnabled = scaleYEnabled
+        chartView.highlightPerTapEnabled = true
+        chartView.highlightPerDragEnabled = true
+    }
+
+    func updateScrolling(_ chartView: BarChartView) {
+        if isScrollableHorizontal, let visibleRange = visibleXRange {
+            chartView.setVisibleXRangeMaximum(visibleRange)
+            chartView.setVisibleXRangeMinimum(visibleRange)
+        } else {
+            chartView.setVisibleXRangeMaximum(chartView.xAxis.axisMaximum - chartView.xAxis.axisMinimum)
+        }
+    }
+
+    func updateAppearance(_ chartView: BarChartView) {
+        chartView.backgroundColor = backgroundColor
+        chartView.drawGridBackgroundEnabled = drawGridBackground
+        chartView.gridBackgroundColor = backgroundColor
+        chartView.noDataText = "No Data"
+        chartView.noDataFont = UIFont.systemFont(ofSize: 14)
+        chartView.noDataTextColor = .secondaryLabel
+    }
+
+    private func axisPositionToDGCharts(_ position: DGChartXAxisConfig.AxisPosition) -> XAxis.LabelPosition {
+        switch position {
+        case .top: return .top
+        case .bottom: return .bottom
+        case .bothSided: return .bottom
+        }
     }
 }
 
 // MARK: - Combined Chart View (Line + Bar + Area)
 
 /// SwiftUI wrapper for DGCharts CombinedChartView - supports multiple chart types in one view
-public final class DGCombinedChartView: DGBaseChartView<CombinedChartView>, DGChartViewRepresentable {
-    public typealias ChartType = CombinedChartView
+public struct DGCombinedChartView: UIViewRepresentable {
+    public typealias UIViewType = CombinedChartView
+
+    // Data
+    public var series: [DGChartSeries] = []
+    public var seriesData: [String: [Any]] = [:]
+
+    // Configuration
+    public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
+    public var yAxisConfig: DGChartYAxisConfig = DGChartYAxisConfig()
+    public var legendConfig: DGWrapperChartLegendConfig = DGWrapperChartLegendConfig()
+    public var ruleMarks: [DGRuleMark] = []
+
+    // Interaction
+    public var selection: Binding<DGChartSelection?>?
+    public var onSelectionChanged: ((DGChartSelection?) -> Void)?
+    public var pinchZoomEnabled: Bool = true
+    public var doubleTapToZoomEnabled: Bool = true
+    public var dragEnabled: Bool = true
+    public var scaleXEnabled: Bool = true
+    public var scaleYEnabled: Bool = true
+
+    // Scrolling
+    public var isScrollableHorizontal: Bool = false
+    public var visibleXRange: Double?
+
+    // Appearance
+    public var backgroundColor: UIColor = .systemBackground
+    public var gridColor: UIColor = .systemGray4
+    public var gridLineWidth: CGFloat = 0.5
+    public var drawGridBackground: Bool = false
+
+    // Animation
+    public var animateOnAppear: Bool = true
+    public var animationDuration: TimeInterval = 1.0
+    public var easingOption: ChartEasingOption = .easeInOutQuad
 
     // Line specific
     public var drawCircles: Bool = false
@@ -785,22 +1331,19 @@ public final class DGCombinedChartView: DGBaseChartView<CombinedChartView>, DGCh
     public var barWidth: CGFloat = 0.8
     public var groupSpace: CGFloat = 0.1
 
-    public override init() {
-        super.init()
-    }
+    public init() {}
 
-    public override func makeChartView(context: Context) -> CombinedChartView {
+    public func makeUIView(context: Context) -> CombinedChartView {
         let chartView = CombinedChartView()
         chartView.delegate = context.coordinator.delegate
-        // Order of drawing: bar, bubble, line, candle, scatter, area
         chartView.drawOrder = [DrawOrder.bar.rawValue, DrawOrder.line.rawValue, DrawOrder.area.rawValue]
         return chartView
     }
 
-    public override func updateChartView(_ chartView: CombinedChartView, context: Context) {
+    public func updateUIView(_ chartView: CombinedChartView, context: Context) {
         var lineDataSets: [LineChartDataSet] = []
         var barDataSets: [BarChartDataSet] = []
-        var areaDataSets: [LineChartDataSet] = [] // Area uses LineChartDataSet with fill
+        var areaDataSets: [LineChartDataSet] = []
 
         for seriesItem in series where seriesItem.isVisible {
             guard let points = seriesData[seriesItem.id] as? [DGCombinedChartPoint], !points.isEmpty else { continue }
@@ -872,9 +1415,7 @@ public final class DGCombinedChartView: DGBaseChartView<CombinedChartView>, DGCh
         if barDataSets.count > 1 {
             data.barData?.groupBars(fromX: barDataSets.first?.entryForIndex(0)?.x ?? 0, groupSpace: groupSpace, barSpace: 0.02)
         }
-        // Area is rendered as filled line data
         if !areaDataSets.isEmpty {
-            // Add area data to line data for rendering
             var allLineSets = lineDataSets
             allLineSets.append(contentsOf: areaDataSets)
             data.lineData = LineChartData(dataSets: allLineSets)
@@ -882,33 +1423,287 @@ public final class DGCombinedChartView: DGBaseChartView<CombinedChartView>, DGCh
 
         chartView.data = data
 
-        // Call base class update methods for common configuration
-        super.updateChartView(chartView, context: context)
+        // Update axes
+        updateXAxis(chartView)
+        updateYAxis(chartView)
+
+        // Update legend
+        updateLegend(chartView)
+
+        // Update rule marks (limit lines)
+        updateRuleMarks(chartView)
+
+        // Update interaction
+        updateInteraction(chartView)
+
+        // Update scrolling
+        updateScrolling(chartView)
+
+        // Update appearance
+        updateAppearance(chartView)
+
+        if animateOnAppear && context.transaction.animation != nil {
+            chartView.animate(xAxisDuration: animationDuration, yAxisDuration: animationDuration, easingOption: easingOption)
+        }
+    }
+
+    public func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    public final class Coordinator {
+        var delegate: DGChartInteractionDelegate?
+    }
+
+    func updateXAxis(_ chartView: CombinedChartView) {
+        let xAxis = chartView.xAxis
+        xAxis.labelPosition = axisPositionToDGCharts(xAxisConfig.position)
+        xAxis.setLabelCount(xAxisConfig.labelCount, force: false)
+        xAxis.labelRotationAngle = xAxisConfig.labelRotation
+        xAxis.granularity = xAxisConfig.granularity
+        xAxis.granularityEnabled = xAxisConfig.granularityEnabled
+        xAxis.drawGridLinesEnabled = true
+        xAxis.gridColor = gridColor
+        xAxis.gridLineWidth = gridLineWidth
+
+        if let dateFormat = xAxisConfig.dateFormat {
+            let formatter = DateFormatter()
+            formatter.dateFormat = dateFormat
+            xAxis.valueFormatter = DateAxisValueFormatter(formatter: formatter)
+        } else if let customFormatter = xAxisConfig.customFormatter {
+            xAxis.valueFormatter = CustomAxisValueFormatter(block: customFormatter)
+        }
+    }
+
+    func updateYAxis(_ chartView: CombinedChartView) {
+        let yAxis = chartView.leftAxis
+        let rightAxis = chartView.rightAxis
+
+        let targetAxis: YAxis
+        switch yAxisConfig.position {
+        case .left:
+            targetAxis = yAxis
+            rightAxis.enabled = false
+        case .right:
+            targetAxis = rightAxis
+            yAxis.enabled = false
+        case .bothSided:
+            targetAxis = yAxis
+            rightAxis.enabled = true
+            updateYAxisSettings(rightAxis)
+        }
+
+        updateYAxisSettings(targetAxis)
+    }
+
+    private func updateYAxisSettings(_ axis: YAxis) {
+        axis.setLabelCount(yAxisConfig.labelCount, force: false)
+        axis.granularity = yAxisConfig.granularity
+        axis.granularityEnabled = yAxisConfig.granularityEnabled
+        axis.drawGridLinesEnabled = true
+        axis.gridColor = gridColor
+        axis.gridLineWidth = gridLineWidth
+
+        if yAxisConfig.axisMinCustom {
+            axis.axisMinimum = yAxisConfig.axisMinimum ?? 0
+        }
+        if yAxisConfig.axisMaxCustom {
+            axis.axisMaximum = yAxisConfig.axisMaximum ?? 0
+        }
+
+        if let customFormatter = yAxisConfig.customFormatter {
+            axis.valueFormatter = CustomAxisValueFormatter(block: customFormatter)
+        }
+    }
+
+    func updateLegend(_ chartView: CombinedChartView) {
+        let legend = chartView.legend
+        legend.enabled = legendConfig.isEnabled
+
+        switch legendConfig.position {
+        case .belowChartLeft:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .belowChartCenter:
+            legend.horizontalAlignment = .center
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .belowChartRight:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartLeft:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartCenter:
+            legend.horizontalAlignment = .center
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartRight:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .rightOfChartCenter:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .center
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .rightOfChartTop:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .top
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .leftOfChartCenter:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .center
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .leftOfChartTop:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .top
+            legend.orientation = .vertical
+            legend.drawInside = false
+        }
+
+        legend.font = legendConfig.font
+        legend.textColor = legendConfig.textColor
+    }
+
+    func updateRuleMarks(_ chartView: CombinedChartView) {
+        chartView.leftAxis.removeAllLimitLines()
+        chartView.rightAxis.removeAllLimitLines()
+        chartView.xAxis.removeAllLimitLines()
+
+        for ruleMark in ruleMarks {
+            let limitLine = ChartLimitLine(limit: ruleMark.position)
+            limitLine.lineColor = UIColor(ruleMark.color)
+            limitLine.lineWidth = ruleMark.lineWidth
+            if let dashPattern = ruleMark.dashPattern {
+                limitLine.lineDashLengths = dashPattern
+            }
+            if let label = ruleMark.label {
+                limitLine.label = label
+            }
+
+            switch ruleMark.axis {
+            case .x:
+                chartView.xAxis.addLimitLine(limitLine)
+            case .y:
+                chartView.leftAxis.addLimitLine(limitLine)
+            }
+        }
+    }
+
+    func updateInteraction(_ chartView: CombinedChartView) {
+        chartView.pinchZoomEnabled = pinchZoomEnabled
+        chartView.doubleTapToZoomEnabled = doubleTapToZoomEnabled
+        chartView.dragEnabled = dragEnabled
+        chartView.scaleXEnabled = scaleXEnabled
+        chartView.scaleYEnabled = scaleYEnabled
+        chartView.highlightPerTapEnabled = true
+        chartView.highlightPerDragEnabled = true
+    }
+
+    func updateScrolling(_ chartView: CombinedChartView) {
+        if isScrollableHorizontal, let visibleRange = visibleXRange {
+            chartView.setVisibleXRangeMaximum(visibleRange)
+            chartView.setVisibleXRangeMinimum(visibleRange)
+        } else {
+            chartView.setVisibleXRangeMaximum(chartView.xAxis.axisMaximum - chartView.xAxis.axisMinimum)
+        }
+    }
+
+    func updateAppearance(_ chartView: CombinedChartView) {
+        chartView.backgroundColor = backgroundColor
+        chartView.drawGridBackgroundEnabled = drawGridBackground
+        chartView.gridBackgroundColor = backgroundColor
+        chartView.noDataText = "No Data"
+        chartView.noDataFont = UIFont.systemFont(ofSize: 14)
+        chartView.noDataTextColor = .secondaryLabel
+    }
+
+    private func axisPositionToDGCharts(_ position: DGChartXAxisConfig.AxisPosition) -> XAxis.LabelPosition {
+        switch position {
+        case .top: return .top
+        case .bottom: return .bottom
+        case .bothSided: return .bottom
+        }
     }
 }
 
 // MARK: - Scatter/Point Chart View
 
 /// SwiftUI wrapper for DGCharts ScatterChartView
-public final class DGScatterChartView: DGBaseChartView<ScatterChartView>, DGChartViewRepresentable {
-    public typealias ChartType = ScatterChartView
+public struct DGScatterChartView: UIViewRepresentable {
+    public typealias UIViewType = ScatterChartView
+
+    // Data
+    public var series: [DGChartSeries] = []
+    public var seriesData: [String: [Any]] = [:]
+
+    // Configuration
+    public var xAxisConfig: DGChartXAxisConfig = DGChartXAxisConfig()
+    public var yAxisConfig: DGChartYAxisConfig = DGChartYAxisConfig()
+    public var legendConfig: DGWrapperChartLegendConfig = DGWrapperChartLegendConfig()
+    public var ruleMarks: [DGRuleMark] = []
+
+    // Interaction
+    public var selection: Binding<DGChartSelection?>?
+    public var onSelectionChanged: ((DGChartSelection?) -> Void)?
+    public var pinchZoomEnabled: Bool = true
+    public var doubleTapToZoomEnabled: Bool = true
+    public var dragEnabled: Bool = true
+    public var scaleXEnabled: Bool = true
+    public var scaleYEnabled: Bool = true
+
+    // Scrolling
+    public var isScrollableHorizontal: Bool = false
+    public var visibleXRange: Double?
+
+    // Appearance
+    public var backgroundColor: UIColor = .systemBackground
+    public var gridColor: UIColor = .systemGray4
+    public var gridLineWidth: CGFloat = 0.5
+    public var drawGridBackground: Bool = false
+
+    // Animation
+    public var animateOnAppear: Bool = true
+    public var animationDuration: TimeInterval = 1.0
+    public var easingOption: ChartEasingOption = .easeInOutQuad
 
     // Scatter specific
     public var scatterShape: ScatterChartDataSet.Shape = .circle
     public var scatterShapeSize: CGFloat = 8.0
     public var drawValuesEnabled: Bool = false
 
-    public override init() {
-        super.init()
-    }
+    public init() {}
 
-    public override func makeChartView(context: Context) -> ScatterChartView {
+    public func makeUIView(context: Context) -> ScatterChartView {
         let chartView = ScatterChartView()
-        chartView.delegate = context.coordinator.delegate
+
+        let delegate = DGChartInteractionDelegate()
+        delegate.onSelectionChanged = { [weak selection = selection, weak onSelectionChanged = onSelectionChanged] sel in
+            selection?.wrappedValue = sel
+            onSelectionChanged?(sel)
+        }
+        delegate.onNothingSelected = { [weak selection = selection] in
+            selection?.wrappedValue = nil
+        }
+        chartView.delegate = delegate
+        context.coordinator.delegate = delegate
+
         return chartView
     }
 
-    public override func updateChartView(_ chartView: ScatterChartView, context: Context) {
+    public func updateUIView(_ chartView: ScatterChartView, context: Context) {
         var dataSets: [ScatterChartDataSet] = []
 
         for seriesItem in series where seriesItem.isVisible {
@@ -933,8 +1728,219 @@ public final class DGScatterChartView: DGBaseChartView<ScatterChartView>, DGChar
         data.setDrawValues(drawValuesEnabled)
         chartView.data = data
 
-        // Call base class update methods for common configuration
-        super.updateChartView(chartView, context: context)
+        // Update axes
+        updateXAxis(chartView)
+        updateYAxis(chartView)
+
+        // Update legend
+        updateLegend(chartView)
+
+        // Update rule marks (limit lines)
+        updateRuleMarks(chartView)
+
+        // Update interaction
+        updateInteraction(chartView)
+
+        // Update scrolling
+        updateScrolling(chartView)
+
+        // Update appearance
+        updateAppearance(chartView)
+
+        if animateOnAppear && context.transaction.animation != nil {
+            chartView.animate(xAxisDuration: animationDuration, yAxisDuration: animationDuration, easingOption: easingOption)
+        }
+    }
+
+    public func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    public final class Coordinator {
+        var delegate: DGChartInteractionDelegate?
+    }
+
+    func updateXAxis(_ chartView: ScatterChartView) {
+        let xAxis = chartView.xAxis
+        xAxis.labelPosition = axisPositionToDGCharts(xAxisConfig.position)
+        xAxis.setLabelCount(xAxisConfig.labelCount, force: false)
+        xAxis.labelRotationAngle = xAxisConfig.labelRotation
+        xAxis.granularity = xAxisConfig.granularity
+        xAxis.granularityEnabled = xAxisConfig.granularityEnabled
+        xAxis.drawGridLinesEnabled = true
+        xAxis.gridColor = gridColor
+        xAxis.gridLineWidth = gridLineWidth
+
+        if let dateFormat = xAxisConfig.dateFormat {
+            let formatter = DateFormatter()
+            formatter.dateFormat = dateFormat
+            xAxis.valueFormatter = DateAxisValueFormatter(formatter: formatter)
+        } else if let customFormatter = xAxisConfig.customFormatter {
+            xAxis.valueFormatter = CustomAxisValueFormatter(block: customFormatter)
+        }
+    }
+
+    func updateYAxis(_ chartView: ScatterChartView) {
+        let yAxis = chartView.leftAxis
+        let rightAxis = chartView.rightAxis
+
+        let targetAxis: YAxis
+        switch yAxisConfig.position {
+        case .left:
+            targetAxis = yAxis
+            rightAxis.enabled = false
+        case .right:
+            targetAxis = rightAxis
+            yAxis.enabled = false
+        case .bothSided:
+            targetAxis = yAxis
+            rightAxis.enabled = true
+            updateYAxisSettings(rightAxis)
+        }
+
+        updateYAxisSettings(targetAxis)
+    }
+
+    private func updateYAxisSettings(_ axis: YAxis) {
+        axis.setLabelCount(yAxisConfig.labelCount, force: false)
+        axis.granularity = yAxisConfig.granularity
+        axis.granularityEnabled = yAxisConfig.granularityEnabled
+        axis.drawGridLinesEnabled = true
+        axis.gridColor = gridColor
+        axis.gridLineWidth = gridLineWidth
+
+        if yAxisConfig.axisMinCustom {
+            axis.axisMinimum = yAxisConfig.axisMinimum ?? 0
+        }
+        if yAxisConfig.axisMaxCustom {
+            axis.axisMaximum = yAxisConfig.axisMaximum ?? 0
+        }
+
+        if let customFormatter = yAxisConfig.customFormatter {
+            axis.valueFormatter = CustomAxisValueFormatter(block: customFormatter)
+        }
+    }
+
+    func updateLegend(_ chartView: ScatterChartView) {
+        let legend = chartView.legend
+        legend.enabled = legendConfig.isEnabled
+
+        switch legendConfig.position {
+        case .belowChartLeft:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .belowChartCenter:
+            legend.horizontalAlignment = .center
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .belowChartRight:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .bottom
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartLeft:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartCenter:
+            legend.horizontalAlignment = .center
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .aboveChartRight:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .top
+            legend.orientation = .horizontal
+            legend.drawInside = false
+        case .rightOfChartCenter:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .center
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .rightOfChartTop:
+            legend.horizontalAlignment = .right
+            legend.verticalAlignment = .top
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .leftOfChartCenter:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .center
+            legend.orientation = .vertical
+            legend.drawInside = false
+        case .leftOfChartTop:
+            legend.horizontalAlignment = .left
+            legend.verticalAlignment = .top
+            legend.orientation = .vertical
+            legend.drawInside = false
+        }
+
+        legend.font = legendConfig.font
+        legend.textColor = legendConfig.textColor
+    }
+
+    func updateRuleMarks(_ chartView: ScatterChartView) {
+        chartView.leftAxis.removeAllLimitLines()
+        chartView.rightAxis.removeAllLimitLines()
+        chartView.xAxis.removeAllLimitLines()
+
+        for ruleMark in ruleMarks {
+            let limitLine = ChartLimitLine(limit: ruleMark.position)
+            limitLine.lineColor = UIColor(ruleMark.color)
+            limitLine.lineWidth = ruleMark.lineWidth
+            if let dashPattern = ruleMark.dashPattern {
+                limitLine.lineDashLengths = dashPattern
+            }
+            if let label = ruleMark.label {
+                limitLine.label = label
+            }
+
+            switch ruleMark.axis {
+            case .x:
+                chartView.xAxis.addLimitLine(limitLine)
+            case .y:
+                chartView.leftAxis.addLimitLine(limitLine)
+            }
+        }
+    }
+
+    func updateInteraction(_ chartView: ScatterChartView) {
+        chartView.pinchZoomEnabled = pinchZoomEnabled
+        chartView.doubleTapToZoomEnabled = doubleTapToZoomEnabled
+        chartView.dragEnabled = dragEnabled
+        chartView.scaleXEnabled = scaleXEnabled
+        chartView.scaleYEnabled = scaleYEnabled
+        chartView.highlightPerTapEnabled = true
+        chartView.highlightPerDragEnabled = true
+    }
+
+    func updateScrolling(_ chartView: ScatterChartView) {
+        if isScrollableHorizontal, let visibleRange = visibleXRange {
+            chartView.setVisibleXRangeMaximum(visibleRange)
+            chartView.setVisibleXRangeMinimum(visibleRange)
+        } else {
+            chartView.setVisibleXRangeMaximum(chartView.xAxis.axisMaximum - chartView.xAxis.axisMinimum)
+        }
+    }
+
+    func updateAppearance(_ chartView: ScatterChartView) {
+        chartView.backgroundColor = backgroundColor
+        chartView.drawGridBackgroundEnabled = drawGridBackground
+        chartView.gridBackgroundColor = backgroundColor
+        chartView.noDataText = "No Data"
+        chartView.noDataFont = UIFont.systemFont(ofSize: 14)
+        chartView.noDataTextColor = .secondaryLabel
+    }
+
+    private func axisPositionToDGCharts(_ position: DGChartXAxisConfig.AxisPosition) -> XAxis.LabelPosition {
+        switch position {
+        case .top: return .top
+        case .bottom: return .bottom
+        case .bothSided: return .bottom
+        }
     }
 }
 

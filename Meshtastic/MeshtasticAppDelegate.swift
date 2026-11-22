@@ -11,7 +11,7 @@ import SwiftUI
 import OSLog
 import CoreData
 
-class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, ObservableObject {
+class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
 	var appState: AppState?
 

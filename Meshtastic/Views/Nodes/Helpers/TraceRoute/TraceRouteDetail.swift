@@ -31,7 +31,9 @@ struct TraceRouteDetail: View {
 					TraceRouteCard(model: TraceRouteCardModel(route: route, title: title, now: now))
 						.contextMenu {
 							if let shareImage {
-								shareLink(shareImage)
+								if #available(iOS 16.0, *) {
+									shareLink(shareImage)
+								}
 							}
 							copyButton
 						}
@@ -143,7 +145,11 @@ struct TraceRouteDetail: View {
 	}
 
 	private var shareLink: (TraceRouteShareImage) -> some View = { shareImage in
-		ShareLink(item: shareImage.image, preview: SharePreview("Trace Route", image: shareImage.image))
+		if #available(iOS 16.0, *) {
+			ShareLink(item: shareImage.image, preview: SharePreview("Trace Route", image: shareImage.image))
+		} else {
+			EmptyView()
+		}
 	}
 
 	private func copyTraceRoute() {

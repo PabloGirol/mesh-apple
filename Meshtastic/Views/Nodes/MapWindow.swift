@@ -14,11 +14,13 @@ struct MapWindow: View {
 
 	@EnvironmentObject var appState: AppState
 	@EnvironmentObject var accessoryManager: AccessoryManager
-	@Environment(\.dismissWindow) private var dismissWindow
 	@Environment(\.scenePhase) private var scenePhase
 	@StateObject private var router = Router()
 	@StateObject private var nodeFilters = NodeFilterParameters()
 	@State private var routerToken: UUID?
+
+	@available(iOS 17.0, macOS 14.0, *)
+	@Environment(\.dismissWindow) private var dismissWindow
 
 	var body: some View {
 		TabView {
@@ -30,7 +32,9 @@ struct MapWindow: View {
 		.frame(minWidth: 400, idealWidth: 900, maxWidth: .infinity, minHeight: 300, idealHeight: 700, maxHeight: .infinity)
 		.onChange(of: scenePhase) { _, newPhase in
 			if newPhase == .background {
-				dismissWindow(id: "meshmap-window")
+				if #available(iOS 17.0, macOS 14.0, *) {
+					dismissWindow(id: "meshmap-window")
+				}
 			}
 		}
 		.onAppear {
@@ -44,7 +48,9 @@ struct MapWindow: View {
 					&& $0.activationState != .unattached
 			}
 			if mainScenes.isEmpty {
-				dismissWindow(id: "meshmap-window")
+				if #available(iOS 17.0, macOS 14.0, *) {
+					dismissWindow(id: "meshmap-window")
+				}
 			}
 		}
 		.onDisappear {
@@ -60,7 +66,9 @@ struct MapWindow: View {
 					&& $0.activationState != .unattached
 			}
 			if mainScenes.isEmpty {
-				dismissWindow(id: "meshmap-window")
+				if #available(iOS 17.0, macOS 14.0, *) {
+					dismissWindow(id: "meshmap-window")
+				}
 			}
 		}
 	}

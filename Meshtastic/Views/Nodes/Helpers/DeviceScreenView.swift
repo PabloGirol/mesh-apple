@@ -136,8 +136,10 @@ struct DeviceScreenView: View {
 		.focusable(hasKeyboard)
 		.focused($keyboardCaptured)
 		.focusEffectDisabled()
-		.onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow, .return, .space, .escape, .delete], phases: .all) { press in
-			handleKey(press)
+		.ifAvailable(.init(iOS: 17, macOS: 14)) { view in
+			view.onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow, .return, .space, .escape, .delete], phases: .all) { press in
+				handleKey(press)
+			}
 		}
 	}
 
@@ -172,6 +174,7 @@ struct DeviceScreenView: View {
 
 	/// Arrow keys, Return/Space and Esc/Delete go to the radio while the screen has keyboard focus.
 	/// Key-ups are swallowed too, and anything held with Command, Control or Option is left alone.
+	@available(iOS 17.0, *)
 	private func handleKey(_ press: KeyPress) -> KeyPress.Result {
 		guard press.modifiers.isDisjoint(with: [.command, .control, .option]) else { return .ignored }
 		let event: DisplayInputEvent

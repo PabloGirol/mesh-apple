@@ -67,8 +67,13 @@ struct MeshMapMK: View {
 	@AppStorage("meshMapRegionCenterLongitude") private var savedRegionCenterLongitude: Double = 0
 	@AppStorage("meshMapRegionSpanLatitude") private var savedRegionSpanLatitude: Double = 0
 	@AppStorage("meshMapRegionSpanLongitude") private var savedRegionSpanLongitude: Double = 0
+	#if available(iOS 17.0, *)
 	@State var mapStyle: MapStyle = MapStyle.standard(elevation: .flat, emphasis: MapStyle.StandardEmphasis.muted, pointsOfInterest: .excludingAll, showsTraffic: false)
 	@State var position = MapCameraPosition.automatic
+#else
+	@State var mapStyle: Any = ""
+	@State var position: Any = ""
+#endif
 	@State private var distance = 10000.0
 	@State private var visibleRegion: MKCoordinateRegion?
 	@AppStorage("enableMapConvexHull") private var showConvexHull = false
@@ -602,13 +607,19 @@ struct MeshMapMK: View {
 					switch selectedMapLayer {
 					case .standard:
 						UserDefaults.mapLayer = newMapLayer
-						mapStyle = MapStyle.standard(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+						if #available(iOS 17.0, *) {
+							mapStyle = MapStyle.standard(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+						}
 					case .hybrid:
 						UserDefaults.mapLayer = newMapLayer
-						mapStyle = MapStyle.hybrid(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+						if #available(iOS 17.0, *) {
+							mapStyle = MapStyle.hybrid(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+						}
 					case .satellite:
 						UserDefaults.mapLayer = newMapLayer
-						mapStyle = MapStyle.imagery(elevation: .realistic)
+						if #available(iOS 17.0, *) {
+							mapStyle = MapStyle.imagery(elevation: .realistic)
+						}
 					case .offline:
 						return
 					}
@@ -751,13 +762,21 @@ struct MeshMapMK: View {
 
 			switch selectedMapLayer {
 			case .standard:
-				mapStyle = MapStyle.standard(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+				if #available(iOS 17.0, *) {
+					mapStyle = MapStyle.standard(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+				}
 			case .hybrid:
-				mapStyle = MapStyle.hybrid(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+				if #available(iOS 17.0, *) {
+					mapStyle = MapStyle.hybrid(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+				}
 			case .satellite:
-				mapStyle = MapStyle.imagery(elevation: .realistic)
+				if #available(iOS 17.0, *) {
+					mapStyle = MapStyle.imagery(elevation: .realistic)
+				}
 			case .offline:
-				mapStyle = MapStyle.hybrid(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+				if #available(iOS 17.0, *) {
+					mapStyle = MapStyle.hybrid(elevation: .realistic, pointsOfInterest: showPointsOfInterest ? .all : .excludingAll, showsTraffic: showTraffic)
+				}
 			}
 			refreshPositionState(force: true)
 		}

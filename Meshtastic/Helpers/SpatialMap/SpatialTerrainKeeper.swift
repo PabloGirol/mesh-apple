@@ -66,7 +66,7 @@ struct SpatialTerrainCheckSchedule: Equatable {
 final class SpatialTerrainKeeper: ObservableObject {
 	static let shared = SpatialTerrainKeeper()
 	/// How often the app's own check wakes up. Most ticks only look at the schedule.
-	static let tick: Duration = .seconds(30)
+	static let tick: TimeInterval = 30
 	/// Same keys as the spatial map's settings.
 	static let autoTerrainKey = "spatialMapAutoTerrain"
 	static let preciseOnlyKey = "enableMapPreciseLocationsOnly"

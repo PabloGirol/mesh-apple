@@ -502,10 +502,20 @@ private struct AgeLine: View {
 // MARK: Helpers
 
 /// "7.3 sec", formatted for the locale the same way the app's trace route log
-/// shows a round trip.
+/// shows a round trip. Duration is iOS 16+, use manual formatting for iOS 15 compatibility.
 private func roundTripText(_ seconds: TimeInterval) -> String {
-	Duration.milliseconds(Int64((seconds * 1000).rounded()))
-		.formatted(.units(allowed: [.seconds], width: .abbreviated, fractionalPart: .show(length: 1)))
+	let milliseconds = Int64((seconds * 1000).rounded())
+	if milliseconds < 1000 {
+		return "\(milliseconds)ms"
+	} else {
+		let wholeSeconds = milliseconds / 1000
+		let remainingMs = milliseconds % 1000
+		if remainingMs == 0 {
+			return "\(wholeSeconds)s"
+		} else {
+			return String(format: "%.1fs", seconds)
+		}
+	}
 }
 
 // MARK: Preview data

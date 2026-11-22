@@ -15,8 +15,6 @@ public typealias DGLineChartView = DGChartsWrapper.DGLineChartView
 public typealias DGBarChartView = DGChartsWrapper.DGBarChartView
 public typealias DGCombinedChartView = DGChartsWrapper.DGCombinedChartView
 public typealias DGScatterChartView = DGChartsWrapper.DGScatterChartView
-public typealias DGBaseChartView = DGChartsWrapper.DGBaseChartView
-public typealias DGChartViewRepresentable = DGChartsWrapper.DGChartViewRepresentable
 
 // Chart Series/Data (from DGChartsWrapper)
 public typealias DGChartSeries = DGChartsWrapper.DGChartSeries
@@ -29,33 +27,33 @@ public typealias DGChartXAxisConfig = DGChartsWrapper.DGChartXAxisConfig
 public typealias DGChartYAxisConfig = DGChartsWrapper.DGChartYAxisConfig
 public typealias DGRuleMark = DGChartsWrapper.DGRuleMark
 
-// Axis (from DGChartAxis)
+// Axis (from DGCharts framework)
 public typealias DGChartAxisScaleType = DGChartAxisScale
-public typealias DGChartAxisValueFormatter = DGChartAxisValueFormatter
-public typealias DGChartClosureAxisValueFormatter = DGChartClosureAxisValueFormatter
-public typealias DGChartDateAxisValueFormatter = DGChartDateAxisValueFormatter
-public typealias DGChartIndexAxisValueFormatter = DGChartIndexAxisValueFormatter
-public typealias DGChartMeasurementAxisValueFormatter = DGChartMeasurementAxisValueFormatter
+public typealias DGChartAxisValueFormatter = DGCharts.AxisValueFormatter
+public typealias DGChartClosureAxisValueFormatter = DGCharts.DefaultAxisValueFormatter
+public typealias DGChartDateAxisValueFormatter = DGCharts.DateAxisValueFormatter
+public typealias DGChartIndexAxisValueFormatter = DGCharts.IndexAxisValueFormatter
+public typealias DGChartMeasurementAxisValueFormatter = DGCharts.MeasurementAxisValueFormatter
 
-// Legend (from DGChartLegend)
-public typealias DGChartLegendEntry = DGChartLegendEntry
-public typealias DGChartCustomLegendRenderer = DGChartCustomLegendRenderer
-public typealias DGChartDefaultLegendRenderer = DGChartDefaultLegendRenderer
+// Legend (from DGCharts framework)
+public typealias DGChartLegendEntry = DGCharts.LegendEntry
+public typealias DGChartCustomLegendRenderer = DGCharts.LegendRenderer
+public typealias DGChartDefaultLegendRenderer = DGCharts.DefaultLegendRenderer
 
-// Selection (from DGChartSelection)
-public typealias DGChartSelectionInfo = DGChartSelectionInfo
-public typealias DGChartSelectionState = DGChartSelectionState
+// Selection (from DGChartsWrapper)
+public typealias DGChartSelectionInfo = DGChartsWrapper.DGChartSelection
+public typealias DGChartSelectionState = DGChartsWrapper.DGChartSelection
 
 // Scroll (from DGChartScroll)
-public typealias DGChartViewportJob = DGChartViewportJob
-public typealias DGChartViewportJobType = DGChartViewportJobType
-public typealias DGChartViewportController = DGChartViewportController
+public typealias DGChartViewportJob = DGChartScroll.DGChartViewportJob
+public typealias DGChartViewportJobType = DGChartScroll.DGChartViewportJobType
+public typealias DGChartViewportController = DGChartScroll.DGChartViewportController
 
 // Color (from DGChartColor)
-public typealias DGChartForegroundStyle = DGChartForegroundStyle
-public typealias DGChartLinearGradient = DGChartLinearGradient
-public typealias DGChartRadialGradient = DGChartRadialGradient
-public typealias DGChartColorPalette = DGChartColorPalette
+public typealias DGChartForegroundStyle = DGChartColor.DGChartForegroundStyle
+public typealias DGChartLinearGradient = DGChartColor.DGChartLinearGradient
+public typealias DGChartRadialGradient = DGChartColor.DGChartRadialGradient
+public typealias DGChartColorPalette = DGChartColor.DGChartColorPalette
 
 // Protocols & Base Types (from DGChartsProtocols) are already accessible in this module.
 // No typealiases needed: DGChartDataPoint, DGChartPoint, DGChartDatePoint, DGChartCategoryPoint,

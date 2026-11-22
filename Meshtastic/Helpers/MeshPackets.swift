@@ -155,7 +155,7 @@ actor MeshPackets {
 
     /// The current shared instance. Access via `MeshPackets.shared`.
     /// Periodically recreated to release accumulated ModelContext memory.
-    nonisolated private static var _shared: MeshPackets = MeshPackets(modelContainer: _container)
+    nonisolated(unsafe) private static var _shared: MeshPackets = MeshPackets(modelContainer: _container)
     private static let _lock = NSLock()
 
     /// Staged automatic channel refreshes, keyed by node number. Deliberately static rather
@@ -164,7 +164,7 @@ actor MeshPackets {
     /// storage makes recreation orthogonal — the successor actor stages into and commits from
     /// the same map. The lock covers the two executors that touch it: this actor (staging
     /// incoming channel frames) and the main actor (begin/commit/discard from AccessoryManager).
-    nonisolated private static var channelRefreshStages: [Int64: ChannelRefreshStage] = [:]
+    nonisolated(unsafe) private static var channelRefreshStages: [Int64: ChannelRefreshStage] = [:]
     private static let channelRefreshStagesLock = NSLock()
 
     // Main-thread views read node/user/position entities during body evaluation, and a
@@ -172,7 +172,7 @@ actor MeshPackets {
     // that tops the crash reports (Settings, node detail, node list rows). Evictions
     // wait for the app to background; while foregrounded only a doubled cap applies,
     // so a device that never backgrounds (a wall display) still stays bounded.
-    nonisolated private static var _appIsActive = true
+    nonisolated(unsafe) private static var _appIsActive = true
     private static let appActiveLock = NSLock()
     nonisolated static var appIsActive: Bool {
         get { appActiveLock.withLock { _appIsActive } }
@@ -186,8 +186,8 @@ actor MeshPackets {
     /// the other. A pass takes a number from `beginMaintenance()` and hands it back to
     /// `expireMaintenance(_:)`; a stale number is ignored, and starting a pass supersedes any
     /// earlier expiry without anyone having to clear it.
-    nonisolated private static var _maintenanceGeneration = 0
-    nonisolated private static var _expiredGeneration = -1
+    nonisolated(unsafe) private static var _maintenanceGeneration = 0
+    nonisolated(unsafe) private static var _expiredGeneration = -1
 
     /// Starts a maintenance pass and returns the number its expiration handler must quote.
     @discardableResult
@@ -318,7 +318,7 @@ actor MeshPackets {
 		guard !invalidated, !Self.appIsActive else { return }
 		// One deadline for the pass, not one per collection: two three-second budgets would
 		// be a six-second burst, which is the thing being bounded.
-		let deadline = ContinuousClock.now + Self.evictionBudget
+		let deadline = Date().addingTimeInterval(Self.evictionBudget)
 		// At most a couple of thousand small rows; the commit below picks the deletes up.
 		pruneNeighborLinks()
 		await evictInChunks(until: deadline) {
@@ -358,9 +358,9 @@ actor MeshPackets {
 	///
 	/// Committing per chunk uses `modelContext.save()` rather than `savePendingChanges()`,
 	/// which would re-enter `enforceEntityCaps` on its own interval and undo the chunking.
-	private func evictInChunks(until deadline: ContinuousClock.Instant, _ step: () -> Int) async {
+	private func evictInChunks(until deadline: Date, _ step: () -> Int) async {
 		while !invalidated, !Self.appIsActive, !Self.backgroundTimeExpired {
-			guard ContinuousClock.now < deadline else {
+			guard Date() < deadline else {
 				Logger.data.info("🗄️ [Caps] Eviction budget spent; the rest waits for the next background transition")
 				return
 			}
@@ -551,11 +551,11 @@ actor MeshPackets {
 	/// Timer task for debounced saves (position/telemetry).
 	private var debounceSaveTask: Task<Void, Never>?
 	/// Tracks when we last flushed debounced changes to enforce a maximum delay.
-	private var lastDebouncedSaveTime: ContinuousClock.Instant = .now
+	private var lastDebouncedSaveTime: Date = Date()
 	/// How long to wait after the last mutation before flushing.
-	private static let debounceInterval: Duration = .seconds(2)
+	private static let debounceInterval: TimeInterval = 2.0
 	/// Maximum wall-clock time between flushes, even if packets keep arriving.
-	private static let maxDebounceDelay: Duration = .seconds(5)
+	private static let maxDebounceDelay: TimeInterval = 5.0
 	static let maxPositionHistoryPerNode = 25_000
 	static let maxTelemetryPerType = 5_000
 	static let maxTotalMessages = 50_000
@@ -576,7 +576,7 @@ actor MeshPackets {
 	/// is the actual bound. Whatever is left is already committed and the next background
 	/// transition carries on, so a device over cap converges over a few backgroundings instead
 	/// of paying for all of it at once. The doubled foreground cap holds the line meanwhile.
-	static let evictionBudget: Duration = .seconds(3)
+	static let evictionBudget: TimeInterval = 3.0
 	private static let positionPruneInterval = 128
 	private static let telemetryPruneInterval = 128
 	private static let messagePruneInterval = 256
@@ -609,17 +609,17 @@ actor MeshPackets {
 	func scheduleDebouncedSave() {
 		guard !invalidated else { return }
 		debounceSaveTask?.cancel()
-		let elapsed = ContinuousClock.now - lastDebouncedSaveTime
+		let elapsed = Date().timeIntervalSince(lastDebouncedSaveTime)
 		if elapsed >= Self.maxDebounceDelay {
 			savePendingChanges(caller: "debouncedFlush-maxDelay")
-			lastDebouncedSaveTime = .now
+			lastDebouncedSaveTime = Date()
 			return
 		}
 		debounceSaveTask = Task {
 			try? await Task.sleep(nanoseconds: 2_000_000_000)
 			guard !Task.isCancelled else { return }
 			self.savePendingChanges(caller: "debouncedFlush")
-			self.lastDebouncedSaveTime = .now
+			self.lastDebouncedSaveTime = Date()
 		}
 	}
 
@@ -628,16 +628,16 @@ actor MeshPackets {
 		debounceSaveTask?.cancel()
 		debounceSaveTask = nil
 		savePendingChanges(caller: "flushDebouncedSaves")
-		lastDebouncedSaveTime = .now
+		lastDebouncedSaveTime = Date()
 	}
 
 	/// Last time the channel-unread badge count was recomputed (an O(unread) scan).
-	private var lastChannelUnreadRecompute: ContinuousClock.Instant?
+	private var lastChannelUnreadRecompute: Date?
 	/// Rate-limits the per-message channel-unread recompute to at most ~1/sec so a burst
 	/// of incoming channel messages doesn't turn the badge update into quadratic work.
 	func shouldRecomputeChannelUnread() -> Bool {
-		let now = ContinuousClock.now
-		if let last = lastChannelUnreadRecompute, now - last < .seconds(1) { return false }
+		let now = Date()
+		if let last = lastChannelUnreadRecompute, now.timeIntervalSince(last) < 1.0 { return false }
 		lastChannelUnreadRecompute = now
 		return true
 	}
@@ -645,10 +645,10 @@ actor MeshPackets {
 	/// Last time the direct-message unread badge was recomputed. Same O(unread) scan and same
 	/// burst hazard as the channel badge, so it gets the same ~1/sec rate limit — under a DM
 	/// flood the badge tolerates a brief lag and resyncs on app-active and on read.
-	private var lastDirectUnreadRecompute: ContinuousClock.Instant?
+	private var lastDirectUnreadRecompute: Date?
 	func shouldRecomputeDirectUnread() -> Bool {
-		let now = ContinuousClock.now
-		if let last = lastDirectUnreadRecompute, now - last < .seconds(1) { return false }
+		let now = Date()
+		if let last = lastDirectUnreadRecompute, now.timeIntervalSince(last) < 1.0 { return false }
 		lastDirectUnreadRecompute = now
 		return true
 	}

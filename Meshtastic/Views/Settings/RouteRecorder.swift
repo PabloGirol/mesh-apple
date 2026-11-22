@@ -17,8 +17,13 @@ struct RouteRecorder: View {
 	@ObservedObject var locationsHandler: LocationsHandler = LocationsHandler.shared
 	@Environment(\.managedObjectContext) private var context
 	@Environment(\.dismiss) private var dismiss
+	#if available(iOS 17.0, *)
 	@State private var position: MapCameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
 	@State var mapStyle: MapStyle = MapStyle.standard(elevation: .realistic)
+	#else
+	@State private var position: MKCoordinateRegion = MKCoordinateRegion()
+	@State var mapStyle: Any = ""
+	#endif
 	@State var isShowingDetails = false
 	@Namespace var namespace
 	@Namespace var routerecorderscope
@@ -29,38 +34,50 @@ struct RouteRecorder: View {
 	var body: some View {
 		VStack {
 			ZStack {
-				Map(position: $position, scope: routerecorderscope) {
-					UserAnnotation()
-					/// Route Lines
-					let lineCoords = locationsHandler.locationsArray.compactMap({(position) -> CLLocationCoordinate2D in
-						return position.coordinate
-					})
+				if #available(iOS 17.0, *) {
+					Map(position: $position, scope: routerecorderscope) {
+						UserAnnotation()
+						/// Route Lines
+						let lineCoords = locationsHandler.locationsArray.compactMap({(position) -> CLLocationCoordinate2D in
+							return position.coordinate
+						})
 
-					let gradient = LinearGradient(
-						colors: [color],
-						startPoint: .leading, endPoint: .trailing
-					)
-					let dashed = StrokeStyle(
-						lineWidth: 3,
-						lineCap: .round, lineJoin: .round, dash: [10, 10]
-					)
-					MapPolyline(coordinates: lineCoords)
-						.stroke(gradient, style: dashed)
+						let gradient = LinearGradient(
+							colors: [color],
+							startPoint: .leading, endPoint: .trailing
+						)
+						let dashed = StrokeStyle(
+							lineWidth: 3,
+							lineCap: .round, lineJoin: .round, dash: [10, 10]
+						)
+						MapPolyline(coordinates: lineCoords)
+							.stroke(gradient, style: dashed)
 
+					}
+					.mapStyle(mapStyle)
+				} else {
+					RouteRecorderMapView(
+						locations: locationsHandler.locationsArray,
+						color: color,
+						position: $position
+					)
 				}
-				.mapStyle(mapStyle)
 			}
-			.mapControls {
-				MapScaleView(scope: routerecorderscope)
-					.mapControlVisibility(.automatic)
-				MapPitchToggle(scope: routerecorderscope)
-					.mapControlVisibility(.automatic)
-				MapCompass(scope: routerecorderscope)
-					.mapControlVisibility(.automatic)
+			if #available(iOS 17.0, *) {
+				.mapControls {
+					MapScaleView(scope: routerecorderscope)
+						.mapControlVisibility(.automatic)
+					MapPitchToggle(scope: routerecorderscope)
+						.mapControlVisibility(.automatic)
+					MapCompass(scope: routerecorderscope)
+						.mapControlVisibility(.automatic)
+				}
 			}
 			.controlSize(.regular)
 			.offset(y: 100)
-			.mapScope(routerecorderscope)
+			if #available(iOS 17.0, *) {
+				.mapScope(routerecorderscope)
+			}
 			.safeAreaInset(edge: .bottom) {
 				ZStack {
 					VStack {
@@ -270,8 +287,8 @@ struct RouteRecorder: View {
 
 							}
 						}
-					.navigationBarTitleDisplayMode(.inline)
-					.sheetCloseButton { isShowingDetails = false }
+						.navigationBarTitleDisplayMode(.inline)
+						.sheetCloseButton { isShowingDetails = false }
 				}
 				.trackScreen(.routeRecordingDetails)
 				.modifier(SheetPresentationModifiers(
@@ -316,3 +333,64 @@ struct RouteRecorder: View {
 		.ignoresSafeArea(.all, edges: [.top, .leading, .trailing])
 	}
 }
+
+#if !os(iOS) || !os(visionOS) || os(macCatalyst)
+/// Fallback for iOS 15/16 - uses MKMapView via UIViewRepresentable
+struct RouteRecorderMapView: UIViewRepresentable {
+	let locations: [CLLocation]
+	let color: Color
+	#if available(iOS 17.0, *)
+	@Binding var position: MapCameraPosition
+	#else
+	@Binding var position: MKCoordinateRegion
+	#endif
+
+	func makeUIView(context: Context) -> MKMapView {
+		let mapView = MKMapView()
+		mapView.showsUserLocation = true
+		mapView.userTrackingMode = .followWithHeading
+		mapView.mapType = .standard
+
+		// Draw route polyline
+		if !locations.isEmpty {
+			let coordinates = locations.map { $0.coordinate }
+			let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
+			mapView.addOverlay(polyline)
+		}
+
+		context.coordinator.mapView = mapView
+		return mapView
+	}
+
+	func updateUIView(_ uiView: MKMapView, context: Context) {
+		// Update polyline if locations changed
+		if !locations.isEmpty {
+			uiView.removeOverlays(uiView.overlays)
+			let coordinates = locations.map { $0.coordinate }
+			let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
+			uiView.addOverlay(polyline)
+		}
+	}
+
+	func makeCoordinator() -> Coordinator {
+		Coordinator()
+	}
+
+	class Coordinator: NSObject, MKMapViewDelegate {
+		weak var mapView: MKMapView?
+
+		func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+			if let polyline = overlay as? MKPolyline {
+				let renderer = MKPolylineRenderer(polyline: polyline)
+				renderer.strokeColor = UIColor(Color.blue)
+				renderer.lineWidth = 3
+				renderer.lineDashPattern = [10, 10]
+				return renderer
+			}
+			return MKOverlayRenderer(overlay: overlay)
+		}
+	}
+}
+#else
+typealias RouteRecorderMapView = EmptyView
+#endif

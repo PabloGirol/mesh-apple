@@ -81,16 +81,16 @@ enum ProvisioningState: Equatable {
 // MARK: - NymeaProvisioningManager
 
 @MainActor
-final class NymeaProvisioningManager: NSObject {
+final class NymeaProvisioningManager: NSObject, ObservableObject {
 
 	static let shared = NymeaProvisioningManager()
 
-	private(set) var state: ProvisioningState = .idle
+	@Published private(set) var state: ProvisioningState = .idle
 
 	/// Devices currently visible to the passive (background) scan. Updated whenever a
 	/// scan is running — passive or active — so the Connect view can list nearby
 	/// nymea devices even before the user opens the provisioning sheet.
-	private(set) var discoverable: [NymeaDiscoveredDevice] = []
+	@Published private(set) var discoverable: [NymeaDiscoveredDevice] = []
 
 	// MARK: Scanning
 
@@ -115,7 +115,7 @@ final class NymeaProvisioningManager: NSObject {
 	private var nymeaSession: NymeaSession?
 	private var provisioningTask: Task<Void, Never>?
 
-	private override init() { super.init() }
+	fileprivate override init() { super.init() }
 
 	// MARK: - Public API
 

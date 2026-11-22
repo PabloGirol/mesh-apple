@@ -10,6 +10,14 @@ import SwiftUI
 import DGCharts
 import UIKit
 
+// MARK: - Missing Typealiases from DGCharts framework
+
+/// Typealias for ChartDataSetBase from DGCharts framework
+public typealias ChartDataSetBase = DGCharts.ChartDataSetBase
+
+/// Typealias for DGChartColor - maps to UIColor for DGCharts compatibility
+public typealias DGChartColor = UIColor
+
 // MARK: - Chart Data Protocols
 
 /// Protocol for chart data points - matches Swift Charts' Plottable concept
@@ -307,7 +315,7 @@ public protocol DGChartSelectionConfig {
 
 /// Custom highlighter protocol - uses actual DGCharts ChartDataSetBase
 public protocol DGChartHighlighter {
-    func getHighlight(x: Double, y: Double, dataSets: [ChartDataSetBase]) -> Highlight?
+    func getHighlight(x: Double, y: Double, dataSets: [DGCharts.ChartDataSetBase]) -> Highlight?
 }
 
 // Default selection configuration
@@ -467,35 +475,23 @@ public struct DGDefaultAnimationConfig: DGChartAnimationConfig {
     public init() {}
 }
 
-// MARK: - Chart Gesture
-
-/// Chart gesture types for interaction callbacks
-public enum ChartGesture: Equatable {
-    case scale(scaleX: CGFloat, scaleY: CGFloat)
-    case pan(dX: CGFloat, dY: CGFloat)
-    case pinch(scale: CGFloat, velocity: CGFloat)
-    case doubleTap(location: CGPoint)
-    case longPress(location: CGPoint)
-    case drag(startLocation: CGPoint, currentLocation: CGPoint)
-}
-
 // MARK: - Fill Formatter Protocol (matches DGCharts FillFormatter)
 
 /// Protocol for fill formatter - matches DGCharts FillFormatter
 /// Uses actual DGCharts ChartDataSetBase and ChartDataProvider
 public protocol DGChartFillFormatter {
-    func getFillLinePosition(dataSet: ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat
+    func getFillLinePosition(dataSet: DGCharts.ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat
 }
 
 /// Default fill formatter implementation
 public struct DGDefaultFillFormatter: DGChartFillFormatter {
-    private let block: (ChartDataSetBase, ChartDataProvider) -> CGFloat
+    private let block: (DGCharts.ChartDataSetBase, ChartDataProvider) -> CGFloat
 
-    public init(block: @escaping (ChartDataSetBase, ChartDataProvider) -> CGFloat) {
+    public init(block: @escaping (DGCharts.ChartDataSetBase, ChartDataProvider) -> CGFloat) {
         self.block = block
     }
 
-    public func getFillLinePosition(dataSet: ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
+    public func getFillLinePosition(dataSet: DGCharts.ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
         block(dataSet, dataProvider)
     }
 }

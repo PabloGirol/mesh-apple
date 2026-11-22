@@ -8,6 +8,9 @@
 import SwiftUI
 import DGCharts
 
+// Disambiguate ChartGesture from DGCharts framework
+typealias ChartGesture = DGChartsProtocols.ChartGesture
+
 // MARK: - Area Chart Data Set
 
 /// Data set for area charts (line with fill) - uses concrete types to avoid protocol associatedtype issues
@@ -447,11 +450,11 @@ public struct DGAreaChart<Point: DGChartDataPoint>: UIViewRepresentable {
         }
 
         public func chartScaled(_ chartView: ChartViewBase, scaleX: CGFloat, scaleY: CGFloat) {
-            parent.onChartGesture?(.scale(scaleX: scaleX, scaleY: scaleY))
+            parent.onChartGesture?(ChartGesture.scale(scaleX: scaleX, scaleY: scaleY))
         }
 
         public func chartTranslated(_ chartView: ChartViewBase, dX: CGFloat, dY: CGFloat) {
-            parent.onChartGesture?(.pan(dX: dX, dY: dY))
+            parent.onChartGesture?(ChartGesture.pan(dX: dX, dY: dY))
         }
     }
 }
@@ -622,11 +625,11 @@ private class IndexAxisValueFormatter: NSObject, AxisValueFormatter {
 }
 
 private class DefaultFillFormatter: NSObject, FillFormatter {
-    let block: (ChartDataSetBase, ChartDataProvider) -> CGFloat
-    init(block: @escaping (ChartDataSetBase, ChartDataProvider) -> CGFloat) {
+    let block: (DGCharts.ChartDataSetBase, ChartDataProvider) -> CGFloat
+    init(block: @escaping (DGCharts.ChartDataSetBase, ChartDataProvider) -> CGFloat) {
         self.block = block
     }
-    func getFillLinePosition(dataSet: ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
+    func getFillLinePosition(dataSet: DGCharts.ChartDataSetBase, dataProvider: ChartDataProvider) -> CGFloat {
         block(dataSet, dataProvider)
     }
 }

@@ -12,7 +12,7 @@ struct NRFDFUSheet: View {
 	@Environment(\.dismiss) var dismiss
 	@EnvironmentObject var accessoryManager: AccessoryManager
 	@State var showWarningAlert = true
-	@StateObject private var dfuViewModel = DFUViewModel()
+	@StateObject private var dfuViewModel = DFUViewModelObservable()
 	@State private var showChirpyGame = false
 	@State private var showStopConfirmation = false
 	

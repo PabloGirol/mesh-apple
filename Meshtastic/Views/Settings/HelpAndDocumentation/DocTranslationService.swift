@@ -449,7 +449,7 @@ actor DocTranslationService {
 			Logger.docs.info("DocTranslationService: Pre-loaded \(communityCount, privacy: .public) community translations")
 		}
 
-		let minStepDuration: ContinuousClock.Duration = .milliseconds(150)
+		let minStepDuration: TimeInterval = 0.15
 
 		// Phase 1: page translations
 		for (index, page) in orderedPages.enumerated() {
@@ -481,11 +481,11 @@ actor DocTranslationService {
 		}
 		for (index, page) in orderedPages.enumerated() {
 			guard !Task.isCancelled else { break }
-			let stepStart = ContinuousClock.now
+			let stepStart = Date()
 			updateProgress(.translating(completed: index, total: totalPages, description: "Nav Labels"))
 			_ = await translatedUIString(page.title, targetLanguage: languageCode)
 			updateProgress(.translating(completed: index + 1, total: totalPages, description: "Nav Labels"))
-			let elapsed = ContinuousClock.now - stepStart
+			let elapsed = Date().timeIntervalSince(stepStart)
 			if elapsed < minStepDuration {
 				try? await Task.sleep(nanoseconds: 150_000_000)
 			}
@@ -495,7 +495,7 @@ actor DocTranslationService {
 		var searchEntries: [TranslatedSearchEntry] = []
 		for (index, page) in orderedPages.enumerated() {
 			guard !Task.isCancelled else { break }
-			let stepStart = ContinuousClock.now
+			let stepStart = Date()
 			updateProgress(.translating(completed: index, total: totalPages, description: "Indexing Page"))
 			let translatedTitle = await translatedUIString(page.title, targetLanguage: languageCode)
 			var translatedKeywords: [String] = []
@@ -514,7 +514,7 @@ actor DocTranslationService {
 				title: translatedTitle, keywords: combined
 			))
 			updateProgress(.translating(completed: index + 1, total: totalPages, description: "Indexing Page"))
-			let elapsed = ContinuousClock.now - stepStart
+			let elapsed = Date().timeIntervalSince(stepStart)
 			if elapsed < minStepDuration {
 				try? await Task.sleep(nanoseconds: 150_000_000)
 			}
@@ -543,8 +543,8 @@ actor DocTranslationService {
 			case .noToken:
 				updateProgress(.translating(completed: uploadTotal, total: uploadTotal, description: "No upload token"))
 			}
-			let stepStart = ContinuousClock.now
-			let elapsed = ContinuousClock.now - stepStart
+			let stepStart = Date()
+			let elapsed = Date().timeIntervalSince(stepStart)
 			if elapsed < minStepDuration {
 				try? await Task.sleep(nanoseconds: 150_000_000)
 			}

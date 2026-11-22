@@ -158,16 +158,10 @@ private struct EventFirmwareTintScopeCore<Content: View>: View {
 	var body: some View {
 		content
 			.tint(cachedTint)
-#if !MESHTASTIC_IOS15
-			.onChange(of: tintInputs, initial: true) { _, _ in
-				updateTint()
-			}
-#else
 			.onAppear(perform: updateTint)
-			.onChange(of: tintInputs) { _ in
+			.onChange(of: tintInputs) { _, _ in
 				updateTint()
 			}
-#endif
 	}
 }
 

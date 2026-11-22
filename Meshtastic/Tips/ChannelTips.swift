@@ -5,10 +5,12 @@
  //  Copyright(c) Garth Vander Houwen 8/31/23.
  //
  import SwiftUI
-#if !MESHTASTIC_IOS15
+
+@available(iOS 16.0, macOS 13.0, *)
 import TipKit
 
- struct ShareChannelsTip: Tip {
+@available(iOS 16.0, macOS 13.0, *)
+struct ShareChannelsTip: Tip {
 
 	var id: String {
 		return "tip.channels.share"
@@ -26,45 +28,46 @@ import TipKit
 		Tips.IgnoresDisplayFrequency(true)
 		Tips.MaxDisplayCount(3)
 	}
- }
+}
 
+@available(iOS 16.0, macOS 13.0, *)
 struct CreateChannelsTip: Tip {
 
-   var id: String {
-	   return "tip.channels.create"
-   }
-   var title: Text {
-	   Text("Manage Channels")
-   }
-   var message: Text? {
-	   Text("The primary channel handles broadcast traffic. The location icon marks which channel sends your position; cloud icons show MQTT uplink and downlink. Add secondary channels for separate messaging groups. [Learn more](https://meshtastic.org/docs/configuration/tips/)")
-   }
-   var image: Image? {
-	   Image(systemName: "lock.shield")
-   }
-   var options: [TipOption] {
-	   Tips.IgnoresDisplayFrequency(true)
-	   Tips.MaxDisplayCount(3)
-   }
+	var id: String {
+		return "tip.channels.create"
+	}
+	var title: Text {
+		Text("Manage Channels")
+	}
+	var message: Text? {
+		Text("The primary channel handles broadcast traffic. The location icon marks which channel sends your position; cloud icons show MQTT uplink and downlink. Add secondary channels for separate messaging groups. [Learn more](https://meshtastic.org/docs/configuration/tips/)")
+	}
+	var image: Image? {
+		Image(systemName: "lock.shield")
+	}
+	var options: [TipOption] {
+		Tips.IgnoresDisplayFrequency(true)
+		Tips.MaxDisplayCount(3)
+	}
 }
 
+@available(iOS 16.0, macOS 13.0, *)
 struct AdminChannelTip: Tip {
 
-   var id: String {
-	   return "tip.channel.admin"
-   }
-   var title: Text {
-	   Text("Administration Enabled")
-   }
-   var message: Text? {
-	   Text("Select a node from the drop down to manage connected or remote devices.")
-   }
-   var image: Image? {
-	   Image(systemName: "gearshape.arrow.triangle.2.circlepath")
-   }
-   var options: [TipOption] {
-	   Tips.IgnoresDisplayFrequency(true)
-	   Tips.MaxDisplayCount(3)
-   }
+	var id: String {
+		return "tip.channel.admin"
+	}
+	var title: Text {
+		Text("Administration Enabled")
+	}
+	var message: Text? {
+		Text("Select a node from the drop down to manage connected or remote devices.")
+	}
+	var image: Image? {
+		Image(systemName: "gearshape.arrow.triangle.2.circlepath")
+	}
+	var options: [TipOption] {
+		Tips.IgnoresDisplayFrequency(true)
+		Tips.MaxDisplayCount(3)
+	}
 }
-#endif

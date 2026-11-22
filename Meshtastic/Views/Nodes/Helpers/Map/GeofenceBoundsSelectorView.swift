@@ -20,7 +20,11 @@ struct GeofenceBoundsSelectorView: View {
 	var onComplete: (GeoBounds) -> Void
 
 	@Environment(\.dismiss) private var dismiss
+	#if available(iOS 17.0, *)
 	@State private var camera: MapCameraPosition
+	#else
+	@State private var camera: MKCoordinateRegion
+	#endif
 	@State private var bounds: GeoBounds?
 
 	/// The selection rectangle in the view's local coordinate space (drag/resize target).
@@ -50,10 +54,28 @@ struct GeofenceBoundsSelectorView: View {
 			region = MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05))
 		}
 		self.initialRegion = region
-		_camera = State(initialValue: .region(region))
+		#if available(iOS 17.0, *)
+		_camera = State(initialValue: MapCameraPosition.region(region))
+		#else
+		_camera = State(initialValue: region)
+		#endif
 	}
 
 	var body: some View {
+		if #available(iOS 17.0, *) {
+			swiftUIMap
+		} else {
+			GeofenceBoundsSelectorMKView(
+				center: center,
+				initialBounds: initialBounds,
+				onComplete: onComplete,
+				initialRegion: initialRegion
+			)
+		}
+	}
+
+	@available(iOS 17.0, *)
+	private var swiftUIMap: some View {
 		SheetNavigationStack {
 			GeometryReader { geo in
 				MapReader { proxy in
@@ -106,6 +128,7 @@ struct GeofenceBoundsSelectorView: View {
 
 	// MARK: - Selection rectangle (dim + border + drag/resize handles)
 
+	@available(iOS 17.0, *)
 	@ViewBuilder
 	private func selectionLayer(proxy: MapProxy, size: CGSize) -> some View {
 		if selectionRect.width > 1, selectionRect.height > 1 {
@@ -360,3 +383,86 @@ struct GeofenceBoundsSelectorView: View {
 		)
 	}
 }
+
+#if !os(iOS) || !os(visionOS) || os(macCatalyst)
+/// Fallback for iOS 15/16 - uses MKMapView via UIViewRepresentable
+struct GeofenceBoundsSelectorMKView: UIViewRepresentable {
+	let center: CLLocationCoordinate2D
+	let initialBounds: GeoBounds?
+	let onComplete: (GeoBounds) -> Void
+	let initialRegion: MKCoordinateRegion
+
+	func makeUIView(context: Context) -> MKMapView {
+		let mapView = MKMapView()
+		mapView.delegate = context.coordinator
+		mapView.showsUserLocation = false
+		mapView.userTrackingMode = .none
+
+		// Apply map configuration
+		let standard = MKStandardMapConfiguration(elevationStyle: .flat)
+		standard.pointOfInterestFilter = .excludingAll
+		mapView.preferredConfiguration = standard
+
+		context.coordinator.mapView = mapView
+		context.coordinator.initialBounds = initialBounds
+		context.coordinator.onComplete = onComplete
+		context.coordinator.setupInitialState(mapView: mapView, initialRegion: initialRegion)
+
+		return mapView
+	}
+
+	func updateUIView(_ mapView: MKMapView, context: Context) {
+		// No updates needed for this simple fallback
+	}
+
+	func makeCoordinator() -> Coordinator {
+		Coordinator()
+	}
+
+	class Coordinator: NSObject, MKMapViewDelegate {
+		weak var mapView: MKMapView?
+		var initialBounds: GeoBounds?
+		var onComplete: ((GeoBounds) -> Void)?
+		private var selectionOverlay: MKOverlay?
+		private var selectionAnnotation: MKPointAnnotation?
+
+		func setupInitialState(mapView: MKMapView, initialRegion: MKCoordinateRegion) {
+			mapView.setRegion(initialRegion, animated: false)
+
+			// If there's an initial bounds, add it as an overlay
+			if let bounds = initialBounds {
+				addSelectionOverlay(mapView: mapView, bounds: bounds)
+			}
+		}
+
+		func addSelectionOverlay(mapView: MKMapView, bounds: GeoBounds) {
+			if let overlay = selectionOverlay {
+				mapView.removeOverlay(overlay)
+			}
+			let coords = [
+				CLLocationCoordinate2D(latitude: bounds.maxLat, longitude: bounds.minLon),
+				CLLocationCoordinate2D(latitude: bounds.maxLat, longitude: bounds.maxLon),
+				CLLocationCoordinate2D(latitude: bounds.minLat, longitude: bounds.maxLon),
+				CLLocationCoordinate2D(latitude: bounds.minLat, longitude: bounds.minLon)
+			]
+			var mutableCoords = coords
+			let polygon = MKPolygon(coordinates: &mutableCoords, count: coords.count)
+			selectionOverlay = polygon
+			mapView.addOverlay(polygon)
+		}
+
+		func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+			if let polygon = overlay as? MKPolygon, polygon === selectionOverlay {
+				let renderer = MKPolygonRenderer(polygon: polygon)
+				renderer.strokeColor = .white
+				renderer.fillColor = UIColor.black.withAlphaComponent(0.28)
+				renderer.lineWidth = 3
+				return renderer
+			}
+			return MKOverlayRenderer(overlay: overlay)
+		}
+	}
+}
+#else
+typealias GeofenceBoundsSelectorMKView = EmptyView
+#endif

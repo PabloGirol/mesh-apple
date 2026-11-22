@@ -348,7 +348,7 @@ struct SpatialMapWindow: View {
 		routeRequestTask?.cancel()
 		routeRequestTask = Task {
 			if !model.routes.contains(where: { $0.id == routeId }) {
-				await model.reloadRoutes(container: context.container)
+				await model.reloadRoutes(container: CoreDataStackImpl.shared.container)
 			}
 			guard !Task.isCancelled else { return }
 			guard let route = model.routes.first(where: { $0.id == routeId }) else {

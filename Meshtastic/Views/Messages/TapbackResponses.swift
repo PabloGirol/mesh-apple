@@ -48,28 +48,14 @@ struct TapbackResponses: View {
 	var body: some View {
 		if !tapbacks.isEmpty {
 			VStack(alignment: .trailing) {
-				ReactionPillFrame(contentWidth: contentWidth, height: pillHeight) {
-					ScrollView(.horizontal, showsIndicators: false) {
-						LazyHGrid(rows: rows, spacing: Self.itemSpacing) {
-							ForEach(tapbacks) { (tapback: MessageEntity) in
-								VStack(spacing: 1) {
-									Text(tapback.messagePayload ?? "")
-										.font(.system(size: 20))
-										.lineLimit(1)
-										.minimumScaleFactor(0.7)
-									Text("\(tapback.fromUser?.shortName ?? "?")")
-										.font(.caption2)
-										.foregroundColor(.gray)
-										.lineLimit(1)
-										.minimumScaleFactor(0.7)
-								}
-								.frame(width: Self.itemWidth)
-								.accessibilityElement(children: .combine)
-								.accessibilityLabel(String(localized: "Reaction \(tapback.messagePayload ?? "") from \(tapback.fromUser?.shortName ?? "?")", comment: "VoiceOver: a single emoji reaction and who sent it. First value is the emoji, second is the sender"))
-							}
-						}
-						.padding(Self.gridPadding)
+				if #available(iOS 16.0, *) {
+					ReactionPillFrame(contentWidth: contentWidth, height: pillHeight) {
+						pillContent
 					}
+				} else {
+					// iOS 15 fallback: use a simple frame with maxWidth
+					pillContent
+						.frame(maxWidth: contentWidth, idealHeight: pillHeight, maxHeight: pillHeight)
 				}
 			}
 			.overlay(
@@ -78,8 +64,35 @@ struct TapbackResponses: View {
 			)
 		}
 	}
+
+	@ViewBuilder
+	private var pillContent: some View {
+		ScrollView(.horizontal, showsIndicators: false) {
+			LazyHGrid(rows: rows, spacing: Self.itemSpacing) {
+				ForEach(tapbacks) { (tapback: MessageEntity) in
+					VStack(spacing: 1) {
+						Text(tapback.messagePayload ?? "")
+							.font(.system(size: 20))
+							.lineLimit(1)
+							.minimumScaleFactor(0.7)
+						Text("\(tapback.fromUser?.shortName ?? "?")")
+							.font(.caption2)
+							.foregroundColor(.gray)
+							.lineLimit(1)
+							.minimumScaleFactor(0.7)
+					}
+					.frame(width: Self.itemWidth)
+					.accessibilityElement(children: .combine)
+					.accessibilityLabel(String(localized: "Reaction \(tapback.messagePayload ?? "") from \(tapback.fromUser?.shortName ?? "?")", comment: "VoiceOver: a single emoji reaction and who sent it. First value is the emoji, second is the sender"))
+				}
+			}
+			.padding(Self.gridPadding)
+		}
+	}
 }
 
+#if os(iOS) && !targetEnvironment(macCatalyst)
+@available(iOS 16.0, *)
 /// Width is the chip arithmetic, capped at the width the message column proposes.
 /// A stored `UIScreen` width is the wrong screen in Split View and never updates when the phone folds.
 private struct ReactionPillFrame: Layout {
@@ -104,3 +117,4 @@ private struct ReactionPillFrame: Layout {
 		)
 	}
 }
+#endif

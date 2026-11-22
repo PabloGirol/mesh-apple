@@ -38,7 +38,13 @@ struct WaypointForm: View {
 	@State private var notifyFavoritesOnly: Bool = false
 	@State private var geofenceBounds: GeoBounds?
 	@State private var showingBoundsSelector: Bool = false
-	@State private var selectedDetent: PresentationDetent = .medium
+	@State private var selectedDetent: Any = {
+		if #available(iOS 16.0, *) {
+			return PresentationDetent.medium
+		} else {
+			return "medium" as Any
+		}
+	}()
 	@State private var waypointFailedAlert: Bool = false
 	@State private var createdByNode: NodeInfoEntity?
 	@State private var lastUpdatedByNode: NodeInfoEntity?
@@ -462,7 +468,9 @@ struct WaypointForm: View {
 					ToolbarItem(placement: .topBarTrailing) {
 						Button {
 							editMode = true
-							selectedDetent = .fraction(0.85)
+							if #available(iOS 16.0, *) {
+								selectedDetent = PresentationDetent.fraction(0.85)
+							}
 						} label: {
 							Image(systemName: "square.and.pencil")
 						}

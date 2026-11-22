@@ -10,6 +10,7 @@ import NordicDFU
 import CoreBluetooth
 import OSLog
 import UIKit
+import SwiftUI
 
 // A simple enum to track the UI state
 enum DFUUpdateState: Equatable {
@@ -25,7 +26,8 @@ enum DFUUpdateState: Equatable {
 	}
 }
 
-class DFUViewModel: NSObject {
+@MainActor
+class DFUViewModel: NSObject, ObservableObject {
     // MARK: - Published Properties (UI Binding)
     @Published var progress: Double = 0.0
     @Published var state: DFUUpdateState = .idle
@@ -131,7 +133,7 @@ final class DFUViewModelObservable: ObservableObject {
 		viewModel.abort()
 	}
 
-	private init() {}
+	private override init() {}
 }
 
 // MARK: - DFU Service Delegate (State Changes)

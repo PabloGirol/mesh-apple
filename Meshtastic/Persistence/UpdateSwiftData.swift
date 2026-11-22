@@ -221,7 +221,7 @@ extension MeshPackets {
 				favoriteNodeNums = Set((try? modelContext.fetch(favRequest))?.map(\.num) ?? [])
 			}
 
-			let allModelTypes: [any NSManagedObject.Type] = [
+			let allModelTypes: [NSManagedObject.Type] = [
 					NodeInfoEntity.self,
 					UserEntity.self,
 					MyInfoEntity.self,

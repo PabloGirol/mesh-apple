@@ -156,7 +156,7 @@ final class OfflineMapManager: ObservableObject {
 	private var downloadLifecycle = OfflineMapDownloadLifecycle()
 	private var downloadCompletion: ((OfflineMapRegion?) -> Void)?
 
-	private init() {}
+	private override init() {}
 
 	// MARK: - Downloading
 

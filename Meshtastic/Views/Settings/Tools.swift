@@ -15,7 +15,7 @@ struct Tools: View {
 	@Environment(\.managedObjectContext) private var context
 
 	#if !targetEnvironment(macCatalyst) && !os(visionOS)
-	@StateObject private var nfcReader = NFCReader()
+	@StateObject private var nfcReader = NFCReaderObservable()
 	#endif
 	@State private var saveChannelLink: SaveChannelLinkData?
 	@State private var pendingContact: PendingContact?

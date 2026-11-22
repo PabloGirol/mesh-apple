@@ -447,7 +447,7 @@ private extension ChannelMessageList {
 			messageToHighlight = -1
 			return
 		}
-		let actor = searchActor ?? MessageSearchActor(modelContainer: context.container)
+		let actor = searchActor ?? MessageSearchActor(context: context)
 		searchActor = actor
 		do {
 			let matches = try await actor.channelMatches(channelIndex: channel.index, query: query)

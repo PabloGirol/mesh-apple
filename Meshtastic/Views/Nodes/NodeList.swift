@@ -10,16 +10,7 @@ import OSLog
 import CoreData
 import Foundation
 
-#if MESHTASTIC_IOS15
-/// Dummy class for iOS 15 where TrackedWidgetNodes (AppIntents) is not available.
-final class TrackedWidgetNodesDummy: ObservableObject {
-	static let shared = TrackedWidgetNodesDummy()
-	var nums: Set<Int64>? = nil
-	func contains(_ num: Int64) -> Bool { false }
-	static var deleteWarning: String { "" }
-	func refresh() async {}
-}
-#endif
+// Copyright(c) Garth Vander Houwen 9/8/23.//
 
 struct NodeList: View {
 	@Environment(\.managedObjectContext) private var context
@@ -32,10 +23,7 @@ struct NodeList: View {
 	@State private var isPresentingPositionFailedAlert = false
 	@State private var isPresentingDeleteNodeAlert = false
 	/// Whether a node is on a Node Tracker widget, for the delete confirmation.
-#if !MESHTASTIC_IOS15
 	@ObservedObject private var trackedWidgets = TrackedWidgetNodes.shared
-#else
-	@ObservedObject private var trackedWidgets = TrackedWidgetNodesDummy.shared
 #endif
 	@State private var deleteNodeId: Int64 = 0
 	@State private var shareContactNode: NodeInfoEntity?
@@ -250,16 +238,11 @@ struct NodeList: View {
 		.hostedConfirmation("Are you sure?", isPresented: $isPresentingDeleteNodeAlert, titleVisibility: .visible) {
 			deleteNodeButton
 		} message: {
-#if !MESHTASTIC_IOS15
 			if trackedWidgets.contains(deleteNodeId) {
 				Text(TrackedWidgetNodes.deleteWarning)
 			}
-#endif
-		}
-		.task {
-#if !MESHTASTIC_IOS15
+			}
 			await TrackedWidgetNodes.shared.refresh()
-#endif
 		}
 		.hostedSheet(item: $shareContactNode) { selectedNode in
 			// Mirror NodeDetail's rule: only your own (connected) node is marked

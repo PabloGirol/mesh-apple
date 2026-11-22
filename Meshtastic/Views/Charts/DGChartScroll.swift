@@ -199,7 +199,7 @@ public extension DGDefaultScrollConfig {
 public final class DGChartViewportController: ObservableObject {
     weak var chartView: ChartViewBase?
 
-    public init() {}
+    public override init() {}
 
     public func setChartView(_ chartView: ChartViewBase) {
         self.chartView = chartView

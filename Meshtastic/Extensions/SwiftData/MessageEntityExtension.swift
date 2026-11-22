@@ -237,13 +237,3 @@ extension MessageEntity {
 		return badges
 	}
 }
-
-extension UserEntity {
-	/// The `userNode` relationship, but only when this user is still live in its context. Reading a
-	/// relationship on a deleted/zombie @Model fatally traps in SwiftData; callers on render paths
-	/// use this so a node pruned underneath them can't crash the read.
-	var liveUserNode: NodeInfoEntity? {
-		guard modelContext != nil, !isDeleted else { return nil }
-		return userNode
-	}
-}

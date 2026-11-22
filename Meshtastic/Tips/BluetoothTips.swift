@@ -5,9 +5,11 @@
 //  Copyright(c) Garth Vander Houwen 8/31/23.
 //
 import SwiftUI
-#if !MESHTASTIC_IOS15
+
+@available(iOS 16.0, macOS 13.0, *)
 import TipKit
 
+@available(iOS 16.0, macOS 13.0, *)
 struct ConnectionTip: Tip {
 
 	var id: String {
@@ -26,4 +28,3 @@ struct ConnectionTip: Tip {
 		Tips.IgnoresDisplayFrequency(true)
 	}
 }
-#endif

@@ -215,10 +215,10 @@ private struct FilteredUserList: View {
 			try await Task.sleep(nanoseconds: 100_000_000)
 			guard containerGeneration == CoreDataStackImpl.shared.containerGeneration else { return }
 			let currentContainer = CoreDataStackImpl.shared.container
-			guard context.container === currentContainer else { return }
+			guard (context as NSManagedObjectContext).persistentContainer === currentContainer else { return }
 			// Built per refresh: it costs little next to the fetch, and nothing has to track the
 			// container it was made for.
-			let actor = DirectMessageSummaryActor(modelContainer: currentContainer)
+			let actor = DirectMessageSummaryActor(context: currentContainer.viewContext)
 			let summaries = try await actor.summaries(for: userNums)
 			guard !Task.isCancelled,
 				  containerGeneration == CoreDataStackImpl.shared.containerGeneration else { return }

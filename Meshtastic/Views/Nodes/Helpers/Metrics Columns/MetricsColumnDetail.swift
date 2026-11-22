@@ -11,7 +11,13 @@ struct MetricsColumnDetail: View {
 	@ObservedObject var columnList: MetricsColumnList
 	@ObservedObject var seriesList: MetricsSeriesList
 
-	@State private var currentDetent = PresentationDetent.medium
+	@State private var currentDetent: Any = {
+		if #available(iOS 16.0, *) {
+			return PresentationDetent.medium
+		} else {
+			return "medium" as Any
+		}
+	}()
 
 	enum ViewOption: String, CaseIterable, Identifiable {
 		case chart = "Chart"
@@ -94,36 +100,19 @@ struct MetricsColumnDetail: View {
 			.listSectionSpacing(12)
 			.sheetCloseButton()
 		}
-		.modifier(SheetPresentationModifiers(
-			detents: [.medium, .large],
-			selection: $currentDetent,
-			contentInteraction: .scrolls,
-			dragIndicatorVisible: true,
-			backgroundInteractionEnabled: true,
-			interactiveDismissDisabled: false
-		))
-	}
-}
-
-private struct SheetPresentationModifiers: ViewModifier {
-	let detents: [PresentationDetent]
-	@Binding var selection: PresentationDetent
-	let contentInteraction: PresentationContentInteraction
-	let dragIndicatorVisible: Bool
-	let backgroundInteractionEnabled: Bool
-	let interactiveDismissDisabled: Bool
-
-	func body(content: Content) -> some View {
-		if #available(iOS 16.0, *) {
-			content
-				.presentationDetents(detents, selection: $selection)
-				.presentationContentInteraction(contentInteraction)
-				.presentationDragIndicator(dragIndicatorVisible ? .visible : .hidden)
-				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
-				.interactiveDismissDisabled(interactiveDismissDisabled)
-		} else {
-			// iOS 15 fallback: fixed height sheet
-			content
+		.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+			if #available(iOS 16.0, *) {
+				view
+					.presentationDetents([.medium, .large], selection: .init(
+						get: { currentDetent as? PresentationDetent ?? .medium },
+						set: { currentDetent = $0 }
+					))
+					.presentationContentInteraction(.scrolls)
+					.presentationDragIndicator(.visible)
+					.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+			} else {
+				view
+			}
 		}
 	}
 }

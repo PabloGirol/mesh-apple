@@ -97,7 +97,7 @@ final class MeshTrafficMonitor: ObservableObject {
 	private var gate = MeshTrafficGate()
 	private var decayTimer: Timer?
 
-	private init() {}
+	private override init() {}
 
 	/// Record one inbound mesh packet. Called on the main actor from `AccessoryManager`'s packet
 	/// dispatch. Cheap: appends a timestamp and re-evaluates the (small) window.

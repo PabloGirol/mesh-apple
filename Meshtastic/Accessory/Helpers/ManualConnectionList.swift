@@ -13,8 +13,8 @@ public final class ManualConnectionList: ObservableObject {
 	static let shared = ManualConnectionList()
 	
 	@Published private var _list: [Device]
-	
-	override private init() {
+
+	private init() {
 		_list = UserDefaults.manualConnections
 	}
 	

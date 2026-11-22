@@ -21,53 +21,66 @@ extension Color {
 	/// This is the accent for text and glyphs, and it is the app-wide tint, so plain buttons,
 	/// toolbar items, links and tab labels all use it. Cobalt on a dark surface is about 1.8:1,
 	/// so dark mode needs the light blue.
+	@usableFromInline
 	static var accentColor: Color { Color("AccentColor") }
 
 	/// The accent as a fill under white text: prominent buttons, message bubbles, badges.
 	/// Cobalt #2855A8 in both modes, because white on Blue 300 is about 1.8:1.
+	@usableFromInline
 	static let accentFill = Color("Colors/MeshtasticAccent")
 
 	/// Branded primary text — shadows SwiftUI `Color.primary`
 	/// Neutral 700 #3D3E50 light / Neutral 50 #F5F6FA dark
+	@usableFromInline
 	static let primary = Color("Colors/MeshtasticPrimary")
 
 	/// Branded secondary — shadows SwiftUI `Color.secondary`
 	/// Neutral 600 #555668 light / Neutral 300 #B8BAC8 dark, the standard's secondary text
+	@usableFromInline
 	static let secondary = Color("Colors/MeshtasticSecondary")
 
 	/// On-surface variant for descriptive/secondary text (timestamps, previews)
 	/// NV 600 #5C5E78 light / NV 300 #BDBFCF dark — WCAG AA compliant
+	@usableFromInline
 	static let onSurfaceVariant = Color("Colors/MeshtasticOnSurfaceVariant")
 
 	/// Branded success green — shadows SwiftUI `Color.green`
 	/// Green 600 #3FB86D light / Green 500 #67EA94 dark
+	@usableFromInline
 	static let green = Color("Colors/MeshtasticSuccess")
 
 	/// Branded warning amber — shadows SwiftUI `Color.orange`
 	/// Warning #E8A33E both modes
+	@usableFromInline
 	static let orange = Color("Colors/MeshtasticWarning")
 
 	/// Branded error red — shadows SwiftUI `Color.red`
 	/// Error #E05252 both modes
+	@usableFromInline
 	static let red = Color("Colors/MeshtasticError")
 
 	/// Branded blue — shadows SwiftUI `Color.blue`
 	/// Info #5C6BC0 both modes
+	@usableFromInline
 	static let blue = Color("Colors/MeshtasticInfo")
 
 	/// Hardware rung colors, one per rung, shared by the section heading and the item's mark
 	/// (meshtastic/design#160). Declared rather than derived from the accent, which event
 	/// editions re-tint.
 	/// Supported: #137136 light / #67EA94 dark.
+	@usableFromInline
 	static let tierSupported = Color("Colors/MeshtasticTierSupported")
 	/// Maker: sky #075985 light / #7DD3FC dark.
+	@usableFromInline
 	static let tierMaker = Color("Colors/MeshtasticTierMaker")
 	/// Community: #A16207 light / #E8A33E dark.
+	@usableFromInline
 	static let tierCommunity = Color("Colors/MeshtasticTierCommunity")
 
 	/// Message search/jump highlight wash — warning amber #E8A33E with baked
 	/// per-mode alpha (0.20 light / 0.32 dark) so it composites to a warm cream
 	/// on light lists and a readable gold on dark, instead of the muddy olive
 	/// that translucent system yellow produced over black.
+	@usableFromInline
 	static let messageHighlight = Color("Colors/MeshtasticHighlight")
 }

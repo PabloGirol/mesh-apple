@@ -5,9 +5,11 @@
 //  Copyright(c) Garth Vander Houwen 2025.
 //
 import SwiftUI
-#if !MESHTASTIC_IOS15
+
+@available(iOS 16.0, macOS 13.0, *)
 import TipKit
 
+@available(iOS 16.0, macOS 13.0, *)
 struct PersistentTipStyle: TipViewStyle {
 	func makeBody(configuration: Configuration) -> some View {
 		HStack(alignment: .top, spacing: 12) {
@@ -33,4 +35,3 @@ struct PersistentTipStyle: TipViewStyle {
 		.frame(maxWidth: .infinity, alignment: .leading)
 	}
 }
-#endif

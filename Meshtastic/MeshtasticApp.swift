@@ -311,7 +311,6 @@ struct MeshtasticAppleApp: App {
 					Task { try? await accessoryManager.closeConnection() }
 				}
 			}
-		}
 		.onChange(of: scenePhase) { (_, newScenePhase) in
 			// Also skipped in Chirpy OTA demo mode, where coreDataStack is nil —
 			// backgrounding the demo must not touch (or force-unwrap) Core Data.
@@ -432,8 +431,6 @@ struct MeshtasticAppleApp: App {
 				.environmentObject(lockdownCoordinator)
 		}
 		.immersionStyle(selection: $cinemaImmersion, in: .progressive(0.4...1.0, initialAmount: 1.0), .full)
-		}
 		#endif
 	}
-}
 }

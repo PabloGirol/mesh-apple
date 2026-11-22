@@ -220,7 +220,6 @@ private static func drawMap(tiles: UIImage, rect: MKMapRect, size: CGSize, pins:
 		}
 	}
 }
-}
 
 /// The tiles with a circle for each node, styled like the share image's map:
 /// node color, white rim and a soft shadow, the radio ringed in brand green

@@ -8,6 +8,9 @@
 import SwiftUI
 import DGCharts
 
+// Disambiguate ChartGesture from DGCharts framework
+typealias ChartGesture = DGChartsProtocols.ChartGesture
+
 // MARK: - Point Chart Data Set
 
 /// Data set for point/scatter charts
@@ -397,11 +400,11 @@ public struct DGPointChart<Point: DGChartDataPoint>: UIViewRepresentable {
         }
 
         public func chartScaled(_ chartView: ChartViewBase, scaleX: CGFloat, scaleY: CGFloat) {
-            parent.onChartGesture?(.scale(scaleX: scaleX, scaleY: scaleY))
+            parent.onChartGesture?(ChartGesture.scale(scaleX: scaleX, scaleY: scaleY))
         }
 
         public func chartTranslated(_ chartView: ChartViewBase, dX: CGFloat, dY: CGFloat) {
-            parent.onChartGesture?(.pan(dX: dX, dY: dY))
+            parent.onChartGesture?(ChartGesture.pan(dX: dX, dY: dY))
         }
     }
 }
@@ -415,7 +418,7 @@ private class CustomScatterShapeRenderer: NSObject, ShapeRenderer {
         self.renderer = renderer
     }
 
-    func renderShape(context: CGContext, dataSet: ScatterChartDataSet, viewPortHandler: ViewPortHandler, point: CGPoint, color: NSUIColor) {
+    func renderShape(context: CGContext, dataSet: ScatterChartDataSetProtocol, viewPortHandler: ViewPortHandler, point: CGPoint, color: NSUIColor) {
         let size = dataSet.scatterShapeSize
         let rect = CGRect(x: point.x - size/2, y: point.y - size/2, width: size, height: size)
         renderer(context, rect, CGSize(width: size, height: size))

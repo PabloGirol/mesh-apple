@@ -31,8 +31,8 @@ struct DeviceMetricsLog: View {
 	@State private var deviceMetrics: [TelemetryEntity] = []
 	@State private var chartData: [TelemetryEntity] = []
 	@State private var totalReadings = 0
-	@State private var sortOrder = [KeyPathComparator(\TelemetryEntity.time, order: .reverse)]
-	@State private var selection: TelemetryEntity.ID?
+	@State private var sortOrder = [KeyPathComparator(\TelemetryEntity.comparableTime, order: .reverse)]
+	@State private var selection: NSManagedObjectID?
 	@State private var chartSelection: Date?
 
 	var body: some View {
@@ -175,7 +175,7 @@ struct DeviceMetricsLog: View {
 					.padding(.trailing)
 				}
 				.onChange(of: selection) { _, newSelection in
-					guard let metrics = deviceMetrics.first(where: { $0.id == newSelection }) else {
+					guard let metrics = deviceMetrics.first(where: { $0.objectID == newSelection }) else {
 						return
 					}
 					chartSelection = metrics.time

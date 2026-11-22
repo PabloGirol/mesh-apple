@@ -286,27 +286,27 @@ struct Channels: View {
 						Text(saveError ?? "")
 					}
 				}
-				.modifier(SheetPresentationModifiers(
-					detents: [.large],
-					selection: .constant(.large),
-					contentInteraction: .scrolls,
-					dragIndicatorVisible: true,
-					backgroundInteractionEnabled: false,
-					interactiveDismissDisabled: isSavingChannel
-				))
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view
+						.presentationDetents([.large], selection: .constant(.large))
+						.presentationContentInteraction(.scrolls)
+						.presentationDragIndicator(.visible)
+						.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+						.interactiveDismissDisabled(isSavingChannel)
+				}
 			}
 		}
 		.hostedSheet(isPresented: $showingHelp) {
 			ChannelsHelp()
 				.trackScreen(.channelsHelp)
-				.modifier(SheetPresentationModifiers(
-					detents: [.large],
-					selection: .constant(.large),
-					contentInteraction: .scrolls,
-					dragIndicatorVisible: true,
-					backgroundInteractionEnabled: false,
-					interactiveDismissDisabled: false
-				))
+				.ifAvailable(.init(iOS: 16, macOS: 13)) { view in
+					view
+						.presentationDetents([.large], selection: .constant(.large))
+						.presentationContentInteraction(.scrolls)
+						.presentationDragIndicator(.visible)
+						.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+						.interactiveDismissDisabled(false)
+				}
 		}
 		.safeAreaInset(edge: .bottom, alignment: .leading) {
 			HStack {
@@ -612,25 +612,3 @@ private struct ChannelStatusIcon: View {
 // `ModemPresets` bandwidth/name helpers moved to
 // `Meshtastic/Helpers/LoRaChannelCalculator.swift` so the Mesh Beacons join
 // enhancement can reuse the firmware-accurate slot math.
-
-private struct SheetPresentationModifiers: ViewModifier {
-	let detents: [PresentationDetent]
-	@Binding var selection: PresentationDetent
-	let contentInteraction: PresentationContentInteraction
-	let dragIndicatorVisible: Bool
-	let backgroundInteractionEnabled: Bool
-	let interactiveDismissDisabled: Bool
-
-	func body(content: Content) -> some View {
-		if #available(iOS 16.0, *) {
-			content
-				.presentationDetents(detents, selection: $selection)
-				.presentationContentInteraction(contentInteraction)
-				.presentationDragIndicator(dragIndicatorVisible ? .visible : .hidden)
-				.presentationBackgroundInteraction(.enabled(upThrough: .medium))
-				.interactiveDismissDisabled(interactiveDismissDisabled)
-		} else {
-			content
-		}
-	}
-}

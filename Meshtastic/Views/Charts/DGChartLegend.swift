@@ -56,7 +56,7 @@ public extension View {
         DGChartLegendModifier(self, legendConfig: config)
     }
 
-    func chartLegend(_ config: @escaping () -> DGChartLegendConfig) -> some View {
+    func chartLegend(_ config: @autoclosure () -> DGChartLegendConfig) -> some View {
         chartLegend(config())
     }
 

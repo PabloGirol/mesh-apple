@@ -379,7 +379,7 @@ final class SpatialMapModel: ObservableObject {
 
 	/// Reads the routes now and waits for them, for a route asked for by id that may be newer than
 	/// the last read.
-	func reloadRoutes(container: NSPersistentStoreCoordinator?) async {
+	func reloadRoutes(container: NSPersistentContainer) async {
 		let fresh = await SpatialRouteReader.routes(container: container)
 		if fresh != routes { routes = fresh }
 	}

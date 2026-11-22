@@ -26,7 +26,7 @@ struct DeviceLinksSection: View {
 	/// entity), so the old prefix/suffix/`rak`-stripping heuristics are gone. A link matches when
 	/// its `targets` contain this device's `platformioTarget`.
 	private var matchingLinks: [DeviceLinkEntity] {
-		let userRegion = Locale.current.region?.identifier ?? ""
+		let userRegion = Locale.current.regionCode ?? ""
 		return allLinks.filter { $0.isVisible(forTarget: platformioTarget, userRegion: userRegion) }
 		.sorted { lhs, rhs in
 			// Vendor links first, marketplace links after; alphabetical within each group.

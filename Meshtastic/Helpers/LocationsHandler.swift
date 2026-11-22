@@ -12,12 +12,11 @@ import OSLog
 // The @MainActor annotation ensures that all state changes and UI updates happen on the main thread,
 // preventing potential race conditions and crashes related to UI updates from background threads.
 @MainActor
-final class LocationsHandler: NSObject {
+final class LocationsHandler: NSObject, ObservableObject {
 
 	static let shared = LocationsHandler()
 	public var manager = CLLocationManager()
-	@available(iOS 17.0, *)
-	private var background: CLBackgroundActivitySession?
+	private var background: AnyObject? // CLBackgroundActivitySession on iOS 17+
 	private var locationDeliveryStarted = false
 	var enableSmartPosition: Bool = UserDefaults.enableSmartPosition
 
@@ -44,7 +43,12 @@ final class LocationsHandler: NSObject {
 		didSet {
 			// Invalidate or create the background activity session based on the new value.
 			if #available(iOS 17.0, *) {
-				backgroundActivity ? self.background = CLBackgroundActivitySession() : self.background?.invalidate()
+				if backgroundActivity {
+					self.background = CLBackgroundActivitySession()
+				} else {
+					(self.background as? CLBackgroundActivitySession)?.invalidate()
+					self.background = nil
+				}
 			}
 			UserDefaults.standard.set(backgroundActivity, forKey: "BGActivitySessionStarted")
 		}

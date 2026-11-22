@@ -817,7 +817,7 @@ public struct ChartDataPoint: Identifiable {
 
 // MARK: - SwiftUI Wrapper Views (UIViewRepresentable)
 
-struct DGLineChartSwiftUI: UIViewRepresentable {
+public struct DGLineChartSwiftUI: UIViewRepresentable {
     let data: [ChartSeriesData]
     let xAxisConfig: DGChartXAxisConfig?
     let yAxisConfig: DGChartYAxisConfig?
@@ -847,13 +847,13 @@ struct DGLineChartSwiftUI: UIViewRepresentable {
     let drawFilled: Bool
     let fillAlpha: CGFloat
 
-    func makeUIView(context: Context) -> LineChartView {
+    public func makeUIView(context: Context) -> LineChartView {
         let chartView = LineChartView()
         chartView.delegate = context.coordinator.delegate
         return chartView
     }
 
-    func updateUIView(_ uiView: LineChartView, context: Context) {
+    public func updateUIView(_ uiView: LineChartView, context: Context) {
         var dataSets: [LineChartDataSet] = []
 
         for series in data where series.isVisible {
@@ -929,7 +929,7 @@ struct DGLineChartSwiftUI: UIViewRepresentable {
         }
     }
 
-    func makeCoordinator() -> Coordinator {
+    public func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
@@ -1123,7 +1123,7 @@ struct DGLineChartSwiftUI: UIViewRepresentable {
     }
 }
 
-struct DGBarChartSwiftUI: UIViewRepresentable {
+public struct DGBarChartSwiftUI: UIViewRepresentable {
     let data: [ChartSeriesData]
     let xAxisConfig: DGChartXAxisConfig?
     let yAxisConfig: DGChartYAxisConfig?
@@ -1155,7 +1155,7 @@ struct DGBarChartSwiftUI: UIViewRepresentable {
         return chartView
     }
 
-    func updateUIView(_ uiView: BarChartView, context: Context) {
+    public func updateUIView(_ uiView: BarChartView, context: Context) {
         var dataSets: [BarChartDataSet] = []
 
         for series in data where series.isVisible && series.chartType == .bar {
@@ -1191,7 +1191,7 @@ struct DGBarChartSwiftUI: UIViewRepresentable {
         }
     }
 
-    func makeCoordinator() -> Coordinator {
+    public func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
@@ -1321,7 +1321,7 @@ struct DGBarChartSwiftUI: UIViewRepresentable {
     }
 }
 
-struct DGCombinedChartSwiftUI: UIViewRepresentable {
+public struct DGCombinedChartSwiftUI: UIViewRepresentable {
     let data: [ChartSeriesData]
     let xAxisConfig: DGChartXAxisConfig?
     let yAxisConfig: DGChartYAxisConfig?
@@ -1358,7 +1358,7 @@ struct DGCombinedChartSwiftUI: UIViewRepresentable {
         return chartView
     }
 
-    func updateUIView(_ uiView: CombinedChartView, context: Context) {
+    public func updateUIView(_ uiView: CombinedChartView, context: Context) {
         var lineDataSets: [LineChartDataSet] = []
         var barDataSets: [BarChartDataSet] = []
 
@@ -1442,7 +1442,7 @@ struct DGCombinedChartSwiftUI: UIViewRepresentable {
         }
     }
 
-    func makeCoordinator() -> Coordinator {
+    public func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
@@ -1576,7 +1576,7 @@ struct DGCombinedChartSwiftUI: UIViewRepresentable {
 
 public typealias DGChartXAxisConfig = DGChartsWrapper.DGChartXAxisConfig
 public typealias DGChartYAxisConfig = DGChartsWrapper.DGChartYAxisConfig
-public typealias DGChartLegendConfig = DGChartsWrapper.DGChartLegendConfig
+public typealias DGChartLegendConfig = DGChartsWrapper.DGWrapperChartLegendConfig
 public typealias DGRuleMark = DGChartsWrapper.DGRuleMark
 public typealias DGChartSelection = DGChartsWrapper.DGChartSelection
 public typealias DGChartInteractionDelegate = DGChartsWrapper.DGChartInteractionDelegate

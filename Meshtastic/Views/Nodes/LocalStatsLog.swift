@@ -409,7 +409,7 @@ private extension LocalStatsLog {
 		if let fetchActor {
 			fetcher = fetchActor
 		} else {
-			fetcher = LocalStatsFetchActor(modelContainer: context.container)
+			fetcher = LocalStatsFetchActor(modelContainer: CoreDataStackImpl.shared.container)
 			fetchActor = fetcher
 		}
 		let stats = await fetcher.rows(nodeNum: node.num)

@@ -71,7 +71,11 @@ struct RegionSelectorView: View {
 
 	@Environment(\.dismiss) private var dismiss
 	@ObservedObject private var manager = OfflineMapManager.shared
+	#if available(iOS 17.0, *)
 	@State private var camera: MapCameraPosition
+	#else
+	@State private var camera: MKCoordinateRegion
+	#endif
 	@State private var bounds: GeoBounds?
 	@State private var detail: OfflineMapDetailLevel = .preferred
 	/// What the download includes (basemap, terrain, or both).
@@ -104,7 +108,11 @@ struct RegionSelectorView: View {
 	init(target: OfflineRegionTarget, replacing: OfflineMapRegion? = nil) {
 		self.target = target
 		self.replacing = replacing
-		_camera = State(initialValue: .region(target.region))
+		#if available(iOS 17.0, *)
+		_camera = State(initialValue: MapCameraPosition.region(target.region))
+		#else
+		_camera = State(initialValue: target.region)
+		#endif
 		_name = State(initialValue: target.name)
 		// Resizing keeps what the region already has.
 		if let replacing {
@@ -118,6 +126,19 @@ struct RegionSelectorView: View {
 	private let minRectSize: CGFloat = 64
 
 	var body: some View {
+		if #available(iOS 17.0, *) {
+			swiftUIMap
+		} else {
+			RegionSelectorMKView(
+				target: target,
+				replacing: replacing,
+				initialRegion: target.region
+			)
+		}
+	}
+
+	@available(iOS 17.0, *)
+	private var swiftUIMap: some View {
 		GeometryReader { geo in
 			MapReader { proxy in
 				ZStack(alignment: .bottom) {
@@ -167,60 +188,61 @@ struct RegionSelectorView: View {
 
 	// MARK: - Selection rectangle (dim + border + drag/resize handles)
 
+	@available(iOS 17.0, *)
 	@ViewBuilder
 	private func selectionLayer(proxy: MapProxy, size: CGSize) -> some View {
 		if selectionRect.width > 1, selectionRect.height > 1 {
-		ZStack(alignment: .topLeading) {
-			// Dim everything outside the selection (non-interactive: the map still pans/zooms through it).
-			Path { path in
-				path.addRect(CGRect(origin: .zero, size: size))
-				path.addRoundedRect(in: selectionRect, cornerSize: CGSize(width: 14, height: 14))
-			}
-			.fill(Color.black.opacity(0.28), style: FillStyle(eoFill: true))
-			.allowsHitTesting(false)
-
-			RoundedRectangle(cornerRadius: 14)
-				.stroke(.white, lineWidth: 3)
-				.frame(width: selectionRect.width, height: selectionRect.height)
-				.position(x: selectionRect.midX, y: selectionRect.midY)
-				.shadow(radius: 3)
+			ZStack(alignment: .topLeading) {
+				// Dim everything outside the selection (non-interactive: the map still pans/zooms through it).
+				Path { path in
+					path.addRect(CGRect(origin: .zero, size: size))
+					path.addRoundedRect(in: selectionRect, cornerSize: CGSize(width: 14, height: 14))
+				}
+				.fill(Color.black.opacity(0.28), style: FillStyle(eoFill: true))
 				.allowsHitTesting(false)
 
-			// Move handle (center) — drag to reposition the rectangle.
-			Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
-				.font(.system(size: 15, weight: .bold))
-				.foregroundStyle(Color.accentColor)
-				.frame(width: 40, height: 40)
-				.background(Circle().fill(.white).shadow(radius: 2))
-				.position(x: selectionRect.midX, y: selectionRect.midY)
-				.gesture(moveGesture(proxy: proxy, size: size))
-				.accessibilityElement()
-				.accessibilityLabel(String(localized: "Move selection", comment: "VoiceOver label for the region rectangle's move handle"))
-				.accessibilityHint(String(localized: "Repositions the selected download area on the map", comment: "VoiceOver hint for the region rectangle's move handle"))
-				.accessibilityAddTraits(.isButton)
-				.accessibilityAction(named: String(localized: "Move north", comment: "VoiceOver custom action: nudge the region area up")) { nudgeMove(dx: 0, dy: -1, proxy: proxy, size: size) }
-				.accessibilityAction(named: String(localized: "Move south", comment: "VoiceOver custom action: nudge the region area down")) { nudgeMove(dx: 0, dy: 1, proxy: proxy, size: size) }
-				.accessibilityAction(named: String(localized: "Move east", comment: "VoiceOver custom action: nudge the region area right")) { nudgeMove(dx: 1, dy: 0, proxy: proxy, size: size) }
-				.accessibilityAction(named: String(localized: "Move west", comment: "VoiceOver custom action: nudge the region area left")) { nudgeMove(dx: -1, dy: 0, proxy: proxy, size: size) }
+				RoundedRectangle(cornerRadius: 14)
+					.stroke(.white, lineWidth: 3)
+					.frame(width: selectionRect.width, height: selectionRect.height)
+					.position(x: selectionRect.midX, y: selectionRect.midY)
+					.shadow(radius: 3)
+					.allowsHitTesting(false)
 
-			// Corner handles — drag to reshape.
-			ForEach(Corner.allCases, id: \.self) { corner in
-				Circle()
-					.fill(.white)
-					.frame(width: 24, height: 24)
-					.overlay(Circle().stroke(Color.accentColor, lineWidth: 3))
-					.shadow(radius: 2)
-					.position(handlePosition(corner))
-					.gesture(resizeGesture(corner, proxy: proxy, size: size))
+				// Move handle (center) — drag to reposition the rectangle.
+				Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+					.font(.system(size: 15, weight: .bold))
+					.foregroundStyle(Color.accentColor)
+					.frame(width: 40, height: 40)
+					.background(Circle().fill(.white).shadow(radius: 2))
+					.position(x: selectionRect.midX, y: selectionRect.midY)
+					.gesture(moveGesture(proxy: proxy, size: size))
 					.accessibilityElement()
-					.accessibilityLabel(cornerLabel(corner))
-					.accessibilityHint(String(localized: "Adjustable. Swipe up to expand, swipe down to shrink the selected area from this corner", comment: "VoiceOver hint for a region rectangle corner handle"))
-					.accessibilityAdjustableAction { direction in
-						nudgeCorner(corner, direction: direction, proxy: proxy, size: size)
-					}
+					.accessibilityLabel(String(localized: "Move selection", comment: "VoiceOver label for the region rectangle's move handle"))
+					.accessibilityHint(String(localized: "Repositions the selected download area on the map", comment: "VoiceOver hint for the region rectangle's move handle"))
+					.accessibilityAddTraits(.isButton)
+					.accessibilityAction(named: String(localized: "Move north", comment: "VoiceOver custom action: nudge the region area up")) { nudgeMove(dx: 0, dy: -1, proxy: proxy, size: size) }
+					.accessibilityAction(named: String(localized: "Move south", comment: "VoiceOver custom action: nudge the region area down")) { nudgeMove(dx: 0, dy: 1, proxy: proxy, size: size) }
+					.accessibilityAction(named: String(localized: "Move east", comment: "VoiceOver custom action: nudge the region area right")) { nudgeMove(dx: 1, dy: 0, proxy: proxy, size: size) }
+					.accessibilityAction(named: String(localized: "Move west", comment: "VoiceOver custom action: nudge the region area left")) { nudgeMove(dx: -1, dy: 0, proxy: proxy, size: size) }
+
+				// Corner handles — drag to reshape.
+				ForEach(Corner.allCases, id: \.self) { corner in
+					Circle()
+						.fill(.white)
+						.frame(width: 24, height: 24)
+						.overlay(Circle().stroke(Color.accentColor, lineWidth: 3))
+						.shadow(radius: 2)
+						.position(handlePosition(corner))
+						.gesture(resizeGesture(corner, proxy: proxy, size: size))
+						.accessibilityElement()
+						.accessibilityLabel(cornerLabel(corner))
+						.accessibilityHint(String(localized: "Adjustable. Swipe up to expand, swipe down to shrink the selected area from this corner", comment: "VoiceOver hint for a region rectangle corner handle"))
+						.accessibilityAdjustableAction { direction in
+							nudgeCorner(corner, direction: direction, proxy: proxy, size: size)
+						}
+				}
 			}
-		}
-		.frame(width: size.width, height: size.height, alignment: .topLeading)
+			.frame(width: size.width, height: size.height, alignment: .topLeading)
 		}
 	}
 
@@ -665,3 +687,89 @@ struct RegionSelectorView: View {
 		dismiss()
 	}
 }
+
+#if !os(iOS) || !os(visionOS) || os(macCatalyst)
+/// Fallback for iOS 15/16 - uses MKMapView via UIViewRepresentable
+struct RegionSelectorMKView: UIViewRepresentable {
+	let target: OfflineRegionTarget
+	let replacing: OfflineMapRegion?
+	let initialRegion: MKCoordinateRegion
+
+	func makeUIView(context: Context) -> MKMapView {
+		let mapView = MKMapView()
+		mapView.delegate = context.coordinator
+		mapView.showsUserLocation = false
+		mapView.userTrackingMode = .none
+
+		// Apply map configuration
+		let standard = MKStandardMapConfiguration(elevationStyle: .flat)
+		standard.pointOfInterestFilter = .excludingAll
+		mapView.preferredConfiguration = standard
+
+		context.coordinator.mapView = mapView
+		context.coordinator.replacing = replacing
+		context.coordinator.setupInitialState(mapView: mapView, initialRegion: initialRegion)
+
+		return mapView
+	}
+
+	func updateUIView(_ mapView: MKMapView, context: Context) {
+		// No updates needed for this simple fallback
+	}
+
+	func makeCoordinator() -> Coordinator {
+		Coordinator()
+	}
+
+	class Coordinator: NSObject, MKMapViewDelegate {
+		weak var mapView: MKMapView?
+		var replacing: OfflineMapRegion?
+
+		func setupInitialState(mapView: MKMapView, initialRegion: MKCoordinateRegion) {
+			mapView.setRegion(initialRegion, animated: false)
+
+			// If there's a replacing region, add it as an overlay
+			if let bounds = replacing {
+				addSelectionOverlay(mapView: mapView, bounds: bounds)
+			}
+		}
+
+		func addSelectionOverlay(mapView: MKMapView, bounds: OfflineMapRegion) {
+			let geoBounds = GeoBounds(
+				minLon: bounds.minLongitude,
+				minLat: bounds.minLatitude,
+				maxLon: bounds.maxLongitude,
+				maxLat: bounds.maxLatitude
+			)
+			if let overlay = selectionOverlay {
+				mapView.removeOverlay(overlay)
+			}
+			let coords = [
+				CLLocationCoordinate2D(latitude: geoBounds.maxLat, longitude: geoBounds.minLon),
+				CLLocationCoordinate2D(latitude: geoBounds.maxLat, longitude: geoBounds.maxLon),
+				CLLocationCoordinate2D(latitude: geoBounds.minLat, longitude: geoBounds.maxLon),
+				CLLocationCoordinate2D(latitude: geoBounds.minLat, longitude: geoBounds.minLon)
+			]
+			var mutableCoords = coords
+			let polygon = MKPolygon(coordinates: &mutableCoords, count: coords.count)
+			selectionOverlay = polygon
+			mapView.addOverlay(polygon)
+		}
+
+		private var selectionOverlay: MKOverlay?
+
+		func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+			if let polygon = overlay as? MKPolygon, polygon === selectionOverlay {
+				let renderer = MKPolygonRenderer(polygon: polygon)
+				renderer.strokeColor = .white
+				renderer.fillColor = UIColor.black.withAlphaComponent(0.28)
+				renderer.lineWidth = 3
+				return renderer
+			}
+			return MKOverlayRenderer(overlay: overlay)
+		}
+	}
+}
+#else
+typealias RegionSelectorMKView = EmptyView
+#endif

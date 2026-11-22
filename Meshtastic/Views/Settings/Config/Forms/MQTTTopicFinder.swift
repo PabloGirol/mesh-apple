@@ -17,20 +17,17 @@ struct MQTTTopicFinder: View {
 	let node: NodeInfoEntity?
 	/// False for snapshots and previews: no socket, no geocoder.
 	var autoStart = true
-	@StateObject private var sampler: MqttTopicSampler
+	@StateObject private var sampler = MqttTopicSamplerObservable.shared
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.scenePhase) private var scenePhase
 	@State private var ladder: [MqttTopicDiscovery.Rung] = []
 	@State private var geocodeFailed = false
 	@State private var custom = ""
 
-	/// `sampler` is for tests and previews that drive one by hand; a default argument cannot create
-	/// it because default arguments are evaluated outside the main actor.
-	init(config: Binding<ModuleConfig.MQTTConfig>, node: NodeInfoEntity?, autoStart: Bool = true, sampler: MqttTopicSampler? = nil) {
+	init(config: Binding<ModuleConfig.MQTTConfig>, node: NodeInfoEntity?, autoStart: Bool = true) {
 		_config = config
 		self.node = node
 		self.autoStart = autoStart
-		_sampler = StateObject(wrappedValue: sampler ?? MqttTopicSampler())
 	}
 
 	private var region: RegionCodes? {
