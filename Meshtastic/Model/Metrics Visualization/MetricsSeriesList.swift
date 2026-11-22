@@ -30,7 +30,7 @@ class MetricsSeriesList: ObservableObject, RandomAccessCollection, RangeReplacea
 	}
 
 	func toggleVisibity(for aSeries: MetricsChartSeries) {
-		if series.contains(aSeries) {
+		if series.contains(where: { $0.id == aSeries.id }) {
 			self.objectWillChange.send()
 			aSeries.visible.toggle()
 			persistVisibility()
@@ -77,13 +77,13 @@ class MetricsSeriesList: ObservableObject, RandomAccessCollection, RangeReplacea
 		var globalUpper: Float = -.infinity
 
 		// Keep track of the range of each series
-		var range: [MetricsChartSeries: ClosedRange<Float>] = [:]
+		var range: [String: ClosedRange<Float>] = [:]
 
 		// Determine if there is an initial fixed range.
 		// The range might exapand past this initial range if the data goes beyond.
 		for aSeries in self.visible {
 			if let thisRange = aSeries.initialYAxisRange {
-				range[aSeries] = thisRange
+				range[aSeries.id] = thisRange
 				if thisRange.upperBound > globalUpper {globalUpper = thisRange.upperBound}
 				if thisRange.lowerBound < globalLower {globalLower = thisRange.lowerBound}
 			}
@@ -93,8 +93,8 @@ class MetricsSeriesList: ObservableObject, RandomAccessCollection, RangeReplacea
 		// the series then the data, but this way we only iterate the data once
 		for te in data {
 			for aSeries in self.visible {
-				var seriesUpper = range[aSeries]?.upperBound ?? -.infinity
-				var seriesLower = range[aSeries]?.lowerBound ?? .infinity
+				var seriesUpper = range[aSeries.id]?.upperBound ?? -.infinity
+				var seriesLower = range[aSeries.id]?.lowerBound ?? .infinity
 
 				if let value = aSeries.valueFor(te) {
 					// Update the global bounds
@@ -110,7 +110,7 @@ class MetricsSeriesList: ObservableObject, RandomAccessCollection, RangeReplacea
 							seriesLower = value
 						}
 						if seriesUpper.isFinite && seriesLower.isFinite {
-							range[aSeries] = seriesLower...seriesUpper
+							range[aSeries.id] = seriesLower...seriesUpper
 						}
 					}
 				}
@@ -119,8 +119,8 @@ class MetricsSeriesList: ObservableObject, RandomAccessCollection, RangeReplacea
 
 		// Go through each series one last time to obey the minimum span
 		for aSeries in self.visible {
-			if let minimumSpan = aSeries.minumumYAxisSpan,
-			   let currentRange = range[aSeries] {
+			if let minimumSpan = aSeries.minimumYAxisSpan,
+			   let currentRange = range[aSeries.id] {
 				let currentSpan = currentRange.upperBound - currentRange.lowerBound
 				if currentSpan < minimumSpan {
 					// Calculate the center of the range

@@ -64,12 +64,12 @@ extension MeshBeaconConfigEntity {
 
 	@objc(addBroadcastTargets:)
 	public func addToBroadcastTargets(_ values: NSSet) {
-		mutableSetValue(forKey: "broadcastTargets").union(values)
+		mutableSetValue(forKey: "broadcastTargets").unionSet(values)
 	}
 
 	@objc(removeBroadcastTargets:)
 	public func removeFromBroadcastTargets(_ values: NSSet) {
-		mutableSetValue(forKey: "broadcastTargets").minus(values)
+		mutableSetValue(forKey: "broadcastTargets").minusSet(values)
 	}
 }
 

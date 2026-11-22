@@ -49,7 +49,7 @@ public class DeviceLinkEntity: NSManagedObject {
 		self.regions = []
 	}
 
-	init(
+	convenience init(
 		shortCode: String,
 		originalUrl: String = "",
 		linkDescription: String? = nil,
@@ -60,7 +60,7 @@ public class DeviceLinkEntity: NSManagedObject {
 	) {
 		let context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
 		let entity = NSEntityDescription.entity(forEntityName: "DeviceLinkEntity", in: context)!
-		self.init(entity: entity, insertInto: nil)
+		self.init(entity: entity, insertInto: nil as NSManagedObjectContext?)
 		self.shortCode = shortCode
 		self.originalUrl = originalUrl
 		self.linkDescription = linkDescription

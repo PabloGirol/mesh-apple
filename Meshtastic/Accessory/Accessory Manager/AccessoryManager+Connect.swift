@@ -85,7 +85,8 @@ extension AccessoryManager {
 			// Step 1: Connect to the transport
 			Step(timeout: connectStepTimeout) { @MainActor _ in
 				Logger.transport.info("🔗 [Connect] Opening transport")
-				self.activeConnection = try await transport.connect(to: device)
+				let connection = try await transport.connect(to: device)
+				self.activeConnection = (device: device, connection: connection)
 				self.activeConnection?.connection.delegate = self
 				Logger.transport.info("🔗 [Connect] Transport connected")
 			}
@@ -151,7 +152,7 @@ extension AccessoryManager {
 			}
 		}
 
-		try await connectionStepper.execute()
+		try await connectionStepper!.execute()
 	}
 
 	// MARK: - Sequential Steps
@@ -201,16 +202,21 @@ extension AccessoryManager {
 			while currentStepIndex < steps.count {
 				let step = steps[currentStepIndex]
 				var attempt = 0
-				let maxStepRetries = (step.onFailure == .fail) ? 0 : maxRetries
+				let maxStepRetries: Int
+				if case .fail = step.onFailure {
+					maxStepRetries = 0
+				} else {
+					maxStepRetries = maxRetries
+				}
 
 				while attempt <= maxStepRetries {
 					do {
 						if let timeout = step.timeout {
 							try await withTimeout(timeout) {
-								try await step.operation(currentRetryAttempt)
+								try await step.operation(self.currentRetryAttempt)
 							}
 						} else {
-							try await step.operation(currentRetryAttempt)
+							try await step.operation(self.currentRetryAttempt)
 						}
 						currentStepIndex += 1
 						break

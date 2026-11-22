@@ -283,4 +283,3 @@ private struct WidgetMapPinsView: View {
 			.overlay(Circle().strokeBorder(isRadio ? Self.brand : .white, lineWidth: isRadio ? 2.5 : 1.5))
 	}
 }
-}

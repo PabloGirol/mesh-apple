@@ -240,8 +240,6 @@ struct NodeList: View {
 			if trackedWidgets.contains(deleteNodeId) {
 				Text(TrackedWidgetNodes.deleteWarning)
 			}
-			}
-			await TrackedWidgetNodes.shared.refresh()
 		}
 		.hostedSheet(item: $shareContactNode) { selectedNode in
 			// Mirror NodeDetail's rule: only your own (connected) node is marked
