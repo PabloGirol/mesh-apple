@@ -1,4 +1,4 @@
-// SwiftUIViewSnapshotTests.swift
+﻿// SwiftUIViewSnapshotTests.swift
 // MeshtasticTests
 
 import Testing
